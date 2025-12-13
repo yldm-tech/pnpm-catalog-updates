@@ -22,15 +22,24 @@ jobs:
             closed)   EMOJI="✅"; STATUS="Closed" ;;
           esac
 
-          MESSAGE="${EMOJI} *${STATUS}* \#${{ github.event.issue.number }}
+          BODY='${{ github.event.issue.body }}'
+          # 转义 HTML 特殊字符
+          BODY=$(echo "$BODY" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          # 截取前 500 字符
+          BODY="${BODY:0:500}"
+          [ ${#BODY} -eq 500 ] && BODY="${BODY}..."
 
-          📝 *${{ github.event.issue.title }}*
-          👤 By: [${{ github.event.issue.user.login }}](${{ github.event.issue.user.html_url }})
+          MESSAGE="${EMOJI} <b>${STATUS}</b> #${{ github.event.issue.number }}
 
-          🔗 [View Issue](${{ github.event.issue.html_url }})"
+          📝 <b>${{ github.event.issue.title }}</b>
+          👤 By: <a href=\"${{ github.event.issue.user.html_url }}\">${{ github.event.issue.user.login }}</a>
+
+          <blockquote>${BODY}</blockquote>
+
+          🔗 <a href=\"${{ github.event.issue.html_url }}\">View Issue</a>"
 
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
             -d message_thread_id="${TELEGRAM_THREAD_ID}" \
-            -d parse_mode="Markdown" \
+            -d parse_mode="HTML" \
             -d text="${MESSAGE}"

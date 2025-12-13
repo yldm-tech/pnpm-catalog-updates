@@ -7,6 +7,7 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
+    environment: public
     steps:
       - name: Send Telegram Notification
         env:

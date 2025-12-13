@@ -2,7 +2,7 @@ name: Issue Telegram Notify
 
 on:
   issues:
-    types: [opened, reopened]
+    types: [opened, reopened, closed]
 
 jobs:
   notify:
@@ -15,7 +15,14 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_THREAD_ID: ${{ secrets.TELEGRAM_PCU_THREAD_ID }}
         run: |
-          MESSAGE="🆕 *New Issue* \#${{ github.event.issue.number }}
+          ACTION="${{ github.event.action }}"
+          case "$ACTION" in
+            opened)   EMOJI="🆕"; STATUS="New Issue" ;;
+            reopened) EMOJI="🔄"; STATUS="Reopened" ;;
+            closed)   EMOJI="✅"; STATUS="Closed" ;;
+          esac
+
+          MESSAGE="${EMOJI} *${STATUS}* \#${{ github.event.issue.number }}
 
           📝 *${{ github.event.issue.title }}*
           👤 By: [${{ github.event.issue.user.login }}](${{ github.event.issue.user.html_url }})

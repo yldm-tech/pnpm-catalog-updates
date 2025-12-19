@@ -47,30 +47,28 @@ function NavLink({
       href={href as ValidHref}
       aria-current={active ? 'page' : undefined}
       className={clsx(
-        'flex justify-between gap-2 py-1 pr-3 text-sm transition',
+        'flex items-center gap-2 py-1 pr-3 text-sm transition',
         isAnchorLink ? 'pl-7' : 'pl-4',
         active
           ? 'text-zinc-900 dark:text-white'
           : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
       )}
     >
-      <span className="relative truncate">
-        {children}
-        {tag && (
-          <motion.span
-            className="absolute -right-6 -top-1.5 text-[10px]"
-            animate={{
-              opacity: [1, 0.6, 1],
-              scale: [1, 1.05, 1],
-            }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            <Tag variant="small" color={tag === 'new' ? 'sky' : 'zinc'}>
-              {tag}
-            </Tag>
-          </motion.span>
-        )}
-      </span>
+      <span className="truncate">{children}</span>
+      {tag && (
+        <motion.span
+          className="shrink-0"
+          animate={{
+            opacity: [1, 0.6, 1],
+            scale: [1, 1.1, 1],
+          }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Tag variant="medium" color={tag === 'new' ? 'sky' : 'zinc'}>
+            {tag}
+          </Tag>
+        </motion.span>
+      )}
     </CloseButton>
   )
 }

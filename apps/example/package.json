@@ -48,5 +48,8 @@
     "monorepo"
   ],
   "author": "Evan Hu <evan@yldm.tech>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {},
+  "peerDependencies": {},
+  "optionalDependencies": {}
 }

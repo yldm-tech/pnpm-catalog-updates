@@ -5,8 +5,19 @@
  * Supports interactive mode, dry-run, and various update strategies.
  */
 
-import { CatalogUpdateService, UpdateOptions, UpdatePlan, UpdateTarget } from '@pcu/core';
+import {
+  AIAnalysisService,
+  AnalysisType,
+  CatalogUpdateService,
+  FileSystemService,
+  FileWorkspaceRepository,
+  UpdateOptions,
+  UpdatePlan,
+  UpdateTarget,
+  WorkspaceService,
+} from '@pcu/core';
 import { ConfigLoader } from '@pcu/utils';
+import chalk from 'chalk';
 import { OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js';
 import { ProgressBar } from '../formatters/progressBar.js';
 import { InteractivePrompts } from '../interactive/interactivePrompts.js';
@@ -26,6 +37,11 @@ export interface UpdateCommandOptions {
   createBackup?: boolean;
   verbose?: boolean;
   color?: boolean;
+  // AI batch analysis options
+  ai?: boolean;
+  provider?: string;
+  analysisType?: AnalysisType;
+  skipCache?: boolean;
 }
 
 export class UpdateCommand {
@@ -109,6 +125,102 @@ export class UpdateCommand {
         }
       }
 
+      // AI batch analysis if enabled - analyze ALL packages in one request
+      if (options.ai) {
+        progressBar.update('🤖 正在进行 AI 批量分析...', 2.5, 4);
+        progressBar.stop();
+
+        console.log(
+          chalk.blue(
+            `\n🤖 Running AI-powered batch analysis for ${finalPlan.updates.length} packages...`
+          )
+        );
+        console.log(chalk.gray('This analyzes all packages in a single request for efficiency.\n'));
+
+        try {
+          const aiResult = await this.performBatchAIAnalysis(finalPlan, options);
+
+          // Display AI analysis results
+          console.log(chalk.blue('\n📊 AI Analysis Results:'));
+          console.log(chalk.gray('─'.repeat(60)));
+          console.log(chalk.cyan(`Provider: ${aiResult.provider}`));
+          console.log(chalk.cyan(`Confidence: ${(aiResult.confidence * 100).toFixed(0)}%`));
+          console.log(chalk.cyan(`Processing time: ${aiResult.processingTimeMs}ms`));
+          console.log(chalk.gray('─'.repeat(60)));
+          console.log(chalk.yellow('\n📝 Summary:'));
+          console.log(aiResult.summary);
+
+          // Display recommendations for each package
+          if (aiResult.recommendations.length > 0) {
+            console.log(chalk.yellow('\n📦 Package Recommendations:'));
+            for (const rec of aiResult.recommendations) {
+              const actionIcon =
+                rec.action === 'update' ? '✅' : rec.action === 'skip' ? '❌' : '⚠️';
+              const riskColor =
+                rec.riskLevel === 'critical'
+                  ? chalk.red
+                  : rec.riskLevel === 'high'
+                    ? chalk.yellow
+                    : rec.riskLevel === 'medium'
+                      ? chalk.cyan
+                      : chalk.green;
+
+              console.log(
+                `\n  ${actionIcon} ${chalk.bold(rec.package)}: ${rec.currentVersion} → ${rec.targetVersion}`
+              );
+              console.log(
+                `     Action: ${chalk.bold(rec.action.toUpperCase())} | Risk: ${riskColor(rec.riskLevel)}`
+              );
+              console.log(`     ${rec.reason}`);
+
+              if (rec.breakingChanges && rec.breakingChanges.length > 0) {
+                console.log(
+                  chalk.red(`     ⚠️  Breaking changes: ${rec.breakingChanges.join(', ')}`)
+                );
+              }
+              if (rec.securityFixes && rec.securityFixes.length > 0) {
+                console.log(chalk.green(`     🔒 Security fixes: ${rec.securityFixes.join(', ')}`));
+              }
+            }
+          }
+
+          // Display warnings
+          if (aiResult.warnings && aiResult.warnings.length > 0) {
+            console.log(chalk.yellow('\n⚠️  Warnings:'));
+            for (const warning of aiResult.warnings) {
+              console.log(chalk.yellow(`  - ${warning}`));
+            }
+          }
+
+          console.log(chalk.gray('\n' + '─'.repeat(60)));
+
+          // If there are critical/skip recommendations, warn the user
+          const skipRecommendations = aiResult.recommendations.filter((r) => r.action === 'skip');
+          if (skipRecommendations.length > 0 && !options.force) {
+            console.log(
+              chalk.red(
+                `\n⛔ AI recommends skipping ${skipRecommendations.length} package(s) due to risks.`
+              )
+            );
+            console.log(chalk.yellow('Use --force to override AI recommendations.\n'));
+          }
+        } catch (aiError) {
+          console.warn(
+            chalk.yellow('\n⚠️  AI batch analysis failed, continuing without AI insights:')
+          );
+          if (options.verbose) {
+            console.warn(chalk.gray(String(aiError)));
+          }
+        }
+
+        // Restart progress bar
+        progressBar = new ProgressBar({
+          text: '准备应用更新...',
+          total: 4,
+        });
+        progressBar.start('正在准备应用更新...');
+      }
+
       // Step 3: Apply updates
       progressBar.update('正在准备应用更新...', 3, 4);
 
@@ -173,6 +285,54 @@ export class UpdateCommand {
       updates: selectedUpdates,
       totalUpdates: selectedUpdates.length,
     };
+  }
+
+  /**
+   * Perform batch AI analysis for all packages in the update plan
+   * This analyzes ALL packages in a single AI request for efficiency
+   */
+  private async performBatchAIAnalysis(plan: UpdatePlan, options: UpdateCommandOptions) {
+    const workspacePath = options.workspace || process.cwd();
+
+    // Create workspace service to get workspace info
+    const fileSystemService = new FileSystemService();
+    const workspaceRepository = new FileWorkspaceRepository(fileSystemService);
+    const workspaceService = new WorkspaceService(workspaceRepository);
+    const workspaceInfo = await workspaceService.getWorkspaceInfo(workspacePath);
+
+    // Create AI service
+    const aiService = new AIAnalysisService({
+      config: {
+        preferredProvider: options.provider === 'auto' ? 'auto' : options.provider,
+        cache: { enabled: !options.skipCache, ttl: 3600 },
+        fallback: { enabled: true, useRuleEngine: true },
+      },
+    });
+
+    // Convert all planned updates to PackageUpdateInfo format for batch analysis
+    const packages = plan.updates.map((update) => ({
+      name: update.packageName,
+      currentVersion: update.currentVersion,
+      targetVersion: update.newVersion,
+      updateType: update.updateType,
+      catalogName: update.catalogName,
+    }));
+
+    // Build workspace info for AI
+    const wsInfo = {
+      name: workspaceInfo.name,
+      path: workspaceInfo.path,
+      packageCount: workspaceInfo.packageCount,
+      catalogCount: workspaceInfo.catalogCount,
+    };
+
+    // Perform single batch analysis for ALL packages
+    const result = await aiService.analyzeUpdates(packages, wsInfo, {
+      analysisType: options.analysisType || 'impact',
+      skipCache: options.skipCache,
+    });
+
+    return result;
   }
 
   /**

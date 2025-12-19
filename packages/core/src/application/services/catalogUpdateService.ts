@@ -577,6 +577,28 @@ export class CatalogUpdateService {
   }
 
   /**
+   * Find which catalog contains a specific package
+   * Returns the first catalog found containing the package, or null if not found
+   */
+  async findCatalogForPackage(packageName: string, workspacePath?: string): Promise<string | null> {
+    const wsPath = WorkspacePath.fromString(workspacePath || process.cwd());
+
+    const workspace = await this.workspaceRepository.findByPath(wsPath);
+    if (!workspace) {
+      return null;
+    }
+
+    const catalogs = workspace.getCatalogs();
+    for (const catalog of catalogs.getAll()) {
+      if (catalog && catalog.getDependencyVersion(packageName)) {
+        return catalog.getName();
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Analyze the impact of updating a specific dependency
    */
   async analyzeImpact(

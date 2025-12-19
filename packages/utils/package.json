@@ -60,5 +60,7 @@
     "type": "git",
     "url": "https://github.com/houko/pnpm-catalog-updates.git",
     "directory": "packages/utils"
-  }
+  },
+  "peerDependencies": {},
+  "optionalDependencies": {}
 }

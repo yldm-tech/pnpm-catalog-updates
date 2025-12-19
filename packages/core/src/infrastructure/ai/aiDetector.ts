@@ -62,21 +62,8 @@ export class AIDetector {
     const homebrewBin = '/opt/homebrew/bin';
     // Intel Homebrew uses /usr/local/bin which is already covered by localBin
 
+    // Priority order: gemini > claude > codex > cursor
     return [
-      {
-        name: 'claude',
-        command: 'claude',
-        envVar: 'CLAUDE_PATH',
-        knownPaths: [
-          join(homebrewBin, 'claude'),
-          join(localBin, 'claude'),
-          join(npmGlobalBin, 'claude'),
-          join(this.homeDir, '.local', 'bin', 'claude'),
-        ],
-        versionArg: '--version',
-        priority: 100,
-        capabilities: ['impact', 'security', 'compatibility', 'recommend'],
-      },
       {
         name: 'gemini',
         command: 'gemini',
@@ -86,6 +73,20 @@ export class AIDetector {
           join(localBin, 'gemini'),
           join(npmGlobalBin, 'gemini'),
           join(this.homeDir, '.local', 'bin', 'gemini'),
+        ],
+        versionArg: '--version',
+        priority: 100,
+        capabilities: ['impact', 'security', 'compatibility', 'recommend'],
+      },
+      {
+        name: 'claude',
+        command: 'claude',
+        envVar: 'CLAUDE_PATH',
+        knownPaths: [
+          join(homebrewBin, 'claude'),
+          join(localBin, 'claude'),
+          join(npmGlobalBin, 'claude'),
+          join(this.homeDir, '.local', 'bin', 'claude'),
         ],
         versionArg: '--version',
         priority: 80,
@@ -115,19 +116,6 @@ export class AIDetector {
           : ['/Applications/Cursor.app/Contents/MacOS/Cursor'],
         versionArg: '--version',
         priority: 40,
-        capabilities: ['impact', 'recommend'],
-      },
-      {
-        name: 'aider',
-        command: 'aider',
-        envVar: 'AIDER_PATH',
-        knownPaths: [
-          join(homebrewBin, 'aider'),
-          join(localBin, 'aider'),
-          join(this.homeDir, '.local', 'bin', 'aider'),
-        ],
-        versionArg: '--version',
-        priority: 50,
         capabilities: ['impact', 'recommend'],
       },
     ];
@@ -324,7 +312,7 @@ export class AIDetector {
     const available = providers.filter((p) => p.available);
 
     if (available.length === 0) {
-      return 'No AI CLI tools detected. AI-powered analysis will use rule-based fallback.';
+      return '';
     }
 
     const lines = ['Available AI tools:'];

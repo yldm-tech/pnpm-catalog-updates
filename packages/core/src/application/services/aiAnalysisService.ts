@@ -252,10 +252,6 @@ export class AIAnalysisService {
         if (this.config.fallback.enabled && this.config.fallback.useRuleEngine) {
           result = this.ruleEngine.analyze(contextWithSecurity);
           providerUsed = 'rule-engine';
-          result.warnings = [
-            ...(result.warnings || []),
-            `AI provider error, using rule-based fallback: ${(error as Error).message}`,
-          ];
         } else {
           throw error;
         }

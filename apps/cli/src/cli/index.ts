@@ -197,6 +197,14 @@ export async function main(): Promise<void> {
     .option('--prerelease', 'include prerelease versions')
     .option('-b, --create-backup', 'create backup files before updating')
     .option('-f, --format <type>', 'output format: table, json, yaml, minimal', 'table')
+    .option('--ai', 'enable AI-powered batch analysis for all updates')
+    .option('--provider <name>', 'AI provider: auto, claude, gemini, codex', 'auto')
+    .option(
+      '--analysis-type <type>',
+      'AI analysis type: impact, security, compatibility, recommend',
+      'impact'
+    )
+    .option('--skip-cache', 'skip AI analysis cache')
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts();
@@ -220,6 +228,11 @@ export async function main(): Promise<void> {
           createBackup: options.createBackup,
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
+          // AI batch analysis options
+          ai: parseBooleanFlag(options.ai),
+          provider: options.provider,
+          analysisType: options.analysisType as AnalysisType,
+          skipCache: parseBooleanFlag(options.skipCache),
         });
         process.exit(0);
       } catch (error) {
@@ -233,11 +246,11 @@ export async function main(): Promise<void> {
     .command('analyze')
     .alias('a')
     .description('analyze the impact of updating a specific dependency')
-    .argument('<catalog>', 'catalog name')
     .argument('<package>', 'package name')
     .argument('[version]', 'new version (default: latest)')
+    .option('--catalog <name>', 'catalog name (auto-detected if not specified)')
     .option('-f, --format <type>', 'output format: table, json, yaml, minimal', 'table')
-    .option('--ai', 'enable AI-powered analysis')
+    .option('--no-ai', 'disable AI-powered analysis')
     .option('--provider <name>', 'AI provider: auto, claude, gemini, codex', 'auto')
     .option(
       '--analysis-type <type>',
@@ -245,7 +258,7 @@ export async function main(): Promise<void> {
       'impact'
     )
     .option('--skip-cache', 'skip AI analysis cache')
-    .action(async (catalog, packageName, version, options, command) => {
+    .action(async (packageName, version, options, command) => {
       try {
         const globalOptions = command.parent.opts();
         const formatter = new OutputFormatter(
@@ -253,10 +266,25 @@ export async function main(): Promise<void> {
           !globalOptions.noColor
         );
 
+        // Auto-detect catalog if not specified
+        let catalog = options.catalog;
+        if (!catalog) {
+          console.log(chalk.gray(`🔍 Auto-detecting catalog for ${packageName}...`));
+          catalog = await services.catalogUpdateService.findCatalogForPackage(
+            packageName,
+            globalOptions.workspace
+          );
+          if (!catalog) {
+            console.error(chalk.red(`❌ Package "${packageName}" not found in any catalog`));
+            console.log(chalk.gray('Use --catalog <name> to specify the catalog manually'));
+            process.exit(1);
+          }
+          console.log(chalk.gray(`   Found in catalog: ${catalog}`));
+        }
+
         // Get latest version if not specified
         let targetVersion = version;
         if (!targetVersion) {
-          // Create a temporary registry service for version fetching
           const tempRegistryService = new NpmRegistryService();
           targetVersion = (await tempRegistryService.getLatestVersion(packageName)).toString();
         }
@@ -269,8 +297,10 @@ export async function main(): Promise<void> {
           globalOptions.workspace
         );
 
-        // If AI analysis is enabled, perform AI-powered analysis
-        if (parseBooleanFlag(options.ai)) {
+        // AI analysis is enabled by default (use --no-ai to disable)
+        const aiEnabled = options.ai !== false;
+
+        if (aiEnabled) {
           console.log(chalk.blue('🤖 Running AI-powered analysis...'));
 
           const aiService = new AIAnalysisService({
@@ -313,7 +343,6 @@ export async function main(): Promise<void> {
             // Format and display AI analysis result
             const aiOutput = formatter.formatAIAnalysis(aiResult, analysis);
             console.log(aiOutput);
-            // Cleanup HTTP connections to allow natural process exit
             process.exit(0);
           } catch (aiError) {
             console.warn(chalk.yellow('⚠️  AI analysis failed, showing basic analysis:'));
@@ -640,14 +669,6 @@ export async function main(): Promise<void> {
         if (best) {
           console.log('');
           console.log(chalk.green(`✨ Best available provider: ${best.name}`));
-        } else {
-          console.log('');
-          console.log(
-            chalk.yellow('⚠️  No AI providers available. Rule-based fallback will be used.')
-          );
-          console.log(
-            chalk.gray('   Install claude, gemini, or codex CLI for AI-powered analysis.')
-          );
         }
         process.exit(0);
       } catch (error) {

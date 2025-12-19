@@ -62,5 +62,7 @@
     "prettier-plugin-organize-imports": "catalog:",
     "prettier-plugin-tailwindcss": "catalog:",
     "sharp": "catalog:"
-  }
+  },
+  "peerDependencies": {},
+  "optionalDependencies": {}
 }

@@ -50,6 +50,41 @@ pcu ai
 - 各プロバイダーのバージョン情報
 - 分析に使用される最適なプロバイダー
 
+### AIコマンドオプション
+
+<Properties>
+  <Property name="--status" type="boolean" default="true">
+    すべてのAIプロバイダーのステータスを表示（デフォルト動作）
+  </Property>
+  <Property name="--test" type="boolean">
+    サンプルリクエストでAI分析をテストしてプロバイダー接続を確認
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    ヒット率やサイズを含むAI分析キャッシュ統計を表示
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    AI分析キャッシュをクリアしてスペースを解放またはキャッシュされた応答をリセット
+  </Property>
+</Properties>
+
+<CodeGroup>
+
+```bash {{ title: 'AIステータス確認' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'AIプロバイダーテスト' }}
+pcu ai --test
+```
+
+```bash {{ title: 'キャッシュ管理' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
 ### AI駆動の更新
 
 AI駆動の分析で依存関係を更新：

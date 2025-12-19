@@ -49,6 +49,41 @@ pcu ai
 - 每个提供商的版本信息
 - 将用于分析的最佳可用提供商
 
+### AI 命令选项
+
+<Properties>
+  <Property name="--status" type="boolean" default="true">
+    显示所有 AI 提供商的状态（默认行为）
+  </Property>
+  <Property name="--test" type="boolean">
+    使用示例请求测试 AI 分析以验证提供商连接
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    显示 AI 分析缓存统计信息，包括命中率和大小
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    清除 AI 分析缓存以释放空间或重置缓存响应
+  </Property>
+</Properties>
+
+<CodeGroup>
+
+```bash {{ title: '检查 AI 状态' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: '测试 AI 提供商' }}
+pcu ai --test
+```
+
+```bash {{ title: '缓存管理' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
 ### AI 驱动的更新
 
 使用 AI 驱动的分析更新依赖：

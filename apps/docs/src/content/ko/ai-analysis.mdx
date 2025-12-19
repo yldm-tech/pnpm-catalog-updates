@@ -51,6 +51,41 @@ pcu ai
 - 각 제공업체의 버전 정보
 - 분석에 사용될 최적의 제공업체
 
+### AI 명령어 옵션
+
+<Properties>
+  <Property name="--status" type="boolean" default="true">
+    모든 AI 제공업체의 상태 표시 (기본 동작)
+  </Property>
+  <Property name="--test" type="boolean">
+    샘플 요청으로 AI 분석을 테스트하여 제공업체 연결 확인
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    히트율 및 크기를 포함한 AI 분석 캐시 통계 표시
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    AI 분석 캐시를 지워 공간 확보 또는 캐시된 응답 재설정
+  </Property>
+</Properties>
+
+<CodeGroup>
+
+```bash {{ title: 'AI 상태 확인' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'AI 제공업체 테스트' }}
+pcu ai --test
+```
+
+```bash {{ title: '캐시 관리' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
 ### AI 기반 업데이트
 
 AI 기반 분석으로 의존성 업데이트:

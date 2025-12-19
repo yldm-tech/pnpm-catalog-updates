@@ -51,6 +51,41 @@ Dieser Befehl zeigt:
 - Versionsinformationen für jeden Anbieter
 - Der beste verfügbare Anbieter, der für die Analyse verwendet wird
 
+### KI-Befehlsoptionen
+
+<Properties>
+  <Property name="--status" type="boolean" default="true">
+    Status aller KI-Anbieter anzeigen (Standardverhalten)
+  </Property>
+  <Property name="--test" type="boolean">
+    KI-Analyse mit einer Beispielanfrage testen, um Anbieterverbindung zu überprüfen
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    KI-Analyse-Cache-Statistiken einschließlich Trefferrate und Größe anzeigen
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    KI-Analyse-Cache leeren, um Speicherplatz freizugeben oder zwischengespeicherte Antworten zurückzusetzen
+  </Property>
+</Properties>
+
+<CodeGroup>
+
+```bash {{ title: 'KI-Status prüfen' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'KI-Anbieter testen' }}
+pcu ai --test
+```
+
+```bash {{ title: 'Cache-Verwaltung' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
 ### KI-gestütztes Update
 
 Abhängigkeiten mit KI-gestützter Analyse aktualisieren:

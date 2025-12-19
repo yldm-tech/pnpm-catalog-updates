@@ -51,6 +51,41 @@ Este comando muestra:
 - Información de versión para cada proveedor
 - El mejor proveedor disponible que se utilizará para el análisis
 
+### Opciones del Comando AI
+
+<Properties>
+  <Property name="--status" type="boolean" default="true">
+    Mostrar estado de todos los proveedores de IA (comportamiento predeterminado)
+  </Property>
+  <Property name="--test" type="boolean">
+    Probar análisis de IA con una solicitud de muestra para verificar conectividad del proveedor
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    Mostrar estadísticas de caché de análisis de IA incluyendo tasa de aciertos y tamaño
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    Limpiar caché de análisis de IA para liberar espacio o restablecer respuestas en caché
+  </Property>
+</Properties>
+
+<CodeGroup>
+
+```bash {{ title: 'Verificar Estado de IA' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'Probar Proveedor de IA' }}
+pcu ai --test
+```
+
+```bash {{ title: 'Gestión de Caché' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
 ### Actualización con IA
 
 Actualice dependencias con análisis impulsado por IA:

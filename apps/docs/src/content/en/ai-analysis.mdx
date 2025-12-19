@@ -51,6 +51,41 @@ This command displays:
 - Version information for each provider
 - The best available provider that will be used for analysis
 
+### AI Command Options
+
+<Properties>
+  <Property name="--status" type="boolean" default="true">
+    Show status of all AI providers (default behavior)
+  </Property>
+  <Property name="--test" type="boolean">
+    Test AI analysis with a sample request to verify provider connectivity
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    Show AI analysis cache statistics including hit rate and size
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    Clear the AI analysis cache to free up space or reset cached responses
+  </Property>
+</Properties>
+
+<CodeGroup>
+
+```bash {{ title: 'Check AI Status' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'Test AI Provider' }}
+pcu ai --test
+```
+
+```bash {{ title: 'Cache Management' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
 ### AI-Powered Update
 
 Update dependencies with AI-powered analysis:

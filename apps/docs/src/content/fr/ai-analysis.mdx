@@ -52,6 +52,41 @@ Cette commande affiche :
 - Les informations de version pour chaque fournisseur
 - Le meilleur fournisseur disponible qui sera utilisé pour l'analyse
 
+### Options de la Commande AI
+
+<Properties>
+  <Property name="--status" type="boolean" default="true">
+    Afficher l'état de tous les fournisseurs IA (comportement par défaut)
+  </Property>
+  <Property name="--test" type="boolean">
+    Tester l'analyse IA avec une requête d'exemple pour vérifier la connectivité du fournisseur
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    Afficher les statistiques du cache d'analyse IA incluant le taux de succès et la taille
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    Vider le cache d'analyse IA pour libérer de l'espace ou réinitialiser les réponses en cache
+  </Property>
+</Properties>
+
+<CodeGroup>
+
+```bash {{ title: 'Vérifier le Statut IA' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'Tester le Fournisseur IA' }}
+pcu ai --test
+```
+
+```bash {{ title: 'Gestion du Cache' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
 ### Mise à Jour avec IA
 
 Mettez à jour les dépendances avec une analyse alimentée par IA :

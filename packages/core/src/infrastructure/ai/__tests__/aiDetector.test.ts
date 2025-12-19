@@ -83,7 +83,7 @@ describe('AIDetector', () => {
       expect(claude).toBeDefined()
       expect(claude?.available).toBe(true)
       expect(claude?.path).toBe('/usr/local/bin/claude')
-      expect(claude?.priority).toBe(100)
+      expect(claude?.priority).toBe(80)
     })
 
     it('should sort providers by priority', async () => {
@@ -136,13 +136,12 @@ describe('AIDetector', () => {
   })
 
   describe('getDetectionSummary', () => {
-    it('should return fallback message when no providers available', async () => {
+    it('should return empty string when no providers available', async () => {
       mockExec.mockRejectedValue(new Error('not found'))
       mockExistsSync.mockReturnValue(false)
 
       const summary = await detector.getDetectionSummary()
-      expect(summary).toContain('No AI CLI tools detected')
-      expect(summary).toContain('rule-based fallback')
+      expect(summary).toBe('')
     })
   })
 })

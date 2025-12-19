@@ -123,15 +123,15 @@ function resolveCatalogDependencies() {
 }
 
 async function publishDual() {
+  // Read and backup original package.json BEFORE try block for proper restore on error
+  const originalPackageContent = fs.readFileSync(CLI_PACKAGE_PATH, 'utf8')
+
   try {
     console.log(`${isDryRun ? '[DRY RUN] ' : ''}Starting dual package publication...`)
 
     // Build first
     console.log('\n📦 Building packages...')
     runCommand('pnpm build', { alwaysRun: true })
-
-    // Read and backup original package.json
-    const originalPackageContent = fs.readFileSync(CLI_PACKAGE_PATH, 'utf8')
     const originalPackage = JSON.parse(originalPackageContent)
     const version = originalPackage.version
     const originalName = originalPackage.name

@@ -1,8 +1,8 @@
 'use client'
 
-import { type Locale } from '@/i18n'
-import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
+import type { Locale } from '@/i18n'
 
 export function LanguageSwitcher() {
   const t = useTranslations('Common')
@@ -18,7 +18,7 @@ export function LanguageSwitcher() {
     // Ensure the path starts with / but doesn't have double slashes
     const cleanPath = pathWithoutLocale.startsWith('/')
       ? pathWithoutLocale
-      : '/' + pathWithoutLocale
+      : `/${pathWithoutLocale}`
     const newPath = `/${nextLocale}${cleanPath === '/' ? '' : cleanPath}`
 
     router.push(newPath)

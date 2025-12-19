@@ -6,26 +6,22 @@
  */
 
 // AI Detector
-export { AIDetector } from './aiDetector.js';
-
+export { AIDetector } from './aiDetector.js'
+export type { AnalysisCacheOptions, AnalysisCacheStats } from './cache/index.js'
+// Cache
+export { AnalysisCache, analysisCache } from './cache/index.js'
+// Fallback
+export { RuleEngine } from './fallback/index.js'
+export type {
+  BaseProviderOptions,
+  ClaudeProviderOptions,
+  CodexProviderOptions,
+  GeminiProviderOptions,
+} from './providers/index.js'
 // Providers
 export {
   BaseAIProvider,
   ClaudeProvider,
   CodexProvider,
   GeminiProvider,
-} from './providers/index.js';
-
-export type {
-  BaseProviderOptions,
-  ClaudeProviderOptions,
-  CodexProviderOptions,
-  GeminiProviderOptions,
-} from './providers/index.js';
-
-// Cache
-export { AnalysisCache, analysisCache } from './cache/index.js';
-export type { AnalysisCacheOptions, AnalysisCacheStats } from './cache/index.js';
-
-// Fallback
-export { RuleEngine } from './fallback/index.js';
+} from './providers/index.js'

@@ -7,9 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "format": "prettier --write src",
-    "format:check": "prettier --check src",
+    "check": "biome check src",
+    "check:fix": "biome check --write src",
     "typecheck": "tsc --project . --noEmit"
   },
   "browserslist": "defaults, not ie <= 11",

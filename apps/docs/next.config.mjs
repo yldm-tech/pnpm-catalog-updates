@@ -1,7 +1,6 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import nextMDX from '@next/mdx'
-import path from 'path'
-import fs from 'fs'
-import { fileURLToPath } from 'url'
 import createNextIntlPlugin from 'next-intl/plugin'
 
 const __filename = fileURLToPath(import.meta.url)

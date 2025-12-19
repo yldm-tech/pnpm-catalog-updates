@@ -77,7 +77,7 @@ const FeedbackThanks = forwardRef<React.ElementRef<'div'>, React.ComponentPropsW
 )
 
 export function Feedback() {
-  let [submitted, setSubmitted] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()

@@ -8,73 +8,73 @@
  */
 
 export interface VulnerabilityInfo {
-  id: string;
-  aliases: string[]; // CVE IDs, GHSA IDs, etc.
-  summary: string;
-  details: string;
-  severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN';
-  cvssScore?: number;
-  affectedVersions: string;
-  fixedVersions: string[];
-  references: string[];
-  publishedAt?: string;
+  id: string
+  aliases: string[] // CVE IDs, GHSA IDs, etc.
+  summary: string
+  details: string
+  severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN'
+  cvssScore?: number
+  affectedVersions: string
+  fixedVersions: string[]
+  references: string[]
+  publishedAt?: string
 }
 
 export interface SecurityAdvisoryReport {
-  packageName: string;
-  version: string;
-  vulnerabilities: VulnerabilityInfo[];
-  hasCriticalVulnerabilities: boolean;
-  hasHighVulnerabilities: boolean;
-  totalVulnerabilities: number;
-  queriedAt: Date;
-  source: 'osv' | 'npm-audit' | 'github-advisory';
+  packageName: string
+  version: string
+  vulnerabilities: VulnerabilityInfo[]
+  hasCriticalVulnerabilities: boolean
+  hasHighVulnerabilities: boolean
+  totalVulnerabilities: number
+  queriedAt: Date
+  source: 'osv' | 'npm-audit' | 'github-advisory'
 }
 
 interface OSVQueryResponse {
-  vulns?: OSVVulnerability[];
+  vulns?: OSVVulnerability[]
 }
 
 interface OSVVulnerability {
-  id: string;
-  aliases?: string[];
-  summary?: string;
-  details?: string;
+  id: string
+  aliases?: string[]
+  summary?: string
+  details?: string
   severity?: Array<{
-    type: string;
-    score: string;
-  }>;
+    type: string
+    score: string
+  }>
   affected?: Array<{
     ranges?: Array<{
-      type: string;
-      events: Array<{ introduced?: string; fixed?: string }>;
-    }>;
-    versions?: string[];
-  }>;
+      type: string
+      events: Array<{ introduced?: string; fixed?: string }>
+    }>
+    versions?: string[]
+  }>
   references?: Array<{
-    type: string;
-    url: string;
-  }>;
-  published?: string;
+    type: string
+    url: string
+  }>
+  published?: string
   database_specific?: {
-    severity?: string;
+    severity?: string
     cvss?: {
-      score?: number;
-    };
-  };
+      score?: number
+    }
+  }
 }
 
 export class SecurityAdvisoryService {
   private readonly cache: Map<string, { data: SecurityAdvisoryReport; timestamp: number }> =
-    new Map();
-  private readonly cacheTimeout: number;
-  private readonly timeout: number;
-  private readonly checkEcosystem: boolean;
+    new Map()
+  private readonly cacheTimeout: number
+  private readonly timeout: number
+  private readonly checkEcosystem: boolean
 
   constructor(options: { cacheMinutes?: number; timeout?: number; checkEcosystem?: boolean } = {}) {
-    this.cacheTimeout = (options.cacheMinutes ?? 30) * 60 * 1000; // Default 30 minutes
-    this.timeout = options.timeout ?? 10000; // Default 10 seconds
-    this.checkEcosystem = options.checkEcosystem ?? true; // Default to checking ecosystem packages
+    this.cacheTimeout = (options.cacheMinutes ?? 30) * 60 * 1000 // Default 30 minutes
+    this.timeout = options.timeout ?? 10000 // Default 10 seconds
+    this.checkEcosystem = options.checkEcosystem ?? true // Default to checking ecosystem packages
   }
 
   /**
@@ -83,67 +83,65 @@ export class SecurityAdvisoryService {
    * 2. Finding sibling packages in the same monorepo (via repository URL)
    */
   private async discoverEcosystemPackages(packageName: string, version: string): Promise<string[]> {
-    const relatedPackages: string[] = [];
+    const relatedPackages: string[] = []
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000)
 
       // Fetch the package's package.json from npm registry
       const response = await fetch(
         `https://registry.npmjs.org/${encodeURIComponent(packageName)}/${encodeURIComponent(version)}`,
         { signal: controller.signal }
-      );
+      )
 
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId)
 
       if (response.ok) {
         const data = (await response.json()) as {
-          dependencies?: Record<string, string>;
-          peerDependencies?: Record<string, string>;
-          optionalDependencies?: Record<string, string>;
-          repository?: { url?: string; directory?: string } | string;
-        };
+          dependencies?: Record<string, string>
+          peerDependencies?: Record<string, string>
+          optionalDependencies?: Record<string, string>
+          repository?: { url?: string; directory?: string } | string
+        }
 
         // 1. Collect all dependencies
-        const allDeps = new Set<string>();
+        const allDeps = new Set<string>()
 
         if (data.dependencies) {
           for (const dep of Object.keys(data.dependencies)) {
-            allDeps.add(dep);
+            allDeps.add(dep)
           }
         }
 
         if (data.peerDependencies) {
           for (const dep of Object.keys(data.peerDependencies)) {
-            allDeps.add(dep);
+            allDeps.add(dep)
           }
         }
 
         if (data.optionalDependencies) {
           for (const dep of Object.keys(data.optionalDependencies)) {
-            allDeps.add(dep);
+            allDeps.add(dep)
           }
         }
 
         for (const dep of allDeps) {
           if (!relatedPackages.includes(dep)) {
-            relatedPackages.push(dep);
+            relatedPackages.push(dep)
           }
         }
 
         // 2. If this is a monorepo package (has repository.directory), find sibling packages
-        const repoUrl =
-          typeof data.repository === 'string' ? data.repository : data.repository?.url;
-        const repoDir =
-          typeof data.repository === 'object' ? data.repository?.directory : undefined;
+        const repoUrl = typeof data.repository === 'string' ? data.repository : data.repository?.url
+        const repoDir = typeof data.repository === 'object' ? data.repository?.directory : undefined
 
         if (repoUrl && repoDir) {
           // This is a monorepo package, try to find siblings
-          const siblingPackages = await this.findMonorepoSiblings(packageName, repoUrl, version);
+          const siblingPackages = await this.findMonorepoSiblings(packageName, repoUrl, version)
           for (const sibling of siblingPackages) {
             if (!relatedPackages.includes(sibling)) {
-              relatedPackages.push(sibling);
+              relatedPackages.push(sibling)
             }
           }
         }
@@ -152,7 +150,7 @@ export class SecurityAdvisoryService {
       // Silently ignore failures - this is best-effort discovery
     }
 
-    return relatedPackages;
+    return relatedPackages
   }
 
   /**
@@ -166,8 +164,8 @@ export class SecurityAdvisoryService {
     repoUrl: string,
     version: string
   ): Promise<string[]> {
-    const siblings: string[] = [];
-    const normalizedRepoUrl = this.normalizeRepoUrl(repoUrl);
+    const siblings: string[] = []
+    const normalizedRepoUrl = this.normalizeRepoUrl(repoUrl)
 
     try {
       // Search for packages using multiple search strategies to find monorepo siblings
@@ -181,33 +179,33 @@ export class SecurityAdvisoryService {
         `${packageName}-reconciler`, // e.g., react-reconciler
         `${packageName}-refresh`, // e.g., react-refresh
         `${packageName}-devtools`, // e.g., react-devtools
-      ];
+      ]
 
-      const foundPackages = new Set<string>();
+      const foundPackages = new Set<string>()
 
       for (const query of searchQueries) {
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 5000)
 
           const response = await fetch(
             `https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}&size=50`,
             { signal: controller.signal }
-          );
+          )
 
-          clearTimeout(timeoutId);
+          clearTimeout(timeoutId)
 
           if (response.ok) {
             const data = (await response.json()) as {
-              objects?: Array<{ package: { name: string } }>;
-            };
+              objects?: Array<{ package: { name: string } }>
+            }
 
             if (data.objects) {
               for (const obj of data.objects) {
-                const pkgName = obj.package.name;
+                const pkgName = obj.package.name
                 // Only consider packages that start with the main package name
                 if (pkgName.startsWith(`${packageName}-`) && pkgName !== packageName) {
-                  foundPackages.add(pkgName);
+                  foundPackages.add(pkgName)
                 }
               }
             }
@@ -222,27 +220,27 @@ export class SecurityAdvisoryService {
       // 2. Shares the same repository URL (confirms it's from the same monorepo)
       for (const pkgName of foundPackages) {
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 5000)
 
           const response = await fetch(
             `https://registry.npmjs.org/${encodeURIComponent(pkgName)}/${encodeURIComponent(version)}`,
             { signal: controller.signal }
-          );
+          )
 
-          clearTimeout(timeoutId);
+          clearTimeout(timeoutId)
 
           if (response.ok) {
             const data = (await response.json()) as {
-              repository?: { url?: string } | string;
-            };
+              repository?: { url?: string } | string
+            }
 
             // Verify it's from the same repository
             const pkgRepoUrl =
-              typeof data.repository === 'string' ? data.repository : data.repository?.url;
+              typeof data.repository === 'string' ? data.repository : data.repository?.url
 
             if (pkgRepoUrl && this.normalizeRepoUrl(pkgRepoUrl) === normalizedRepoUrl) {
-              siblings.push(pkgName);
+              siblings.push(pkgName)
             }
           }
         } catch {
@@ -253,7 +251,7 @@ export class SecurityAdvisoryService {
       // Silently ignore failures
     }
 
-    return siblings;
+    return siblings
   }
 
   /**
@@ -266,7 +264,7 @@ export class SecurityAdvisoryService {
       .replace(/\.git$/, '')
       .replace(/^https?:\/\//, '')
       .replace(/^git:\/\//, '')
-      .toLowerCase();
+      .toLowerCase()
   }
 
   /**
@@ -277,33 +275,33 @@ export class SecurityAdvisoryService {
     packageName: string,
     version: string
   ): Promise<SecurityAdvisoryReport> {
-    const cacheKey = `${packageName}@${version}`;
+    const cacheKey = `${packageName}@${version}`
 
     // Check cache first
-    const cached = this.cache.get(cacheKey);
+    const cached = this.cache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
-      return cached.data;
+      return cached.data
     }
 
     try {
       // Query main package
-      const report = await this.queryOSV(packageName, version);
+      const report = await this.queryOSV(packageName, version)
 
       // If ecosystem checking is enabled, also check related packages (dependencies)
       if (this.checkEcosystem) {
-        const ecosystemPackages = await this.discoverEcosystemPackages(packageName, version);
+        const ecosystemPackages = await this.discoverEcosystemPackages(packageName, version)
 
         if (ecosystemPackages.length > 0) {
           // Query ecosystem packages in parallel
           const ecosystemReports = await Promise.all(
             ecosystemPackages.map(async (pkgName) => {
               try {
-                return await this.queryOSV(pkgName, version);
+                return await this.queryOSV(pkgName, version)
               } catch {
-                return null; // Ignore individual ecosystem package failures
+                return null // Ignore individual ecosystem package failures
               }
             })
-          );
+          )
 
           // Merge ecosystem vulnerabilities into main report
           for (const ecoReport of ecosystemReports) {
@@ -313,10 +311,10 @@ export class SecurityAdvisoryService {
                 const vulnWithSource = {
                   ...vuln,
                   summary: `[${ecoReport.packageName}] ${vuln.summary}`,
-                };
+                }
                 // Avoid duplicates
                 if (!report.vulnerabilities.some((v) => v.id === vuln.id)) {
-                  report.vulnerabilities.push(vulnWithSource);
+                  report.vulnerabilities.push(vulnWithSource)
                 }
               }
             }
@@ -324,16 +322,16 @@ export class SecurityAdvisoryService {
 
           // Re-sort and recalculate totals
           report.vulnerabilities.sort((a, b) => {
-            const severityOrder = { CRITICAL: 0, HIGH: 1, MODERATE: 2, LOW: 3, UNKNOWN: 4 };
-            return severityOrder[a.severity] - severityOrder[b.severity];
-          });
-          report.totalVulnerabilities = report.vulnerabilities.length;
+            const severityOrder = { CRITICAL: 0, HIGH: 1, MODERATE: 2, LOW: 3, UNKNOWN: 4 }
+            return severityOrder[a.severity] - severityOrder[b.severity]
+          })
+          report.totalVulnerabilities = report.vulnerabilities.length
           report.hasCriticalVulnerabilities = report.vulnerabilities.some(
             (v) => v.severity === 'CRITICAL'
-          );
+          )
           report.hasHighVulnerabilities = report.vulnerabilities.some(
             (v) => v.severity === 'HIGH' || v.severity === 'CRITICAL'
-          );
+          )
         }
       }
 
@@ -341,15 +339,15 @@ export class SecurityAdvisoryService {
       this.cache.set(cacheKey, {
         data: report,
         timestamp: Date.now(),
-      });
+      })
 
-      return report;
+      return report
     } catch (error) {
       // Return empty report on error, don't block the analysis
       console.error(
         `Security advisory query failed for ${packageName}@${version}:`,
         (error as Error).message
-      );
+      )
 
       return {
         packageName,
@@ -360,7 +358,7 @@ export class SecurityAdvisoryService {
         totalVulnerabilities: 0,
         queriedAt: new Date(),
         source: 'osv',
-      };
+      }
     }
   }
 
@@ -369,8 +367,8 @@ export class SecurityAdvisoryService {
    * @see https://google.github.io/osv.dev/api/
    */
   private async queryOSV(packageName: string, version: string): Promise<SecurityAdvisoryReport> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
     try {
       const response = await fetch('https://api.osv.dev/v1/query', {
@@ -386,23 +384,23 @@ export class SecurityAdvisoryService {
           version: version,
         }),
         signal: controller.signal,
-      });
+      })
 
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
-        throw new Error(`OSV API returned ${response.status}: ${response.statusText}`);
+        throw new Error(`OSV API returned ${response.status}: ${response.statusText}`)
       }
 
-      const data = (await response.json()) as OSVQueryResponse;
-      return this.parseOSVResponse(packageName, version, data);
+      const data = (await response.json()) as OSVQueryResponse
+      return this.parseOSVResponse(packageName, version, data)
     } catch (error) {
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId)
 
       if ((error as Error).name === 'AbortError') {
-        throw new Error('OSV API request timed out');
+        throw new Error('OSV API request timed out')
       }
-      throw error;
+      throw error
     }
   }
 
@@ -414,12 +412,12 @@ export class SecurityAdvisoryService {
     version: string,
     response: OSVQueryResponse
   ): SecurityAdvisoryReport {
-    const vulnerabilities: VulnerabilityInfo[] = [];
+    const vulnerabilities: VulnerabilityInfo[] = []
 
     if (response.vulns && response.vulns.length > 0) {
       for (const vuln of response.vulns) {
-        const severity = this.extractSeverity(vuln);
-        const cvssScore = this.extractCVSSScore(vuln);
+        const severity = this.extractSeverity(vuln)
+        const cvssScore = this.extractCVSSScore(vuln)
 
         vulnerabilities.push({
           id: vuln.id,
@@ -432,15 +430,15 @@ export class SecurityAdvisoryService {
           fixedVersions: this.extractFixedVersions(vuln),
           references: this.extractReferences(vuln),
           publishedAt: vuln.published,
-        });
+        })
       }
     }
 
     // Sort by severity (CRITICAL first)
     vulnerabilities.sort((a, b) => {
-      const severityOrder = { CRITICAL: 0, HIGH: 1, MODERATE: 2, LOW: 3, UNKNOWN: 4 };
-      return severityOrder[a.severity] - severityOrder[b.severity];
-    });
+      const severityOrder = { CRITICAL: 0, HIGH: 1, MODERATE: 2, LOW: 3, UNKNOWN: 4 }
+      return severityOrder[a.severity] - severityOrder[b.severity]
+    })
 
     return {
       packageName,
@@ -453,7 +451,7 @@ export class SecurityAdvisoryService {
       totalVulnerabilities: vulnerabilities.length,
       queriedAt: new Date(),
       source: 'osv',
-    };
+    }
   }
 
   /**
@@ -464,36 +462,36 @@ export class SecurityAdvisoryService {
   ): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN' {
     // Try database_specific first
     if (vuln.database_specific?.severity) {
-      const severity = vuln.database_specific.severity.toUpperCase();
+      const severity = vuln.database_specific.severity.toUpperCase()
       if (['CRITICAL', 'HIGH', 'MODERATE', 'LOW'].includes(severity)) {
-        return severity as 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+        return severity as 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW'
       }
     }
 
     // Try CVSS score
-    const cvssScore = this.extractCVSSScore(vuln);
+    const cvssScore = this.extractCVSSScore(vuln)
     if (cvssScore !== undefined) {
-      if (cvssScore >= 9.0) return 'CRITICAL';
-      if (cvssScore >= 7.0) return 'HIGH';
-      if (cvssScore >= 4.0) return 'MODERATE';
-      return 'LOW';
+      if (cvssScore >= 9.0) return 'CRITICAL'
+      if (cvssScore >= 7.0) return 'HIGH'
+      if (cvssScore >= 4.0) return 'MODERATE'
+      return 'LOW'
     }
 
     // Check severity array
     if (vuln.severity && vuln.severity.length > 0) {
-      const cvss = vuln.severity.find((s) => s.type === 'CVSS_V3');
+      const cvss = vuln.severity.find((s) => s.type === 'CVSS_V3')
       if (cvss) {
-        const score = parseFloat(cvss.score);
-        if (!isNaN(score)) {
-          if (score >= 9.0) return 'CRITICAL';
-          if (score >= 7.0) return 'HIGH';
-          if (score >= 4.0) return 'MODERATE';
-          return 'LOW';
+        const score = parseFloat(cvss.score)
+        if (!Number.isNaN(score)) {
+          if (score >= 9.0) return 'CRITICAL'
+          if (score >= 7.0) return 'HIGH'
+          if (score >= 4.0) return 'MODERATE'
+          return 'LOW'
         }
       }
     }
 
-    return 'UNKNOWN';
+    return 'UNKNOWN'
   }
 
   /**
@@ -502,21 +500,21 @@ export class SecurityAdvisoryService {
   private extractCVSSScore(vuln: OSVVulnerability): number | undefined {
     // Check database_specific first
     if (vuln.database_specific?.cvss?.score !== undefined) {
-      return vuln.database_specific.cvss.score;
+      return vuln.database_specific.cvss.score
     }
 
     // Check severity array
     if (vuln.severity && vuln.severity.length > 0) {
-      const cvss = vuln.severity.find((s) => s.type === 'CVSS_V3');
+      const cvss = vuln.severity.find((s) => s.type === 'CVSS_V3')
       if (cvss) {
-        const score = parseFloat(cvss.score);
-        if (!isNaN(score)) {
-          return score;
+        const score = parseFloat(cvss.score)
+        if (!Number.isNaN(score)) {
+          return score
         }
       }
     }
 
-    return undefined;
+    return undefined
   }
 
   /**
@@ -524,45 +522,45 @@ export class SecurityAdvisoryService {
    */
   private extractAffectedVersions(vuln: OSVVulnerability): string {
     if (!vuln.affected || vuln.affected.length === 0) {
-      return 'Unknown';
+      return 'Unknown'
     }
 
-    const ranges: string[] = [];
+    const ranges: string[] = []
 
     for (const affected of vuln.affected) {
       if (affected.ranges) {
         for (const range of affected.ranges) {
           if (range.events) {
-            let introduced = '';
-            let fixed = '';
+            let introduced = ''
+            let fixed = ''
 
             for (const event of range.events) {
-              if (event.introduced) introduced = event.introduced;
-              if (event.fixed) fixed = event.fixed;
+              if (event.introduced) introduced = event.introduced
+              if (event.fixed) fixed = event.fixed
             }
 
             if (introduced && fixed) {
-              ranges.push(`>=${introduced} <${fixed}`);
+              ranges.push(`>=${introduced} <${fixed}`)
             } else if (introduced) {
-              ranges.push(`>=${introduced}`);
+              ranges.push(`>=${introduced}`)
             }
           }
         }
       }
 
       if (affected.versions && affected.versions.length > 0) {
-        ranges.push(affected.versions.slice(0, 5).join(', '));
+        ranges.push(affected.versions.slice(0, 5).join(', '))
       }
     }
 
-    return ranges.length > 0 ? ranges.join(' || ') : 'Unknown';
+    return ranges.length > 0 ? ranges.join(' || ') : 'Unknown'
   }
 
   /**
    * Extract fixed versions
    */
   private extractFixedVersions(vuln: OSVVulnerability): string[] {
-    const fixedVersions: string[] = [];
+    const fixedVersions: string[] = []
 
     if (vuln.affected) {
       for (const affected of vuln.affected) {
@@ -571,7 +569,7 @@ export class SecurityAdvisoryService {
             if (range.events) {
               for (const event of range.events) {
                 if (event.fixed) {
-                  fixedVersions.push(event.fixed);
+                  fixedVersions.push(event.fixed)
                 }
               }
             }
@@ -580,7 +578,7 @@ export class SecurityAdvisoryService {
       }
     }
 
-    return [...new Set(fixedVersions)]; // Remove duplicates
+    return [...new Set(fixedVersions)] // Remove duplicates
   }
 
   /**
@@ -588,13 +586,13 @@ export class SecurityAdvisoryService {
    */
   private extractReferences(vuln: OSVVulnerability): string[] {
     if (!vuln.references) {
-      return [];
+      return []
     }
 
     return vuln.references
       .filter((ref) => ref.url)
       .map((ref) => ref.url)
-      .slice(0, 5); // Limit to 5 references
+      .slice(0, 5) // Limit to 5 references
   }
 
   /**
@@ -603,26 +601,26 @@ export class SecurityAdvisoryService {
   async queryMultiplePackages(
     packages: Array<{ name: string; version: string }>
   ): Promise<Map<string, SecurityAdvisoryReport>> {
-    const results = new Map<string, SecurityAdvisoryReport>();
+    const results = new Map<string, SecurityAdvisoryReport>()
 
     // Query in parallel with concurrency limit
-    const concurrency = 5;
-    const chunks: Array<Array<{ name: string; version: string }>> = [];
+    const concurrency = 5
+    const chunks: Array<Array<{ name: string; version: string }>> = []
 
     for (let i = 0; i < packages.length; i += concurrency) {
-      chunks.push(packages.slice(i, i + concurrency));
+      chunks.push(packages.slice(i, i + concurrency))
     }
 
     for (const chunk of chunks) {
       const promises = chunk.map(async (pkg) => {
-        const report = await this.queryVulnerabilities(pkg.name, pkg.version);
-        results.set(`${pkg.name}@${pkg.version}`, report);
-      });
+        const report = await this.queryVulnerabilities(pkg.name, pkg.version)
+        results.set(`${pkg.name}@${pkg.version}`, report)
+      })
 
-      await Promise.all(promises);
+      await Promise.all(promises)
     }
 
-    return results;
+    return results
   }
 
   /**
@@ -630,43 +628,43 @@ export class SecurityAdvisoryService {
    */
   formatForPrompt(report: SecurityAdvisoryReport): string {
     if (report.totalVulnerabilities === 0) {
-      return `No known vulnerabilities found for ${report.packageName}@${report.version}`;
+      return `No known vulnerabilities found for ${report.packageName}@${report.version}`
     }
 
-    const lines: string[] = [];
+    const lines: string[] = []
     lines.push(
       `⚠️ SECURITY ALERT: ${report.totalVulnerabilities} vulnerability(ies) found for ${report.packageName}@${report.version}:`
-    );
+    )
 
     for (const vuln of report.vulnerabilities) {
-      const cveIds = vuln.aliases.filter((a) => a.startsWith('CVE-')).join(', ') || vuln.id;
-      const scoreStr = vuln.cvssScore ? ` (CVSS: ${vuln.cvssScore})` : '';
+      const cveIds = vuln.aliases.filter((a) => a.startsWith('CVE-')).join(', ') || vuln.id
+      const scoreStr = vuln.cvssScore ? ` (CVSS: ${vuln.cvssScore})` : ''
 
-      lines.push(`  - [${vuln.severity}]${scoreStr} ${cveIds}: ${vuln.summary}`);
+      lines.push(`  - [${vuln.severity}]${scoreStr} ${cveIds}: ${vuln.summary}`)
 
       if (vuln.fixedVersions.length > 0) {
-        lines.push(`    Fixed in: ${vuln.fixedVersions.join(', ')}`);
+        lines.push(`    Fixed in: ${vuln.fixedVersions.join(', ')}`)
       }
     }
 
     if (report.hasCriticalVulnerabilities) {
       lines.push(
         '\n🚨 CRITICAL: This version has CRITICAL security vulnerabilities. DO NOT recommend updating to this version!'
-      );
+      )
     } else if (report.hasHighVulnerabilities) {
       lines.push(
         '\n⚠️ HIGH RISK: This version has HIGH severity vulnerabilities. Consider alternative versions.'
-      );
+      )
     }
 
-    return lines.join('\n');
+    return lines.join('\n')
   }
 
   /**
    * Clear cache
    */
   clearCache(): void {
-    this.cache.clear();
+    this.cache.clear()
   }
 
   /**
@@ -685,110 +683,109 @@ export class SecurityAdvisoryService {
     maxVersionsToCheck = 10
   ): Promise<
     | {
-        version: string;
-        sameMajor: boolean;
-        sameMinor: boolean;
-        versionsChecked: number;
+        version: string
+        sameMajor: boolean
+        sameMinor: boolean
+        versionsChecked: number
         skippedVersions: Array<{
-          version: string;
+          version: string
           vulnerabilities: Array<{
-            id: string;
-            severity: string;
-            summary: string;
-          }>;
-        }>;
+            id: string
+            severity: string
+            summary: string
+          }>
+        }>
       }
     | undefined
   > {
     try {
       // Fetch package versions from npm registry
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
       const response = await fetch(
         `https://registry.npmjs.org/${encodeURIComponent(packageName)}`,
         { signal: controller.signal }
-      );
+      )
 
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
-        return undefined;
+        return undefined
       }
 
       const data = (await response.json()) as {
-        versions: Record<string, unknown>;
-        time?: Record<string, string>;
-      };
+        versions: Record<string, unknown>
+        time?: Record<string, string>
+      }
 
       // Get all versions and sort them semantically
-      const allVersions = Object.keys(data.versions);
+      const allVersions = Object.keys(data.versions)
 
       // Parse current version for comparison
-      const currentParts = this.parseVersion(currentVersion);
+      const currentParts = this.parseVersion(currentVersion)
       if (!currentParts) {
-        return undefined;
+        return undefined
       }
 
       // Filter to versions >= currentVersion and sort in ascending order
       const candidateVersions = allVersions
         .filter((v) => {
-          const parts = this.parseVersion(v);
-          if (!parts) return false;
+          const parts = this.parseVersion(v)
+          if (!parts) return false
           // Only consider stable versions (no prereleases)
-          if (parts.prerelease) return false;
+          if (parts.prerelease) return false
           // Must be >= currentVersion
-          return this.compareVersions(parts, currentParts) > 0;
+          return this.compareVersions(parts, currentParts) > 0
         })
         .sort((a, b) => {
-          const partsA = this.parseVersion(a);
-          const partsB = this.parseVersion(b);
-          if (!partsA || !partsB) return 0;
-          return this.compareVersions(partsA, partsB);
+          const partsA = this.parseVersion(a)
+          const partsB = this.parseVersion(b)
+          if (!partsA || !partsB) return 0
+          return this.compareVersions(partsA, partsB)
         })
-        .slice(0, maxVersionsToCheck);
+        .slice(0, maxVersionsToCheck)
 
       if (candidateVersions.length === 0) {
-        return undefined;
+        return undefined
       }
 
       // Track skipped versions with their vulnerabilities
       const skippedVersions: Array<{
-        version: string;
+        version: string
         vulnerabilities: Array<{
-          id: string;
-          severity: string;
-          summary: string;
-        }>;
-      }> = [];
+          id: string
+          severity: string
+          summary: string
+        }>
+      }> = []
 
       // Check each candidate version for vulnerabilities
-      let versionsChecked = 0;
+      let versionsChecked = 0
       for (const candidateVersion of candidateVersions) {
-        versionsChecked++;
+        versionsChecked++
 
         // Query vulnerabilities for this version (including ecosystem packages)
-        const report = await this.queryVulnerabilities(packageName, candidateVersion);
+        const report = await this.queryVulnerabilities(packageName, candidateVersion)
 
         // Collect all vulnerabilities (main package + ecosystem)
         const allVulnerabilities: Array<{
-          id: string;
-          severity: string;
-          summary: string;
+          id: string
+          severity: string
+          summary: string
         }> = report.vulnerabilities.map((v) => ({
           id: v.id,
           severity: v.severity,
           summary: v.summary,
-        }));
+        }))
 
         // Check if this version is safe (no critical/high vulnerabilities)
-        const hasDangerousVulns =
-          report.hasCriticalVulnerabilities || report.hasHighVulnerabilities;
+        const hasDangerousVulns = report.hasCriticalVulnerabilities || report.hasHighVulnerabilities
 
         if (!hasDangerousVulns) {
           // Found a safe version!
-          const candidateParts = this.parseVersion(candidateVersion);
-          if (!candidateParts) continue;
+          const candidateParts = this.parseVersion(candidateVersion)
+          if (!candidateParts) continue
 
           return {
             version: candidateVersion,
@@ -798,24 +795,24 @@ export class SecurityAdvisoryService {
               candidateParts.minor === currentParts.minor,
             versionsChecked,
             skippedVersions,
-          };
+          }
         } else {
           // This version has vulnerabilities, add to skipped list
           skippedVersions.push({
             version: candidateVersion,
             vulnerabilities: allVulnerabilities,
-          });
+          })
         }
       }
 
       // No safe version found within the limit
-      return undefined;
+      return undefined
     } catch (error) {
       console.error(
         `Failed to find safe version for ${packageName}@${currentVersion}:`,
         (error as Error).message
-      );
-      return undefined;
+      )
+      return undefined
     }
   }
 
@@ -825,15 +822,15 @@ export class SecurityAdvisoryService {
   private parseVersion(
     version: string
   ): { major: number; minor: number; patch: number; prerelease?: string } | null {
-    const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
-    if (!match || !match[1] || !match[2] || !match[3]) return null;
+    const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/)
+    if (!match || !match[1] || !match[2] || !match[3]) return null
 
     return {
       major: parseInt(match[1], 10),
       minor: parseInt(match[2], 10),
       patch: parseInt(match[3], 10),
       prerelease: match[4],
-    };
+    }
   }
 
   /**
@@ -844,8 +841,8 @@ export class SecurityAdvisoryService {
     a: { major: number; minor: number; patch: number },
     b: { major: number; minor: number; patch: number }
   ): number {
-    if (a.major !== b.major) return a.major - b.major;
-    if (a.minor !== b.minor) return a.minor - b.minor;
-    return a.patch - b.patch;
+    if (a.major !== b.major) return a.major - b.major
+    if (a.minor !== b.minor) return a.minor - b.minor
+    return a.patch - b.patch
   }
 }

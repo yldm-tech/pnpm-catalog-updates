@@ -5,7 +5,7 @@
  * Provides basic dependency analysis using predefined rules.
  */
 
-import semver from 'semver';
+import semver from 'semver'
 
 import type {
   AnalysisContext,
@@ -13,7 +13,7 @@ import type {
   PackageUpdateInfo,
   Recommendation,
   RiskLevel,
-} from '../../../domain/interfaces/aiProvider.js';
+} from '../../../domain/interfaces/aiProvider.js'
 
 /**
  * Known breaking change patterns
@@ -26,7 +26,7 @@ const BREAKING_PATTERNS: Record<string, string[]> = {
   vite: ['Vite 5: Node.js 18+ required'],
   next: ['Next.js 13+: App router changes', 'Next.js 14+: Server components default'],
   vue: ['Vue 3: Composition API', 'Vue 3: Breaking template changes'],
-};
+}
 
 /**
  * Known security-sensitive packages
@@ -42,7 +42,7 @@ const SECURITY_SENSITIVE_PACKAGES = new Set([
   'oauth',
   'jose',
   'node-forge',
-]);
+])
 
 /**
  * Rule-based Analysis Engine
@@ -52,17 +52,17 @@ export class RuleEngine {
    * Analyze packages using predefined rules
    */
   analyze(context: AnalysisContext): AnalysisResult {
-    const startTime = Date.now();
-    const { packages, analysisType } = context;
+    const startTime = Date.now()
+    const { packages, analysisType } = context
 
-    const recommendations = packages.map((pkg) => this.analyzePackage(pkg, analysisType));
+    const recommendations = packages.map((pkg) => this.analyzePackage(pkg, analysisType))
 
     // Calculate overall risk
     const highRiskCount = recommendations.filter(
       (r) => r.riskLevel === 'high' || r.riskLevel === 'critical'
-    ).length;
+    ).length
 
-    const summary = this.generateSummary(recommendations, highRiskCount);
+    const summary = this.generateSummary(recommendations, highRiskCount)
 
     return {
       provider: 'rule-engine',
@@ -73,45 +73,45 @@ export class RuleEngine {
       warnings: highRiskCount > 0 ? [`${highRiskCount} high-risk updates detected`] : [],
       timestamp: new Date(),
       processingTimeMs: Date.now() - startTime,
-    };
+    }
   }
 
   /**
    * Analyze a single package
    */
   private analyzePackage(pkg: PackageUpdateInfo, _analysisType: string): Recommendation {
-    const riskLevel = this.assessRiskLevel(pkg);
-    const breakingChanges = this.detectBreakingChanges(pkg);
-    const securityFixes = this.detectSecurityRelevance(pkg);
+    const riskLevel = this.assessRiskLevel(pkg)
+    const breakingChanges = this.detectBreakingChanges(pkg)
+    const securityFixes = this.detectSecurityRelevance(pkg)
 
-    let action: Recommendation['action'] = 'update';
-    let reason = '';
+    let action: Recommendation['action'] = 'update'
+    let reason = ''
 
     // Determine action based on risk and update type
     if (riskLevel === 'critical') {
-      action = 'review';
-      reason = 'Critical risk level requires manual review before update';
+      action = 'review'
+      reason = 'Critical risk level requires manual review before update'
     } else if (riskLevel === 'high' && pkg.updateType === 'major') {
-      action = 'review';
-      reason = 'Major version update with high risk - review breaking changes';
+      action = 'review'
+      reason = 'Major version update with high risk - review breaking changes'
     } else if (pkg.updateType === 'major' && breakingChanges.length > 0) {
-      action = 'review';
-      reason = `Major update with ${breakingChanges.length} known breaking changes`;
+      action = 'review'
+      reason = `Major update with ${breakingChanges.length} known breaking changes`
     } else if (pkg.updateType === 'patch') {
-      action = 'update';
-      reason = 'Patch update - typically safe to apply';
+      action = 'update'
+      reason = 'Patch update - typically safe to apply'
     } else if (pkg.updateType === 'minor') {
-      action = 'update';
-      reason = 'Minor update - new features, backward compatible';
+      action = 'update'
+      reason = 'Minor update - new features, backward compatible'
     } else {
-      action = 'update';
-      reason = 'Update recommended based on analysis';
+      action = 'update'
+      reason = 'Update recommended based on analysis'
     }
 
     // Security-sensitive packages always need review for major updates
     if (SECURITY_SENSITIVE_PACKAGES.has(pkg.name) && pkg.updateType === 'major') {
-      action = 'review';
-      reason = 'Security-sensitive package - major update requires careful review';
+      action = 'review'
+      reason = 'Security-sensitive package - major update requires careful review'
     }
 
     return {
@@ -124,7 +124,7 @@ export class RuleEngine {
       breakingChanges,
       securityFixes,
       estimatedEffort: this.estimateEffort(pkg, breakingChanges.length),
-    };
+    }
   }
 
   /**
@@ -133,78 +133,78 @@ export class RuleEngine {
   private assessRiskLevel(pkg: PackageUpdateInfo): RiskLevel {
     // Pre-release versions are high risk
     if (pkg.targetVersion.includes('-')) {
-      return 'high';
+      return 'high'
     }
 
     // Check version jump magnitude
-    const current = semver.parse(pkg.currentVersion.replace(/^[\^~]/, ''));
-    const target = semver.parse(pkg.targetVersion.replace(/^[\^~]/, ''));
+    const current = semver.parse(pkg.currentVersion.replace(/^[\^~]/, ''))
+    const target = semver.parse(pkg.targetVersion.replace(/^[\^~]/, ''))
 
     if (!current || !target) {
-      return 'medium';
+      return 'medium'
     }
 
     // Multiple major version jumps are critical
     if (target.major - current.major > 1) {
-      return 'critical';
+      return 'critical'
     }
 
     // Single major version jump is high risk
     if (pkg.updateType === 'major') {
-      return 'high';
+      return 'high'
     }
 
     // Large minor version jumps are medium risk
     if (pkg.updateType === 'minor' && target.minor - current.minor > 5) {
-      return 'medium';
+      return 'medium'
     }
 
     // Patches and small updates are low risk
     if (pkg.updateType === 'patch') {
-      return 'low';
+      return 'low'
     }
 
-    return 'low';
+    return 'low'
   }
 
   /**
    * Detect known breaking changes for popular packages
    */
   private detectBreakingChanges(pkg: PackageUpdateInfo): string[] {
-    const changes: string[] = [];
+    const changes: string[] = []
 
     // Check for known breaking patterns
-    const packageBase = pkg.name.split('/').pop() || pkg.name;
-    const knownChanges = BREAKING_PATTERNS[packageBase.toLowerCase()];
+    const packageBase = pkg.name.split('/').pop() || pkg.name
+    const knownChanges = BREAKING_PATTERNS[packageBase.toLowerCase()]
 
     if (knownChanges && pkg.updateType === 'major') {
-      changes.push(...knownChanges);
+      changes.push(...knownChanges)
     }
 
     // Generic breaking change warnings for major updates
     if (pkg.updateType === 'major' && changes.length === 0) {
-      changes.push(`Major version update from ${pkg.currentVersion} to ${pkg.targetVersion}`);
+      changes.push(`Major version update from ${pkg.currentVersion} to ${pkg.targetVersion}`)
     }
 
-    return changes;
+    return changes
   }
 
   /**
    * Detect security relevance of the package
    */
   private detectSecurityRelevance(pkg: PackageUpdateInfo): string[] {
-    const fixes: string[] = [];
+    const fixes: string[] = []
 
     if (SECURITY_SENSITIVE_PACKAGES.has(pkg.name)) {
-      fixes.push('Security-sensitive package - review changelog for security fixes');
+      fixes.push('Security-sensitive package - review changelog for security fixes')
     }
 
     // Check for common security package patterns
     if (pkg.name.includes('auth') || pkg.name.includes('security') || pkg.name.includes('crypto')) {
-      fixes.push('Package may contain security-related changes');
+      fixes.push('Package may contain security-related changes')
     }
 
-    return fixes;
+    return fixes
   }
 
   /**
@@ -215,43 +215,43 @@ export class RuleEngine {
     breakingChangesCount: number
   ): 'low' | 'medium' | 'high' {
     if (pkg.updateType === 'patch') {
-      return 'low';
+      return 'low'
     }
 
     if (pkg.updateType === 'major' && breakingChangesCount > 2) {
-      return 'high';
+      return 'high'
     }
 
     if (pkg.updateType === 'major') {
-      return 'medium';
+      return 'medium'
     }
 
-    return 'low';
+    return 'low'
   }
 
   /**
    * Generate summary message
    */
   private generateSummary(recommendations: Recommendation[], highRiskCount: number): string {
-    const updateCount = recommendations.filter((r) => r.action === 'update').length;
-    const reviewCount = recommendations.filter((r) => r.action === 'review').length;
-    const skipCount = recommendations.filter((r) => r.action === 'skip').length;
+    const updateCount = recommendations.filter((r) => r.action === 'update').length
+    const reviewCount = recommendations.filter((r) => r.action === 'review').length
+    const skipCount = recommendations.filter((r) => r.action === 'skip').length
 
-    const parts: string[] = [];
+    const parts: string[] = []
 
     if (updateCount > 0) {
-      parts.push(`${updateCount} package(s) ready to update`);
+      parts.push(`${updateCount} package(s) ready to update`)
     }
     if (reviewCount > 0) {
-      parts.push(`${reviewCount} package(s) need review`);
+      parts.push(`${reviewCount} package(s) need review`)
     }
     if (skipCount > 0) {
-      parts.push(`${skipCount} package(s) recommended to skip`);
+      parts.push(`${skipCount} package(s) recommended to skip`)
     }
     if (highRiskCount > 0) {
-      parts.push(`${highRiskCount} high-risk update(s) detected`);
+      parts.push(`${highRiskCount} high-risk update(s) detected`)
     }
 
-    return parts.join('. ') || 'No updates to analyze';
+    return parts.join('. ') || 'No updates to analyze'
   }
 }

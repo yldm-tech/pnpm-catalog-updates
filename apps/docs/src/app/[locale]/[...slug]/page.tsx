@@ -1,13 +1,13 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import matter from 'gray-matter'
+import { notFound } from 'next/navigation'
+import { setRequestLocale } from 'next-intl/server'
+import { MDXRemote } from 'next-mdx-remote/rsc'
 import * as mdxComponents from '@/components/mdx'
 import { locales } from '@/i18n'
 import { rehypePlugins } from '@/mdx/rehype.mjs'
 import { remarkPlugins } from '@/mdx/remark.mjs'
-import fs from 'fs'
-import matter from 'gray-matter'
-import { setRequestLocale } from 'next-intl/server'
-import { MDXRemote } from 'next-mdx-remote/rsc'
-import { notFound } from 'next/navigation'
-import path from 'path'
 
 interface PageProps {
   params: Promise<{

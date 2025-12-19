@@ -2,9 +2,9 @@
  * Analysis Cache Tests
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AnalysisContext, AnalysisResult } from '../../../domain/interfaces/aiProvider.js';
-import { AnalysisCache } from '../cache/analysisCache.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AnalysisContext, AnalysisResult } from '../../../domain/interfaces/aiProvider.js'
+import { AnalysisCache } from '../cache/analysisCache.js'
 
 // Mock fs for disk cache
 vi.mock('node:fs', () => ({
@@ -12,10 +12,10 @@ vi.mock('node:fs', () => ({
   mkdirSync: vi.fn(),
   readFileSync: vi.fn(() => '{}'),
   writeFileSync: vi.fn(),
-}));
+}))
 
 describe('AnalysisCache', () => {
-  let cache: AnalysisCache;
+  let cache: AnalysisCache
 
   const createContext = (packageNames: string[] = ['lodash']): AnalysisContext => ({
     packages: packageNames.map((name) => ({
@@ -31,7 +31,7 @@ describe('AnalysisCache', () => {
       catalogCount: 1,
     },
     analysisType: 'impact',
-  });
+  })
 
   const createResult = (provider = 'test-provider', packageName = 'lodash'): AnalysisResult => ({
     provider,
@@ -49,170 +49,170 @@ describe('AnalysisCache', () => {
     summary: 'Test analysis result',
     confidence: 0.9,
     timestamp: new Date(),
-  });
+  })
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    cache = new AnalysisCache({ ttl: 3600000, persistToDisk: false });
-  });
+    vi.clearAllMocks()
+    cache = new AnalysisCache({ ttl: 3600000, persistToDisk: false })
+  })
 
   afterEach(() => {
-    cache.clear();
-  });
+    cache.clear()
+  })
 
   describe('set and get', () => {
     it('should store and retrieve cached result', () => {
-      const context = createContext();
-      const result = createResult();
+      const context = createContext()
+      const result = createResult()
 
-      cache.set(context, 'claude', result);
-      const cached = cache.get(context, 'claude');
+      cache.set(context, 'claude', result)
+      const cached = cache.get(context, 'claude')
 
-      expect(cached).toBeDefined();
-      expect(cached?.provider).toBe('test-provider');
-    });
+      expect(cached).toBeDefined()
+      expect(cached?.provider).toBe('test-provider')
+    })
 
     it('should return undefined for non-existent cache entry', () => {
-      const context = createContext();
-      const cached = cache.get(context, 'claude');
+      const context = createContext()
+      const cached = cache.get(context, 'claude')
 
-      expect(cached).toBeUndefined();
-    });
+      expect(cached).toBeUndefined()
+    })
 
     it('should cache by provider', () => {
-      const context = createContext();
-      const result1 = createResult('claude');
-      const result2 = createResult('gemini');
+      const context = createContext()
+      const result1 = createResult('claude')
+      const result2 = createResult('gemini')
 
-      cache.set(context, 'claude', result1);
-      cache.set(context, 'gemini', result2);
+      cache.set(context, 'claude', result1)
+      cache.set(context, 'gemini', result2)
 
-      const cachedClaude = cache.get(context, 'claude');
-      const cachedGemini = cache.get(context, 'gemini');
+      const cachedClaude = cache.get(context, 'claude')
+      const cachedGemini = cache.get(context, 'gemini')
 
-      expect(cachedClaude?.provider).toBe('claude');
-      expect(cachedGemini?.provider).toBe('gemini');
-    });
+      expect(cachedClaude?.provider).toBe('claude')
+      expect(cachedGemini?.provider).toBe('gemini')
+    })
 
     it('should differentiate by analysis type', () => {
-      const context1 = createContext();
-      const context2 = { ...createContext(), analysisType: 'security' as const };
+      const context1 = createContext()
+      const context2 = { ...createContext(), analysisType: 'security' as const }
 
-      cache.set(context1, 'claude', createResult());
+      cache.set(context1, 'claude', createResult())
 
-      const cached1 = cache.get(context1, 'claude');
-      const cached2 = cache.get(context2, 'claude');
+      const cached1 = cache.get(context1, 'claude')
+      const cached2 = cache.get(context2, 'claude')
 
-      expect(cached1).toBeDefined();
-      expect(cached2).toBeUndefined();
-    });
-  });
+      expect(cached1).toBeDefined()
+      expect(cached2).toBeUndefined()
+    })
+  })
 
   describe('invalidateForPackages', () => {
     it('should invalidate cache entries containing specified packages', () => {
-      const context = createContext(['lodash', 'axios']);
-      const result = createResult();
+      const context = createContext(['lodash', 'axios'])
+      const result = createResult()
 
-      cache.set(context, 'claude', result);
-      expect(cache.get(context, 'claude')).toBeDefined();
+      cache.set(context, 'claude', result)
+      expect(cache.get(context, 'claude')).toBeDefined()
 
-      cache.invalidateForPackages(['lodash']);
-      expect(cache.get(context, 'claude')).toBeUndefined();
-    });
+      cache.invalidateForPackages(['lodash'])
+      expect(cache.get(context, 'claude')).toBeUndefined()
+    })
 
     it('should not invalidate entries without specified packages', () => {
-      const context1 = createContext(['lodash']);
-      const context2 = createContext(['axios']);
+      const context1 = createContext(['lodash'])
+      const context2 = createContext(['axios'])
 
-      cache.set(context1, 'claude', createResult('test-provider', 'lodash'));
-      cache.set(context2, 'claude', createResult('test-provider', 'axios'));
+      cache.set(context1, 'claude', createResult('test-provider', 'lodash'))
+      cache.set(context2, 'claude', createResult('test-provider', 'axios'))
 
-      cache.invalidateForPackages(['lodash']);
+      cache.invalidateForPackages(['lodash'])
 
-      expect(cache.get(context1, 'claude')).toBeUndefined();
-      expect(cache.get(context2, 'claude')).toBeDefined();
-    });
-  });
+      expect(cache.get(context1, 'claude')).toBeUndefined()
+      expect(cache.get(context2, 'claude')).toBeDefined()
+    })
+  })
 
   describe('clear', () => {
     it('should clear all cache entries', () => {
-      const context1 = createContext(['lodash']);
-      const context2 = createContext(['axios']);
+      const context1 = createContext(['lodash'])
+      const context2 = createContext(['axios'])
 
-      cache.set(context1, 'claude', createResult());
-      cache.set(context2, 'gemini', createResult());
+      cache.set(context1, 'claude', createResult())
+      cache.set(context2, 'gemini', createResult())
 
-      cache.clear();
+      cache.clear()
 
-      expect(cache.get(context1, 'claude')).toBeUndefined();
-      expect(cache.get(context2, 'gemini')).toBeUndefined();
-    });
-  });
+      expect(cache.get(context1, 'claude')).toBeUndefined()
+      expect(cache.get(context2, 'gemini')).toBeUndefined()
+    })
+  })
 
   describe('getStats', () => {
     it('should return cache statistics', () => {
-      const context = createContext();
-      cache.set(context, 'claude', createResult());
+      const context = createContext()
+      cache.set(context, 'claude', createResult())
 
-      const stats = cache.getStats();
+      const stats = cache.getStats()
 
-      expect(stats.totalEntries).toBe(1);
-      expect(stats.hits).toBe(0);
-      expect(stats.misses).toBe(0);
-    });
+      expect(stats.totalEntries).toBe(1)
+      expect(stats.hits).toBe(0)
+      expect(stats.misses).toBe(0)
+    })
 
     it('should track hits', () => {
-      const context = createContext();
-      cache.set(context, 'claude', createResult());
+      const context = createContext()
+      cache.set(context, 'claude', createResult())
 
-      cache.get(context, 'claude');
-      cache.get(context, 'claude');
+      cache.get(context, 'claude')
+      cache.get(context, 'claude')
 
-      const stats = cache.getStats();
-      expect(stats.hits).toBe(2);
-    });
+      const stats = cache.getStats()
+      expect(stats.hits).toBe(2)
+    })
 
     it('should track misses', () => {
-      const context = createContext();
+      const context = createContext()
 
-      cache.get(context, 'claude');
-      cache.get(context, 'gemini');
+      cache.get(context, 'claude')
+      cache.get(context, 'gemini')
 
-      const stats = cache.getStats();
-      expect(stats.misses).toBe(2);
-    });
+      const stats = cache.getStats()
+      expect(stats.misses).toBe(2)
+    })
 
     it('should calculate hit rate', () => {
-      const context = createContext();
-      cache.set(context, 'claude', createResult());
+      const context = createContext()
+      cache.set(context, 'claude', createResult())
 
-      cache.get(context, 'claude'); // hit
-      cache.get(context, 'claude'); // hit
-      cache.get(context, 'gemini'); // miss
+      cache.get(context, 'claude') // hit
+      cache.get(context, 'claude') // hit
+      cache.get(context, 'gemini') // miss
 
-      const stats = cache.getStats();
-      expect(stats.hitRate).toBeCloseTo(0.667, 2);
-    });
-  });
+      const stats = cache.getStats()
+      expect(stats.hitRate).toBeCloseTo(0.667, 2)
+    })
+  })
 
   describe('TTL expiration', () => {
     it('should expire entries after TTL', async () => {
       // Create cache with disk persistence disabled
-      const shortTtlCache = new AnalysisCache({ ttl: 1, persistToDisk: false });
-      const context = createContext();
+      const shortTtlCache = new AnalysisCache({ ttl: 1, persistToDisk: false })
+      const context = createContext()
 
       // Set with very short TTL (1ms)
-      shortTtlCache.set(context, 'claude', createResult(), 1);
+      shortTtlCache.set(context, 'claude', createResult(), 1)
 
       // Wait for TTL to expire
       await new Promise<void>((resolve) => {
         setTimeout(() => {
-          const cached = shortTtlCache.get(context, 'claude');
-          expect(cached).toBeUndefined();
-          shortTtlCache.clear();
-          resolve();
-        }, 10);
-      });
-    });
-  });
-});
+          const cached = shortTtlCache.get(context, 'claude')
+          expect(cached).toBeUndefined()
+          shortTtlCache.clear()
+          resolve()
+        }, 10)
+      })
+    })
+  })
+})

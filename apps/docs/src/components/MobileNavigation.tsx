@@ -2,7 +2,7 @@
 
 import { Dialog, DialogBackdrop, DialogPanel, TransitionChild } from '@headlessui/react'
 import { motion } from 'framer-motion'
-import { Suspense, createContext, useContext } from 'react'
+import { createContext, Suspense, useContext } from 'react'
 import { create } from 'zustand'
 
 import { Header } from '@/components/Header'
@@ -69,9 +69,9 @@ export const useMobileNavigationStore = create<{
 }))
 
 export function MobileNavigation() {
-  let isInsideMobileNavigation = useIsInsideMobileNavigation()
-  let { isOpen, toggle, close } = useMobileNavigationStore()
-  let ToggleIcon = isOpen ? XIcon : MenuIcon
+  const isInsideMobileNavigation = useIsInsideMobileNavigation()
+  const { isOpen, toggle, close } = useMobileNavigationStore()
+  const ToggleIcon = isOpen ? XIcon : MenuIcon
 
   return (
     <IsInsideMobileNavigationContext.Provider value={true}>

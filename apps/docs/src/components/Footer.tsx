@@ -1,8 +1,8 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/Button'
 import { useNavigation } from '@/components/Navigation'
@@ -48,18 +48,18 @@ function PageLink({
 }
 
 function PageNavigation() {
-  let pathname = usePathname()
+  const pathname = usePathname()
   const navigation = useNavigation()
-  let allPages = navigation.flatMap((group) => group.links)
-  let currentPageIndex = allPages.findIndex((page) => page.href === pathname)
+  const allPages = navigation.flatMap((group) => group.links)
+  const currentPageIndex = allPages.findIndex((page) => page.href === pathname)
   const t = useTranslations('Footer')
 
   if (currentPageIndex === -1) {
     return null
   }
 
-  let previousPage = allPages[currentPageIndex - 1]
-  let nextPage = allPages[currentPageIndex + 1]
+  const previousPage = allPages[currentPageIndex - 1]
+  const nextPage = allPages[currentPageIndex + 1]
 
   if (!previousPage && !nextPage) {
     return null

@@ -37,10 +37,8 @@
     "test": "turbo test",
     "test:watch": "turbo test:watch",
     "test:coverage": "turbo test:coverage",
-    "lint": "turbo lint",
-    "lint:fix": "turbo lint:fix",
-    "format": "turbo format",
-    "format:check": "turbo format:check",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean",
     "prepare": "husky install",
@@ -53,6 +51,7 @@
     "pcu": "workspace:*"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.10",
     "@changesets/cli": "catalog:",
     "@eslint/js": "catalog:",
     "@types/fs-extra": "catalog:",
@@ -82,12 +81,8 @@
     "vitest": "catalog:"
   },
   "lint-staged": {
-    "*.{ts,js}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,md,yml,yaml}": [
-      "prettier --write"
+    "*.{ts,tsx,js,jsx,json,md,css}": [
+      "biome check --write --no-errors-on-unmatched"
     ]
   },
   "volta": {

@@ -5,44 +5,44 @@
  * Integrates with the configuration system for runtime control.
  */
 
-import { existsSync, mkdirSync, statSync, writeFileSync } from 'fs';
-import { dirname, resolve } from 'path';
-import { getConfig } from '../config/config.js';
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { getConfig } from '../config/config.js'
 
-export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
+export type LogLevel = 'error' | 'warn' | 'info' | 'debug'
 
 export interface LogEntry {
-  timestamp: string;
-  level: LogLevel;
-  message: string;
-  context?: string;
-  data?: any;
-  error?: Error;
+  timestamp: string
+  level: LogLevel
+  message: string
+  context?: string
+  data?: any
+  error?: Error
 }
 
 export interface LoggerOptions {
-  context?: string | undefined;
-  level?: LogLevel | undefined;
-  file?: string | undefined;
-  console?: boolean | undefined;
-  json?: boolean | undefined;
+  context?: string | undefined
+  level?: LogLevel | undefined
+  file?: string | undefined
+  console?: boolean | undefined
+  json?: boolean | undefined
 }
 
 export class Logger {
-  private context: string;
+  private context: string
   private options: {
-    context: string;
-    level: LogLevel;
-    file: string | undefined;
-    console: boolean;
-    json: boolean;
-  };
-  private static instances = new Map<string, Logger>();
+    context: string
+    level: LogLevel
+    file: string | undefined
+    console: boolean
+    json: boolean
+  }
+  private static instances = new Map<string, Logger>()
 
   private constructor(context: string, options: Partial<LoggerOptions> = {}) {
-    this.context = context;
+    this.context = context
 
-    const config = getConfig().getConfig();
+    const config = getConfig().getConfig()
 
     this.options = {
       context: options.context || context,
@@ -50,56 +50,56 @@ export class Logger {
       file: options.file || config.logging.file,
       console: options.console !== undefined ? options.console : !config.output.silent,
       json: options.json || false,
-    } as any;
+    } as any
   }
 
   /**
    * Get or create logger instance for a specific context
    */
   static getLogger(context: string, options?: Partial<LoggerOptions>): Logger {
-    const key = `${context}:${JSON.stringify(options || {})}`;
+    const key = `${context}:${JSON.stringify(options || {})}`
 
     if (!Logger.instances.has(key)) {
-      Logger.instances.set(key, new Logger(context, options));
+      Logger.instances.set(key, new Logger(context, options))
     }
 
-    return Logger.instances.get(key)!;
+    return Logger.instances.get(key)!
   }
 
   /**
    * Create a child logger with additional context
    */
   child(childContext: string, options?: Partial<LoggerOptions>): Logger {
-    const fullContext = `${this.context}:${childContext}`;
-    return Logger.getLogger(fullContext, { ...this.options, ...options });
+    const fullContext = `${this.context}:${childContext}`
+    return Logger.getLogger(fullContext, { ...this.options, ...options })
   }
 
   /**
    * Log error message
    */
   error(message: string, error?: Error, data?: any): void {
-    this.log('error', message, { ...(error && { error }), ...(data && { data }) });
+    this.log('error', message, { ...(error && { error }), ...(data && { data }) })
   }
 
   /**
    * Log warning message
    */
   warn(message: string, data?: any): void {
-    this.log('warn', message, { data });
+    this.log('warn', message, { data })
   }
 
   /**
    * Log info message
    */
   info(message: string, data?: any): void {
-    this.log('info', message, { data });
+    this.log('info', message, { data })
   }
 
   /**
    * Log debug message
    */
   debug(message: string, data?: any): void {
-    this.log('debug', message, { data });
+    this.log('debug', message, { data })
   }
 
   /**
@@ -107,7 +107,7 @@ export class Logger {
    */
   log(level: LogLevel, message: string, extra: { error?: Error; data?: any } = {}): void {
     if (!this.shouldLog(level)) {
-      return;
+      return
     }
 
     const entry: LogEntry = {
@@ -116,9 +116,9 @@ export class Logger {
       message,
       context: this.context,
       ...extra,
-    };
+    }
 
-    this.writeLog(entry);
+    this.writeLog(entry)
   }
 
   /**
@@ -130,9 +130,9 @@ export class Logger {
       warn: 1,
       info: 2,
       debug: 3,
-    };
+    }
 
-    return levels[level] <= levels[this.options.level];
+    return levels[level] <= levels[this.options.level]
   }
 
   /**
@@ -141,12 +141,12 @@ export class Logger {
   private writeLog(entry: LogEntry): void {
     // Write to console
     if (this.options.console) {
-      this.writeToConsole(entry);
+      this.writeToConsole(entry)
     }
 
     // Write to file
     if (this.options.file) {
-      this.writeToFile(entry);
+      this.writeToFile(entry)
     }
   }
 
@@ -154,11 +154,11 @@ export class Logger {
    * Write to console with colors
    */
   private writeToConsole(entry: LogEntry): void {
-    const config = getConfig().getConfig();
-    const useColors = config.output.color;
+    const config = getConfig().getConfig()
+    const useColors = config.output.color
 
-    let colorFn: (text: string) => string;
-    let consoleMethod: 'error' | 'warn' | 'info' | 'log';
+    let colorFn: (text: string) => string
+    let consoleMethod: 'error' | 'warn' | 'info' | 'log'
 
     if (useColors) {
       // Simple color functions (avoiding external dependencies)
@@ -167,83 +167,83 @@ export class Logger {
         warn: (text: string) => `\u001b[33m${text}\u001b[0m`, // Yellow
         info: (text: string) => `\u001b[36m${text}\u001b[0m`, // Cyan
         debug: (text: string) => `\u001b[90m${text}\u001b[0m`, // Gray
-      };
-      colorFn = colors[entry.level];
-      consoleMethod = entry.level === 'debug' ? 'log' : entry.level;
+      }
+      colorFn = colors[entry.level]
+      consoleMethod = entry.level === 'debug' ? 'log' : entry.level
     } else {
-      colorFn = (text: string) => text;
-      consoleMethod = entry.level === 'debug' ? 'log' : entry.level;
+      colorFn = (text: string) => text
+      consoleMethod = entry.level === 'debug' ? 'log' : entry.level
     }
 
-    const timestamp = new Date(entry.timestamp).toLocaleTimeString();
-    const levelStr = entry.level.toUpperCase().padEnd(5);
-    const contextStr = entry.context ? `[${entry.context}]` : '';
+    const timestamp = new Date(entry.timestamp).toLocaleTimeString()
+    const levelStr = entry.level.toUpperCase().padEnd(5)
+    const contextStr = entry.context ? `[${entry.context}]` : ''
 
-    let logMessage = `${timestamp} ${colorFn(levelStr)} ${contextStr} ${entry.message}`;
+    let logMessage = `${timestamp} ${colorFn(levelStr)} ${contextStr} ${entry.message}`
 
     // Add data if present and in debug mode
     if (entry.data && entry.level === 'debug') {
-      logMessage += `\n${JSON.stringify(entry.data, null, 2)}`;
+      logMessage += `\n${JSON.stringify(entry.data, null, 2)}`
     }
 
     // Add error stack if present
-    if (entry.error && entry.error.stack) {
-      logMessage += `\n${entry.error.stack}`;
+    if (entry.error?.stack) {
+      logMessage += `\n${entry.error.stack}`
     }
 
-    console[consoleMethod](logMessage);
+    console[consoleMethod](logMessage)
   }
 
   /**
    * Write to file
    */
   private writeToFile(entry: LogEntry): void {
-    if (!this.options.file) return;
+    if (!this.options.file) return
 
     try {
-      const filePath = resolve(this.options.file);
+      const filePath = resolve(this.options.file)
 
       // Ensure directory exists
-      const dir = dirname(filePath);
+      const dir = dirname(filePath)
       if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
+        mkdirSync(dir, { recursive: true })
       }
 
       // Check file size and rotate if necessary
-      this.rotateLogFile(filePath);
+      this.rotateLogFile(filePath)
 
       // Format log entry
-      let logLine: string;
+      let logLine: string
 
       if (this.options.json) {
-        logLine = JSON.stringify(entry) + '\n';
+        logLine = `${JSON.stringify(entry)}\n`
       } else {
-        const timestamp = entry.timestamp;
-        const level = entry.level.toUpperCase().padEnd(5);
-        const context = entry.context ? `[${entry.context}]` : '';
+        const timestamp = entry.timestamp
+        const level = entry.level.toUpperCase().padEnd(5)
+        const context = entry.context ? `[${entry.context}]` : ''
 
-        logLine = `${timestamp} ${level} ${context} ${entry.message}`;
+        logLine = `${timestamp} ${level} ${context} ${entry.message}`
 
         if (entry.data) {
-          logLine += ` | Data: ${JSON.stringify(entry.data)}`;
+          logLine += ` | Data: ${JSON.stringify(entry.data)}`
         }
 
         if (entry.error) {
-          logLine += ` | Error: ${entry.error.message}`;
+          logLine += ` | Error: ${entry.error.message}`
           if (entry.error.stack) {
-            logLine += `\n${entry.error.stack}`;
+            logLine += `\n${entry.error.stack}`
           }
         }
 
-        logLine += '\n';
+        logLine += '\n'
       }
 
       // Append to file
-      writeFileSync(filePath, logLine, { flag: 'a', encoding: 'utf-8' });
+      writeFileSync(filePath, logLine, { flag: 'a', encoding: 'utf-8' })
     } catch (error) {
       // Fallback to console if file writing fails
-      console.error('Failed to write to log file:', error);
-      this.writeToConsole(entry);
+      console.error('Failed to write to log file:', error)
+      this.writeToConsole(entry)
     }
   }
 
@@ -251,39 +251,39 @@ export class Logger {
    * Rotate log file if it exceeds size limit
    */
   private rotateLogFile(filePath: string): void {
-    if (!existsSync(filePath)) return;
+    if (!existsSync(filePath)) return
 
-    const config = getConfig().getConfig();
-    const maxSize = this.parseSize(config.logging.maxSize);
-    const maxFiles = config.logging.maxFiles;
+    const config = getConfig().getConfig()
+    const maxSize = this.parseSize(config.logging.maxSize)
+    const maxFiles = config.logging.maxFiles
 
     try {
-      const stats = statSync(filePath);
+      const stats = statSync(filePath)
 
       if (stats.size < maxSize) {
-        return;
+        return
       }
 
       // Rotate files
       for (let i = maxFiles - 1; i > 0; i--) {
-        const oldFile = `${filePath}.${i}`;
-        const newFile = `${filePath}.${i + 1}`;
+        const oldFile = `${filePath}.${i}`
+        const newFile = `${filePath}.${i + 1}`
 
         if (existsSync(oldFile)) {
           if (i === maxFiles - 1) {
             // Delete oldest file
-            require('fs').unlinkSync(oldFile);
+            require('node:fs').unlinkSync(oldFile)
           } else {
             // Rename file
-            require('fs').renameSync(oldFile, newFile);
+            require('node:fs').renameSync(oldFile, newFile)
           }
         }
       }
 
       // Move current file to .1
-      require('fs').renameSync(filePath, `${filePath}.1`);
+      require('node:fs').renameSync(filePath, `${filePath}.1`)
     } catch (error) {
-      console.warn('Failed to rotate log file:', error);
+      console.warn('Failed to rotate log file:', error)
     }
   }
 
@@ -296,71 +296,71 @@ export class Logger {
       KB: 1024,
       MB: 1024 * 1024,
       GB: 1024 * 1024 * 1024,
-    };
-
-    const match = sizeStr.match(/^(\d+(?:\.\d+)?)\s*([A-Z]+)$/i);
-    if (!match) {
-      return 10 * 1024 * 1024; // Default to 10MB
     }
 
-    const [, size, unit] = match;
-    const multiplier = units[unit?.toUpperCase() || ''] || 1;
+    const match = sizeStr.match(/^(\d+(?:\.\d+)?)\s*([A-Z]+)$/i)
+    if (!match) {
+      return 10 * 1024 * 1024 // Default to 10MB
+    }
 
-    return Math.floor(parseFloat(size || '0') * multiplier);
+    const [, size, unit] = match
+    const multiplier = units[unit?.toUpperCase() || ''] || 1
+
+    return Math.floor(parseFloat(size || '0') * multiplier)
   }
 
   /**
    * Set log level for this logger
    */
   setLevel(level: LogLevel): void {
-    this.options.level = level;
+    this.options.level = level
   }
 
   /**
    * Get current log level
    */
   getLevel(): LogLevel {
-    return this.options.level;
+    return this.options.level
   }
 
   /**
    * Enable/disable console output
    */
   setConsole(enabled: boolean): void {
-    this.options.console = enabled;
+    this.options.console = enabled
   }
 
   /**
    * Set log file path
    */
   setFile(filePath: string | undefined): void {
-    this.options.file = filePath;
+    this.options.file = filePath
   }
 
   /**
    * Create a timer logger for performance measurement
    */
   timer(label: string): () => void {
-    const start = Date.now();
-    this.debug(`Timer started: ${label}`);
+    const start = Date.now()
+    this.debug(`Timer started: ${label}`)
 
     return () => {
-      const duration = Date.now() - start;
-      this.debug(`Timer finished: ${label} (${duration}ms)`);
-    };
+      const duration = Date.now() - start
+      this.debug(`Timer finished: ${label} (${duration}ms)`)
+    }
   }
 
   /**
    * Clear all logger instances (useful for testing)
    */
   static clearInstances(): void {
-    Logger.instances.clear();
+    Logger.instances.clear()
   }
 }
 
 // Default logger instance
-export const logger = Logger.getLogger('pcu');
+export const logger = Logger.getLogger('pcu')
 
 // Convenience functions
 export const createLogger = (context: string, options?: Partial<LoggerOptions>) =>
-  Logger.getLogger(context, options);
+  Logger.getLogger(context, options)

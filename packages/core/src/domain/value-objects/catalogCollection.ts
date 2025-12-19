@@ -5,100 +5,100 @@
  * Provides operations for managing and querying multiple catalogs.
  */
 
-import { Catalog, CatalogName } from '../entities/catalog.js';
+import type { Catalog, CatalogName } from '../entities/catalog.js'
 
 export class CatalogCollection {
-  private readonly catalogs: Map<CatalogName, Catalog>;
+  private readonly catalogs: Map<CatalogName, Catalog>
 
   private constructor(catalogs: Map<CatalogName, Catalog>) {
-    this.catalogs = new Map(catalogs);
+    this.catalogs = new Map(catalogs)
   }
 
   /**
    * Create an empty catalog collection
    */
   public static empty(): CatalogCollection {
-    return new CatalogCollection(new Map());
+    return new CatalogCollection(new Map())
   }
 
   /**
    * Create a catalog collection from an array of catalogs
    */
   public static fromCatalogs(catalogs: Catalog[]): CatalogCollection {
-    const catalogMap = new Map<CatalogName, Catalog>();
+    const catalogMap = new Map<CatalogName, Catalog>()
 
     for (const catalog of catalogs) {
-      catalogMap.set(catalog.getName(), catalog);
+      catalogMap.set(catalog.getName(), catalog)
     }
 
-    return new CatalogCollection(catalogMap);
+    return new CatalogCollection(catalogMap)
   }
 
   /**
    * Create a catalog collection from a Map
    */
   public static fromMap(catalogMap: Map<CatalogName, Catalog>): CatalogCollection {
-    return new CatalogCollection(catalogMap);
+    return new CatalogCollection(catalogMap)
   }
 
   /**
    * Check if collection contains a catalog with the given name
    */
   public has(catalogName: CatalogName): boolean {
-    return this.catalogs.has(catalogName);
+    return this.catalogs.has(catalogName)
   }
 
   /**
    * Get a catalog by name
    */
   public get(catalogName: CatalogName): Catalog | undefined {
-    return this.catalogs.get(catalogName);
+    return this.catalogs.get(catalogName)
   }
 
   /**
    * Get all catalogs as an array
    */
   public getAll(): Catalog[] {
-    return Array.from(this.catalogs.values());
+    return Array.from(this.catalogs.values())
   }
 
   /**
    * Get all catalog names
    */
   public getCatalogNames(): CatalogName[] {
-    return Array.from(this.catalogs.keys());
+    return Array.from(this.catalogs.keys())
   }
 
   /**
    * Get the number of catalogs
    */
   public size(): number {
-    return this.catalogs.size;
+    return this.catalogs.size
   }
 
   /**
    * Check if collection is empty
    */
   public isEmpty(): boolean {
-    return this.catalogs.size === 0;
+    return this.catalogs.size === 0
   }
 
   /**
    * Add a catalog to the collection
    */
   public add(catalog: Catalog): CatalogCollection {
-    const newCatalogs = new Map(this.catalogs);
-    newCatalogs.set(catalog.getName(), catalog);
-    return new CatalogCollection(newCatalogs);
+    const newCatalogs = new Map(this.catalogs)
+    newCatalogs.set(catalog.getName(), catalog)
+    return new CatalogCollection(newCatalogs)
   }
 
   /**
    * Remove a catalog from the collection
    */
   public remove(catalogName: CatalogName): CatalogCollection {
-    const newCatalogs = new Map(this.catalogs);
-    newCatalogs.delete(catalogName);
-    return new CatalogCollection(newCatalogs);
+    const newCatalogs = new Map(this.catalogs)
+    newCatalogs.delete(catalogName)
+    return new CatalogCollection(newCatalogs)
   }
 
   /**
@@ -106,12 +106,12 @@ export class CatalogCollection {
    */
   public update(catalog: Catalog): CatalogCollection {
     if (!this.has(catalog.getName())) {
-      throw new Error(`Catalog "${catalog.getName()}" not found in collection`);
+      throw new Error(`Catalog "${catalog.getName()}" not found in collection`)
     }
 
-    const newCatalogs = new Map(this.catalogs);
-    newCatalogs.set(catalog.getName(), catalog);
-    return new CatalogCollection(newCatalogs);
+    const newCatalogs = new Map(this.catalogs)
+    newCatalogs.set(catalog.getName(), catalog)
+    return new CatalogCollection(newCatalogs)
   }
 
   /**
@@ -119,83 +119,83 @@ export class CatalogCollection {
    */
   public getDefault(): Catalog | undefined {
     // First, try to find a catalog named 'default'
-    const defaultCatalog = this.catalogs.get('default');
+    const defaultCatalog = this.catalogs.get('default')
     if (defaultCatalog) {
-      return defaultCatalog;
+      return defaultCatalog
     }
 
     // If no 'default' catalog, return the first one
-    const firstCatalog = this.catalogs.values().next().value;
-    return firstCatalog;
+    const firstCatalog = this.catalogs.values().next().value
+    return firstCatalog
   }
 
   /**
    * Filter catalogs by a predicate function
    */
   public filter(predicate: (catalog: Catalog) => boolean): CatalogCollection {
-    const filteredCatalogs = new Map<CatalogName, Catalog>();
+    const filteredCatalogs = new Map<CatalogName, Catalog>()
 
     for (const [name, catalog] of this.catalogs) {
       if (predicate(catalog)) {
-        filteredCatalogs.set(name, catalog);
+        filteredCatalogs.set(name, catalog)
       }
     }
 
-    return new CatalogCollection(filteredCatalogs);
+    return new CatalogCollection(filteredCatalogs)
   }
 
   /**
    * Find catalogs that contain a specific package
    */
   public findCatalogsWithPackage(packageName: string): Catalog[] {
-    return this.getAll().filter((catalog) => catalog.hasDependency(packageName));
+    return this.getAll().filter((catalog) => catalog.hasDependency(packageName))
   }
 
   /**
    * Get all unique package names across all catalogs
    */
   public getAllPackageNames(): string[] {
-    const packageNames = new Set<string>();
+    const packageNames = new Set<string>()
 
     for (const catalog of this.catalogs.values()) {
       for (const packageName of catalog.getPackageNames()) {
-        packageNames.add(packageName);
+        packageNames.add(packageName)
       }
     }
 
-    return Array.from(packageNames);
+    return Array.from(packageNames)
   }
 
   /**
    * Validate all catalogs in the collection
    */
   public validate(): CatalogCollectionValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
+    const errors: string[] = []
+    const warnings: string[] = []
 
     // Check for empty collection
     if (this.isEmpty()) {
-      warnings.push('No catalogs found in workspace');
+      warnings.push('No catalogs found in workspace')
     }
 
     // Validate each catalog
     for (const catalog of this.catalogs.values()) {
-      const result = catalog.validate();
-      errors.push(...result.getErrors().map((err) => `Catalog "${catalog.getName()}": ${err}`));
+      const result = catalog.validate()
+      errors.push(...result.getErrors().map((err) => `Catalog "${catalog.getName()}": ${err}`))
       warnings.push(
         ...result.getWarnings().map((warn) => `Catalog "${catalog.getName()}": ${warn}`)
-      );
+      )
     }
 
     // Check for duplicate package definitions across catalogs
-    const packageCatalogMap = new Map<string, string[]>();
+    const packageCatalogMap = new Map<string, string[]>()
 
     for (const catalog of this.catalogs.values()) {
       for (const packageName of catalog.getPackageNames()) {
         if (!packageCatalogMap.has(packageName)) {
-          packageCatalogMap.set(packageName, []);
+          packageCatalogMap.set(packageName, [])
         }
-        packageCatalogMap.get(packageName)!.push(catalog.getName());
+        packageCatalogMap.get(packageName)!.push(catalog.getName())
       }
     }
 
@@ -204,25 +204,25 @@ export class CatalogCollection {
       if (catalogNames.length > 1) {
         warnings.push(
           `Package "${packageName}" is defined in multiple catalogs: ${catalogNames.join(', ')}`
-        );
+        )
       }
     }
 
-    return new CatalogCollectionValidationResult(errors.length === 0, errors, warnings);
+    return new CatalogCollectionValidationResult(errors.length === 0, errors, warnings)
   }
 
   /**
    * Convert to a Map for serialization
    */
   public toMap(): Map<CatalogName, Catalog> {
-    return new Map(this.catalogs);
+    return new Map(this.catalogs)
   }
 
   /**
    * Iterate over catalogs
    */
   public *[Symbol.iterator](): Iterator<[CatalogName, Catalog]> {
-    yield* this.catalogs;
+    yield* this.catalogs
   }
 
   /**
@@ -230,17 +230,17 @@ export class CatalogCollection {
    */
   public equals(other: CatalogCollection): boolean {
     if (this.size() !== other.size()) {
-      return false;
+      return false
     }
 
     for (const [name, catalog] of this.catalogs) {
-      const otherCatalog = other.get(name);
+      const otherCatalog = other.get(name)
       if (!otherCatalog || !catalog.equals(otherCatalog)) {
-        return false;
+        return false
       }
     }
 
-    return true;
+    return true
   }
 }
 
@@ -255,22 +255,22 @@ export class CatalogCollectionValidationResult {
   ) {}
 
   public getIsValid(): boolean {
-    return this.isValid;
+    return this.isValid
   }
 
   public getErrors(): string[] {
-    return [...this.errors];
+    return [...this.errors]
   }
 
   public getWarnings(): string[] {
-    return [...this.warnings];
+    return [...this.warnings]
   }
 
   public hasErrors(): boolean {
-    return this.errors.length > 0;
+    return this.errors.length > 0
   }
 
   public hasWarnings(): boolean {
-    return this.warnings.length > 0;
+    return this.warnings.length > 0
   }
 }

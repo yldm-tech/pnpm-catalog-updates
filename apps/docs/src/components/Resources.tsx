@@ -1,8 +1,8 @@
 'use client'
 
-import { motion, useMotionTemplate, useMotionValue, type MotionValue } from 'framer-motion'
-import { useTranslations } from 'next-intl'
+import { type MotionValue, motion, useMotionTemplate, useMotionValue } from 'framer-motion'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 import { GridPattern } from '@/components/GridPattern'
 import { Heading } from '@/components/Heading'
@@ -35,8 +35,8 @@ function ResourcePattern({
   mouseX: MotionValue<number>
   mouseY: MotionValue<number>
 }) {
-  let maskImage = useMotionTemplate`radial-gradient(180px at ${mouseX}px ${mouseY}px, white, transparent)`
-  let style = { maskImage, WebkitMaskImage: maskImage }
+  const maskImage = useMotionTemplate`radial-gradient(180px at ${mouseX}px ${mouseY}px, white, transparent)`
+  const style = { maskImage, WebkitMaskImage: maskImage }
 
   return (
     <div className="pointer-events-none">
@@ -70,11 +70,11 @@ function ResourcePattern({
 }
 
 function Resource({ resource }: { resource: Resource }) {
-  let mouseX = useMotionValue(0)
-  let mouseY = useMotionValue(0)
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
 
   function onMouseMove({ currentTarget, clientX, clientY }: React.MouseEvent<HTMLDivElement>) {
-    let { left, top } = currentTarget.getBoundingClientRect()
+    const { left, top } = currentTarget.getBoundingClientRect()
     mouseX.set(clientX - left)
     mouseY.set(clientY - top)
   }

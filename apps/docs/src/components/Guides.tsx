@@ -1,6 +1,6 @@
+import { getTranslations } from 'next-intl/server'
 import { Button } from '@/components/Button'
 import { Heading } from '@/components/Heading'
-import { getTranslations } from 'next-intl/server'
 
 type Props = {
   locale: string

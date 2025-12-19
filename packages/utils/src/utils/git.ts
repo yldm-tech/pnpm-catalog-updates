@@ -2,18 +2,18 @@
  * Git Utilities
  */
 
-import { spawnSync } from 'child_process';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 
 /**
  * Check if directory is a git repository
  */
 export function isGitRepository(path: string = process.cwd()): boolean {
   try {
-    return existsSync(join(path, '.git'));
+    return existsSync(join(path, '.git'))
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -26,14 +26,14 @@ export function getCurrentBranch(cwd: string = process.cwd()): string | null {
       cwd,
       encoding: 'utf8',
       stdio: 'pipe',
-    });
+    })
     if (result.error || result.status !== 0) {
-      return null;
+      return null
     }
-    const branch = result.stdout.trim();
-    return branch || null;
+    const branch = result.stdout.trim()
+    return branch || null
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -46,14 +46,14 @@ export function isWorkingDirectoryClean(cwd: string = process.cwd()): boolean {
       cwd,
       encoding: 'utf8',
       stdio: 'pipe',
-    });
+    })
     if (result.error || result.status !== 0) {
-      return false;
+      return false
     }
-    const status = result.stdout.trim();
-    return status === '';
+    const status = result.stdout.trim()
+    return status === ''
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -66,14 +66,14 @@ export function getLastCommitHash(cwd: string = process.cwd()): string | null {
       cwd,
       encoding: 'utf8',
       stdio: 'pipe',
-    });
+    })
     if (result.error || result.status !== 0) {
-      return null;
+      return null
     }
-    const hash = result.stdout.trim();
-    return hash || null;
+    const hash = result.stdout.trim()
+    return hash || null
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -86,14 +86,14 @@ export function getRepositoryUrl(cwd: string = process.cwd()): string | null {
       cwd,
       encoding: 'utf8',
       stdio: 'pipe',
-    });
+    })
     if (result.error || result.status !== 0) {
-      return null;
+      return null
     }
-    const url = result.stdout.trim();
-    return url || null;
+    const url = result.stdout.trim()
+    return url || null
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -102,12 +102,12 @@ export function getRepositoryUrl(cwd: string = process.cwd()): string | null {
  */
 export function createTag(tag: string, message?: string, cwd: string = process.cwd()): boolean {
   try {
-    const args = message ? ['tag', '-a', tag, '-m', message] : ['tag', tag];
+    const args = message ? ['tag', '-a', tag, '-m', message] : ['tag', tag]
 
-    const result = spawnSync('git', args, { cwd, stdio: 'pipe' });
-    return result.status === 0;
+    const result = spawnSync('git', args, { cwd, stdio: 'pipe' })
+    return result.status === 0
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -115,7 +115,7 @@ export function createTag(tag: string, message?: string, cwd: string = process.c
  * Check if there are uncommitted changes
  */
 export function hasUncommittedChanges(cwd: string = process.cwd()): boolean {
-  return !isWorkingDirectoryClean(cwd);
+  return !isWorkingDirectoryClean(cwd)
 }
 
 /**
@@ -127,21 +127,21 @@ export function getModifiedFiles(cwd: string = process.cwd()): string[] {
       cwd,
       encoding: 'utf8',
       stdio: 'pipe',
-    });
+    })
 
     if (result.error || result.status !== 0) {
-      return [];
+      return []
     }
 
-    const output = result.stdout.trim();
-    if (!output) return [];
+    const output = result.stdout.trim()
+    if (!output) return []
 
     return output
       .split('\n')
       .map((line) => line.substring(3)) // Remove status indicators
-      .filter(Boolean);
+      .filter(Boolean)
   } catch {
-    return [];
+    return []
   }
 }
 
@@ -153,10 +153,10 @@ export function stageFiles(files: string[], cwd: string = process.cwd()): boolea
     const result = spawnSync('git', ['add', ...files], {
       cwd,
       stdio: 'pipe',
-    });
-    return result.status === 0;
+    })
+    return result.status === 0
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -168,9 +168,9 @@ export function commit(message: string, cwd: string = process.cwd()): boolean {
     const result = spawnSync('git', ['commit', '-m', message], {
       cwd,
       stdio: 'pipe',
-    });
-    return result.status === 0;
+    })
+    return result.status === 0
   } catch {
-    return false;
+    return false
   }
 }

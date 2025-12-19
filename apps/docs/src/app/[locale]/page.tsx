@@ -1,8 +1,8 @@
+import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Button } from '@/components/Button'
 import { Guides } from '@/components/Guides'
 import { HeroPattern } from '@/components/HeroPattern'
 import { Resources } from '@/components/Resources'
-import { getTranslations, setRequestLocale } from 'next-intl/server'
 
 type Props = {
   params: Promise<{ locale: string }>
@@ -27,10 +27,10 @@ export default async function HomePage({ params }: Props) {
 
       <div className="not-prose mt-6 mb-16 flex gap-3">
         <Button href="/quickstart" arrow="right">
-          <>{tCommon('getStarted')}</>
+          {tCommon('getStarted')}
         </Button>
         <Button href="/command-reference" variant="outline">
-          <>{t('exploreSdks')}</>
+          {t('exploreSdks')}
         </Button>
       </div>
 
@@ -47,7 +47,7 @@ export default async function HomePage({ params }: Props) {
 
       <div className="not-prose mb-16">
         <Button href="/quickstart" variant="text" arrow="right">
-          <>{t('getApiKey')}</>
+          {t('getApiKey')}
         </Button>
       </div>
 

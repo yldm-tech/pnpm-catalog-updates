@@ -5,8 +5,8 @@
  * Provides common functionality for executing CLI commands and parsing responses.
  */
 
-import { exec as execCallback } from 'node:child_process';
-import { promisify } from 'node:util';
+import { exec as execCallback } from 'node:child_process'
+import { promisify } from 'node:util'
 
 import type {
   AIProvider,
@@ -17,51 +17,51 @@ import type {
   AnalysisType,
   Recommendation,
   RiskLevel,
-} from '../../../domain/interfaces/aiProvider.js';
+} from '../../../domain/interfaces/aiProvider.js'
 
-const exec = promisify(execCallback);
+const exec = promisify(execCallback)
 
 /**
  * Base configuration for providers
  */
 export interface BaseProviderOptions {
-  config?: AIProviderConfig;
-  timeout?: number;
-  maxRetries?: number;
+  config?: AIProviderConfig
+  timeout?: number
+  maxRetries?: number
 }
 
 /**
  * Abstract base class for AI providers
  */
 export abstract class BaseAIProvider implements AIProvider {
-  abstract readonly name: string;
-  abstract readonly priority: number;
-  abstract readonly capabilities: AnalysisType[];
+  abstract readonly name: string
+  abstract readonly priority: number
+  abstract readonly capabilities: AnalysisType[]
 
-  protected readonly config: AIProviderConfig;
-  protected readonly timeout: number;
-  protected readonly maxRetries: number;
+  protected readonly config: AIProviderConfig
+  protected readonly timeout: number
+  protected readonly maxRetries: number
 
   constructor(options: BaseProviderOptions = {}) {
-    this.config = options.config ?? { enabled: true };
-    this.timeout = options.timeout ?? 3000000; // 300 seconds default
-    this.maxRetries = options.maxRetries ?? 2;
+    this.config = options.config ?? { enabled: true }
+    this.timeout = options.timeout ?? 3000000 // 300 seconds default
+    this.maxRetries = options.maxRetries ?? 2
   }
 
   /**
    * Check if the provider is available
    */
-  abstract isAvailable(): Promise<boolean>;
+  abstract isAvailable(): Promise<boolean>
 
   /**
    * Get provider information
    */
-  abstract getInfo(): Promise<AIProviderInfo>;
+  abstract getInfo(): Promise<AIProviderInfo>
 
   /**
    * Perform analysis
    */
-  abstract analyze(context: AnalysisContext): Promise<AnalysisResult>;
+  abstract analyze(context: AnalysisContext): Promise<AnalysisResult>
 
   /**
    * Execute a CLI command with timeout and retry
@@ -71,9 +71,9 @@ export abstract class BaseAIProvider implements AIProvider {
     args: string[],
     _input?: string
   ): Promise<{ stdout: string; stderr: string }> {
-    const fullCommand = `${command} ${args.map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`;
+    const fullCommand = `${command} ${args.map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`
 
-    let lastError: Error | null = null;
+    let lastError: Error | null = null
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
@@ -81,20 +81,20 @@ export abstract class BaseAIProvider implements AIProvider {
           timeout: this.timeout,
           maxBuffer: 10 * 1024 * 1024, // 10MB buffer
           env: { ...process.env, NO_COLOR: '1' },
-        });
+        })
 
-        return result;
+        return result
       } catch (error) {
-        lastError = error as Error;
+        lastError = error as Error
 
         if (attempt < this.maxRetries) {
           // Exponential backoff
-          await this.sleep(1000 * Math.pow(2, attempt - 1));
+          await this.sleep(1000 * 2 ** (attempt - 1))
         }
       }
     }
 
-    throw lastError ?? new Error('Command execution failed');
+    throw lastError ?? new Error('Command execution failed')
   }
 
   /**
@@ -102,95 +102,95 @@ export abstract class BaseAIProvider implements AIProvider {
    */
   protected formatSecurityData(context: AnalysisContext): string {
     if (!context.securityData || context.securityData.size === 0) {
-      return '';
+      return ''
     }
 
-    const lines: string[] = [];
-    lines.push('\n=== REAL-TIME SECURITY VULNERABILITY DATA (from OSV API) ===');
-    lines.push('IMPORTANT: This is live data from the Open Source Vulnerabilities database.');
-    lines.push('Use this information to accurately assess security risks.\n');
+    const lines: string[] = []
+    lines.push('\n=== REAL-TIME SECURITY VULNERABILITY DATA (from OSV API) ===')
+    lines.push('IMPORTANT: This is live data from the Open Source Vulnerabilities database.')
+    lines.push('Use this information to accurately assess security risks.\n')
 
     for (const pkg of context.packages) {
-      const key = `${pkg.name}@${pkg.targetVersion}`;
-      const securityInfo = context.securityData.get(key);
+      const key = `${pkg.name}@${pkg.targetVersion}`
+      const securityInfo = context.securityData.get(key)
 
       if (securityInfo && securityInfo.totalVulnerabilities > 0) {
         lines.push(
           `🚨 ${pkg.name}@${pkg.targetVersion}: ${securityInfo.totalVulnerabilities} VULNERABILITIES FOUND`
-        );
+        )
 
         for (const vuln of securityInfo.vulnerabilities) {
-          const cveIds = vuln.aliases.filter((a) => a.startsWith('CVE-')).join(', ') || vuln.id;
-          const scoreStr = vuln.cvssScore ? ` (CVSS: ${vuln.cvssScore})` : '';
-          lines.push(`   - [${vuln.severity}]${scoreStr} ${cveIds}: ${vuln.summary}`);
+          const cveIds = vuln.aliases.filter((a) => a.startsWith('CVE-')).join(', ') || vuln.id
+          const scoreStr = vuln.cvssScore ? ` (CVSS: ${vuln.cvssScore})` : ''
+          lines.push(`   - [${vuln.severity}]${scoreStr} ${cveIds}: ${vuln.summary}`)
           if (vuln.fixedVersions.length > 0) {
-            lines.push(`     Fixed in: ${vuln.fixedVersions.join(', ')}`);
+            lines.push(`     Fixed in: ${vuln.fixedVersions.join(', ')}`)
           }
         }
 
         if (securityInfo.hasCriticalVulnerabilities) {
-          lines.push(`   ⛔ CRITICAL: DO NOT recommend updating to this version!`);
+          lines.push(`   ⛔ CRITICAL: DO NOT recommend updating to this version!`)
         } else if (securityInfo.hasHighVulnerabilities) {
-          lines.push(`   ⚠️ HIGH RISK: Consider alternative versions.`);
+          lines.push(`   ⚠️ HIGH RISK: Consider alternative versions.`)
         }
 
         // Include verified safe version recommendation if available
         if (securityInfo.safeVersion) {
-          const sv = securityInfo.safeVersion;
+          const sv = securityInfo.safeVersion
           const versionNote = sv.sameMajor
             ? sv.sameMinor
               ? '(same major and minor version)'
               : '(same major version)'
-            : '(different major version - may require migration)';
+            : '(different major version - may require migration)'
 
           // Show skipped versions and their vulnerabilities
           if (sv.skippedVersions && sv.skippedVersions.length > 0) {
-            lines.push('');
-            lines.push(`   ❌ SKIPPED VERSIONS (still have vulnerabilities):`);
+            lines.push('')
+            lines.push(`   ❌ SKIPPED VERSIONS (still have vulnerabilities):`)
             for (const skipped of sv.skippedVersions) {
-              lines.push(`      - ${pkg.name}@${skipped.version}:`);
+              lines.push(`      - ${pkg.name}@${skipped.version}:`)
               for (const vuln of skipped.vulnerabilities) {
-                lines.push(`        • [${vuln.severity}] ${vuln.id}: ${vuln.summary}`);
+                lines.push(`        • [${vuln.severity}] ${vuln.id}: ${vuln.summary}`)
               }
             }
           }
 
-          lines.push('');
-          lines.push(`   ✅ VERIFIED SAFE VERSION: ${pkg.name}@${sv.version} ${versionNote}`);
+          lines.push('')
+          lines.push(`   ✅ VERIFIED SAFE VERSION: ${pkg.name}@${sv.version} ${versionNote}`)
           lines.push(
             `      This version has been verified to have NO critical or high severity vulnerabilities.`
-          );
+          )
           lines.push(
             `      (Checked ${sv.versionsChecked} version(s) to find this safe alternative)`
-          );
-          lines.push(`      RECOMMENDATION: Update to ${pkg.name}@${sv.version} instead.`);
+          )
+          lines.push(`      RECOMMENDATION: Update to ${pkg.name}@${sv.version} instead.`)
         }
 
-        lines.push('');
+        lines.push('')
       } else {
-        lines.push(`✅ ${pkg.name}@${pkg.targetVersion}: No known vulnerabilities`);
+        lines.push(`✅ ${pkg.name}@${pkg.targetVersion}: No known vulnerabilities`)
       }
     }
 
-    lines.push('=== END SECURITY DATA ===\n');
-    return lines.join('\n');
+    lines.push('=== END SECURITY DATA ===\n')
+    return lines.join('\n')
   }
 
   /**
    * Build the analysis prompt
    */
   protected buildPrompt(context: AnalysisContext): string {
-    const { packages, workspaceInfo, analysisType, options: _options } = context;
+    const { packages, workspaceInfo, analysisType, options: _options } = context
 
     const packageList = packages
       .map(
         (p) =>
           `- ${p.name}: ${p.currentVersion} -> ${p.targetVersion} (${p.updateType}${p.catalogName ? `, catalog: ${p.catalogName}` : ''})`
       )
-      .join('\n');
+      .join('\n')
 
     // Include security vulnerability data if available
-    const securityDataSection = this.formatSecurityData(context);
+    const securityDataSection = this.formatSecurityData(context)
 
     const prompts: Record<AnalysisType, string> = {
       impact: `Analyze the impact of updating these packages in a pnpm workspace:
@@ -297,25 +297,25 @@ CRITICAL: If security data shows vulnerabilities:
 - Include CVE IDs in the reason
 
 Respond in JSON format with prioritized recommendations.`,
-    };
+    }
 
-    return prompts[analysisType];
+    return prompts[analysisType]
   }
 
   /**
    * Parse the AI response into structured recommendations
    */
   protected parseResponse(response: string, context: AnalysisContext): AnalysisResult {
-    const startTime = Date.now();
+    const startTime = Date.now()
 
     try {
       // Try to extract JSON from the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
-        return this.createFallbackResult(context, response);
+        return this.createFallbackResult(context, response)
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0])
 
       const recommendations: Recommendation[] = (parsed.recommendations || []).map((rec: any) => ({
         package: rec.package || rec.name,
@@ -327,7 +327,7 @@ Respond in JSON format with prioritized recommendations.`,
         breakingChanges: rec.breakingChanges || [],
         securityFixes: rec.securityFixes || [],
         estimatedEffort: rec.estimatedEffort || 'medium',
-      }));
+      }))
 
       return {
         provider: this.name,
@@ -339,9 +339,9 @@ Respond in JSON format with prioritized recommendations.`,
         warnings: parsed.warnings || [],
         timestamp: new Date(),
         processingTimeMs: Date.now() - startTime,
-      };
+      }
     } catch (error) {
-      return this.createFallbackResult(context, response);
+      return this.createFallbackResult(context, response)
     }
   }
 
@@ -365,61 +365,61 @@ Respond in JSON format with prioritized recommendations.`,
       details: rawResponse,
       warnings: ['AI response could not be fully parsed'],
       timestamp: new Date(),
-    };
+    }
   }
 
   /**
    * Normalize action string
    */
   private normalizeAction(action: string): Recommendation['action'] {
-    const normalized = action?.toLowerCase();
+    const normalized = action?.toLowerCase()
     if (['update', 'skip', 'review', 'defer'].includes(normalized)) {
-      return normalized as Recommendation['action'];
+      return normalized as Recommendation['action']
     }
-    return 'review';
+    return 'review'
   }
 
   /**
    * Normalize risk level string
    */
   private normalizeRiskLevel(level: string): RiskLevel {
-    const normalized = level?.toLowerCase();
+    const normalized = level?.toLowerCase()
     if (['low', 'medium', 'high', 'critical'].includes(normalized)) {
-      return normalized as RiskLevel;
+      return normalized as RiskLevel
     }
-    return 'medium';
+    return 'medium'
   }
 
   /**
    * Calculate confidence score based on response quality
    */
   private calculateConfidence(recommendations: Recommendation[], expectedCount: number): number {
-    if (recommendations.length === 0) return 0;
+    if (recommendations.length === 0) return 0
 
-    let score = 0;
+    let score = 0
 
     // Coverage: how many packages have recommendations
-    score += (recommendations.length / expectedCount) * 0.3;
+    score += (recommendations.length / expectedCount) * 0.3
 
     // Completeness: how complete each recommendation is
     const completenessSum = recommendations.reduce((sum, rec) => {
-      let complete = 0;
-      if (rec.package) complete += 0.2;
-      if (rec.action) complete += 0.2;
-      if (rec.reason && rec.reason.length > 10) complete += 0.3;
-      if (rec.riskLevel) complete += 0.15;
-      if (rec.breakingChanges && rec.breakingChanges.length > 0) complete += 0.15;
-      return sum + complete;
-    }, 0);
-    score += (completenessSum / recommendations.length) * 0.7;
+      let complete = 0
+      if (rec.package) complete += 0.2
+      if (rec.action) complete += 0.2
+      if (rec.reason && rec.reason.length > 10) complete += 0.3
+      if (rec.riskLevel) complete += 0.15
+      if (rec.breakingChanges && rec.breakingChanges.length > 0) complete += 0.15
+      return sum + complete
+    }, 0)
+    score += (completenessSum / recommendations.length) * 0.7
 
-    return Math.min(score, 1);
+    return Math.min(score, 1)
   }
 
   /**
    * Sleep utility
    */
   protected sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 }

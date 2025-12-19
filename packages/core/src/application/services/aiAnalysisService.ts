@@ -16,48 +16,48 @@ import type {
   Recommendation,
   SecurityVulnerabilityData,
   WorkspaceInfo,
-} from '../../domain/interfaces/aiProvider.js';
-import { AIDetector } from '../../infrastructure/ai/aiDetector.js';
-import { AnalysisCache, analysisCache } from '../../infrastructure/ai/cache/analysisCache.js';
-import { RuleEngine } from '../../infrastructure/ai/fallback/ruleEngine.js';
-import { ClaudeProvider } from '../../infrastructure/ai/providers/claudeProvider.js';
-import { CodexProvider } from '../../infrastructure/ai/providers/codexProvider.js';
-import { GeminiProvider } from '../../infrastructure/ai/providers/geminiProvider.js';
-import { SecurityAdvisoryService } from '../../infrastructure/external-services/securityAdvisoryService.js';
+} from '../../domain/interfaces/aiProvider.js'
+import { AIDetector } from '../../infrastructure/ai/aiDetector.js'
+import { type AnalysisCache, analysisCache } from '../../infrastructure/ai/cache/analysisCache.js'
+import { RuleEngine } from '../../infrastructure/ai/fallback/ruleEngine.js'
+import { ClaudeProvider } from '../../infrastructure/ai/providers/claudeProvider.js'
+import { CodexProvider } from '../../infrastructure/ai/providers/codexProvider.js'
+import { GeminiProvider } from '../../infrastructure/ai/providers/geminiProvider.js'
+import { SecurityAdvisoryService } from '../../infrastructure/external-services/securityAdvisoryService.js'
 
 /**
  * Service options
  */
 export interface AIAnalysisServiceOptions {
-  config?: Partial<AIConfig>;
-  cache?: AnalysisCache;
-  detector?: AIDetector;
+  config?: Partial<AIConfig>
+  cache?: AnalysisCache
+  detector?: AIDetector
   /**
    * Optional preconfigured provider instances.
    * When provided, the service will not auto-initialize built-in providers.
    */
-  providers?: AIProvider[];
+  providers?: AIProvider[]
 }
 
 /**
  * Analysis request options
  */
 export interface AnalysisRequestOptions {
-  analysisType?: AnalysisType;
-  provider?: string; // Specific provider to use
-  skipCache?: boolean;
-  timeout?: number;
+  analysisType?: AnalysisType
+  provider?: string // Specific provider to use
+  skipCache?: boolean
+  timeout?: number
 }
 
 /**
  * Multi-provider analysis result
  */
 export interface MultiAnalysisResult {
-  primary: AnalysisResult;
-  secondary?: AnalysisResult;
-  merged?: AnalysisResult;
-  providers: string[];
-  timestamp: Date;
+  primary: AnalysisResult
+  secondary?: AnalysisResult
+  merged?: AnalysisResult
+  providers: string[]
+  timestamp: Date
 }
 
 /**
@@ -66,26 +66,26 @@ export interface MultiAnalysisResult {
  * Provides high-level API for AI-powered dependency analysis.
  */
 export class AIAnalysisService {
-  private readonly config: AIConfig;
-  private readonly cache: AnalysisCache;
-  private readonly detector: AIDetector;
-  private readonly ruleEngine: RuleEngine;
-  private readonly securityService: SecurityAdvisoryService;
-  private readonly providers: Map<string, AIProvider> = new Map();
-  private providersInitialized = false;
+  private readonly config: AIConfig
+  private readonly cache: AnalysisCache
+  private readonly detector: AIDetector
+  private readonly ruleEngine: RuleEngine
+  private readonly securityService: SecurityAdvisoryService
+  private readonly providers: Map<string, AIProvider> = new Map()
+  private providersInitialized = false
 
   constructor(options: AIAnalysisServiceOptions = {}) {
-    this.config = this.buildConfig(options.config);
-    this.cache = options.cache ?? analysisCache;
-    this.detector = options.detector ?? new AIDetector();
-    this.ruleEngine = new RuleEngine();
-    this.securityService = new SecurityAdvisoryService({ cacheMinutes: 30, timeout: 10000 });
+    this.config = this.buildConfig(options.config)
+    this.cache = options.cache ?? analysisCache
+    this.detector = options.detector ?? new AIDetector()
+    this.ruleEngine = new RuleEngine()
+    this.securityService = new SecurityAdvisoryService({ cacheMinutes: 30, timeout: 10000 })
 
     if (options.providers) {
       for (const provider of options.providers) {
-        this.providers.set(provider.name, provider);
+        this.providers.set(provider.name, provider)
       }
-      this.providersInitialized = true;
+      this.providersInitialized = true
     }
   }
 
@@ -114,7 +114,7 @@ export class AIAnalysisService {
       securityData: {
         enabled: userConfig?.securityData?.enabled ?? true,
       },
-    };
+    }
   }
 
   /**
@@ -122,66 +122,66 @@ export class AIAnalysisService {
    */
   private async initializeProviders(): Promise<void> {
     if (this.providersInitialized) {
-      return;
+      return
     }
 
     // Initialize Claude provider (priority: 100)
-    const claudeProvider = new ClaudeProvider(this.config.providers.claude);
+    const claudeProvider = new ClaudeProvider(this.config.providers.claude)
     if (await claudeProvider.isAvailable()) {
-      this.providers.set('claude', claudeProvider);
+      this.providers.set('claude', claudeProvider)
     }
 
     // Initialize Gemini provider (priority: 80)
-    const geminiProvider = new GeminiProvider(this.config.providers.gemini);
+    const geminiProvider = new GeminiProvider(this.config.providers.gemini)
     if (await geminiProvider.isAvailable()) {
-      this.providers.set('gemini', geminiProvider);
+      this.providers.set('gemini', geminiProvider)
     }
 
     // Initialize Codex provider (priority: 60)
-    const codexProvider = new CodexProvider(this.config.providers.codex);
+    const codexProvider = new CodexProvider(this.config.providers.codex)
     if (await codexProvider.isAvailable()) {
-      this.providers.set('codex', codexProvider);
+      this.providers.set('codex', codexProvider)
     }
 
     // Future: Initialize additional providers
     // const cursorProvider = new CursorProvider(this.config.providers.cursor);
     // const aiderProvider = new AiderProvider(this.config.providers.aider);
 
-    this.providersInitialized = true;
+    this.providersInitialized = true
   }
 
   /**
    * Get available AI providers
    */
   async getAvailableProviders(): Promise<AIProviderInfo[]> {
-    return this.detector.getAvailableProviders();
+    return this.detector.getAvailableProviders()
   }
 
   /**
    * Get the best available provider
    */
   async getBestProvider(): Promise<AIProvider | null> {
-    await this.initializeProviders();
+    await this.initializeProviders()
 
     if (this.config.preferredProvider !== 'auto') {
-      const preferred = this.providers.get(this.config.preferredProvider);
+      const preferred = this.providers.get(this.config.preferredProvider)
       if (preferred && (await preferred.isAvailable())) {
-        return preferred;
+        return preferred
       }
     }
 
     // Find highest priority available provider
-    let bestProvider: AIProvider | null = null;
-    let highestPriority = -1;
+    let bestProvider: AIProvider | null = null
+    let highestPriority = -1
 
     for (const provider of this.providers.values()) {
       if ((await provider.isAvailable()) && provider.priority > highestPriority) {
-        bestProvider = provider;
-        highestPriority = provider.priority;
+        bestProvider = provider
+        highestPriority = provider.priority
       }
     }
 
-    return bestProvider;
+    return bestProvider
   }
 
   /**
@@ -193,7 +193,7 @@ export class AIAnalysisService {
     options: AnalysisRequestOptions = {}
   ): Promise<AnalysisResult> {
     if (!this.config.enabled) {
-      return this.createDisabledResult(packages, options.analysisType ?? 'impact');
+      return this.createDisabledResult(packages, options.analysisType ?? 'impact')
     }
 
     const context: AnalysisContext = {
@@ -203,76 +203,76 @@ export class AIAnalysisService {
       options: {
         timeout: options.timeout,
       },
-    };
+    }
 
     // Check cache first
     if (this.config.cache.enabled && !options.skipCache) {
       // Try specified provider first, then fallback providers
       const providersToCheck = options.provider
         ? [options.provider]
-        : ['claude', 'gemini', 'codex', 'rule-engine'];
+        : ['claude', 'gemini', 'codex', 'rule-engine']
 
       for (const providerName of providersToCheck) {
-        const cached = this.cache.get(context, providerName);
+        const cached = this.cache.get(context, providerName)
         if (cached) {
           return {
             ...cached,
             provider: `${cached.provider} (cached)`,
-          };
+          }
         }
       }
     }
 
     // Get provider
-    await this.initializeProviders();
-    let provider: AIProvider | null = null;
+    await this.initializeProviders()
+    let provider: AIProvider | null = null
 
     if (options.provider) {
-      provider = this.providers.get(options.provider) ?? null;
+      provider = this.providers.get(options.provider) ?? null
     } else {
-      provider = await this.getBestProvider();
+      provider = await this.getBestProvider()
     }
 
     // Execute analysis
-    let result: AnalysisResult;
-    let providerUsed: string;
+    let result: AnalysisResult
+    let providerUsed: string
     const shouldFetchSecurityData =
       (this.config.securityData?.enabled ?? true) &&
-      (provider !== null || context.analysisType === 'security');
+      (provider !== null || context.analysisType === 'security')
     const contextWithSecurity: AnalysisContext = shouldFetchSecurityData
       ? { ...context, securityData: await this.fetchSecurityData(packages) }
-      : context;
+      : context
 
     if (provider) {
       try {
-        result = await provider.analyze(contextWithSecurity);
-        providerUsed = provider.name;
+        result = await provider.analyze(contextWithSecurity)
+        providerUsed = provider.name
       } catch (error) {
         // Fallback on provider error
         if (this.config.fallback.enabled && this.config.fallback.useRuleEngine) {
-          result = this.ruleEngine.analyze(contextWithSecurity);
-          providerUsed = 'rule-engine';
+          result = this.ruleEngine.analyze(contextWithSecurity)
+          providerUsed = 'rule-engine'
         } else {
-          throw error;
+          throw error
         }
       }
     } else {
       // No provider available, use fallback
       if (this.config.fallback.enabled && this.config.fallback.useRuleEngine) {
-        result = this.ruleEngine.analyze(contextWithSecurity);
-        providerUsed = 'rule-engine';
+        result = this.ruleEngine.analyze(contextWithSecurity)
+        providerUsed = 'rule-engine'
       } else {
-        result = this.createNoProviderResult(packages, context.analysisType);
-        providerUsed = 'none';
+        result = this.createNoProviderResult(packages, context.analysisType)
+        providerUsed = 'none'
       }
     }
 
     // Cache result (including fallback results)
     if (this.config.cache.enabled && providerUsed !== 'none') {
-      this.cache.set(context, providerUsed, result);
+      this.cache.set(context, providerUsed, result)
     }
 
-    return result;
+    return result
   }
 
   /**
@@ -286,7 +286,7 @@ export class AIAnalysisService {
     return this.analyzeUpdates(packages, workspaceInfo, {
       ...options,
       analysisType: 'impact',
-    });
+    })
   }
 
   /**
@@ -300,7 +300,7 @@ export class AIAnalysisService {
     return this.analyzeUpdates(packages, workspaceInfo, {
       ...options,
       analysisType: 'security',
-    });
+    })
   }
 
   /**
@@ -314,7 +314,7 @@ export class AIAnalysisService {
     return this.analyzeUpdates(packages, workspaceInfo, {
       ...options,
       analysisType: 'compatibility',
-    });
+    })
   }
 
   /**
@@ -328,7 +328,7 @@ export class AIAnalysisService {
     return this.analyzeUpdates(packages, workspaceInfo, {
       ...options,
       analysisType: 'recommend',
-    });
+    })
   }
 
   /**
@@ -339,23 +339,23 @@ export class AIAnalysisService {
     workspaceInfo: WorkspaceInfo,
     options: Omit<AnalysisRequestOptions, 'analysisType'> = {}
   ): Promise<MultiAnalysisResult> {
-    const results: AnalysisResult[] = [];
-    const providers: string[] = [];
+    const results: AnalysisResult[] = []
+    const providers: string[] = []
 
     // Run all analysis types
     for (const analysisType of this.config.analysisTypes) {
       const result = await this.analyzeUpdates(packages, workspaceInfo, {
         ...options,
         analysisType,
-      });
-      results.push(result);
+      })
+      results.push(result)
       if (!providers.includes(result.provider)) {
-        providers.push(result.provider);
+        providers.push(result.provider)
       }
     }
 
     // Merge results
-    const merged = this.mergeResults(results);
+    const merged = this.mergeResults(results)
 
     return {
       primary: results[0]!,
@@ -363,7 +363,7 @@ export class AIAnalysisService {
       merged,
       providers,
       timestamp: new Date(),
-    };
+    }
   }
 
   /**
@@ -371,22 +371,22 @@ export class AIAnalysisService {
    */
   private mergeResults(results: AnalysisResult[]): AnalysisResult {
     if (results.length === 0) {
-      throw new Error('No results to merge');
+      throw new Error('No results to merge')
     }
 
     if (results.length === 1) {
-      return results[0]!;
+      return results[0]!
     }
 
     // Merge recommendations by package
-    const recommendationMap = new Map<string, Recommendation>();
+    const recommendationMap = new Map<string, Recommendation>()
 
     for (const result of results) {
       for (const rec of result.recommendations) {
-        const existing = recommendationMap.get(rec.package);
+        const existing = recommendationMap.get(rec.package)
 
         if (!existing) {
-          recommendationMap.set(rec.package, { ...rec });
+          recommendationMap.set(rec.package, { ...rec })
         } else {
           // Merge: take higher risk level, combine reasons
           const mergedRec: Recommendation = {
@@ -401,20 +401,20 @@ export class AIAnalysisService {
             securityFixes: [...(existing.securityFixes || []), ...(rec.securityFixes || [])].filter(
               (v, i, a) => a.indexOf(v) === i
             ),
-          };
-          recommendationMap.set(rec.package, mergedRec);
+          }
+          recommendationMap.set(rec.package, mergedRec)
         }
       }
     }
 
     // Calculate average confidence
-    const avgConfidence = results.reduce((sum, r) => sum + r.confidence, 0) / results.length;
+    const avgConfidence = results.reduce((sum, r) => sum + r.confidence, 0) / results.length
 
     // Collect all warnings
-    const allWarnings = results.flatMap((r) => r.warnings || []);
+    const allWarnings = results.flatMap((r) => r.warnings || [])
 
     // Total processing time
-    const totalProcessingTime = results.reduce((sum, r) => sum + (r.processingTimeMs || 0), 0);
+    const totalProcessingTime = results.reduce((sum, r) => sum + (r.processingTimeMs || 0), 0)
 
     return {
       provider: results.map((r) => r.provider).join(', '),
@@ -425,7 +425,7 @@ export class AIAnalysisService {
       warnings: allWarnings.filter((v, i, a) => a.indexOf(v) === i),
       timestamp: new Date(),
       processingTimeMs: totalProcessingTime,
-    };
+    }
   }
 
   /**
@@ -435,10 +435,10 @@ export class AIAnalysisService {
     a: Recommendation['riskLevel'],
     b: Recommendation['riskLevel']
   ): Recommendation['riskLevel'] {
-    const riskOrder: Recommendation['riskLevel'][] = ['low', 'medium', 'high', 'critical'];
-    const aIndex = riskOrder.indexOf(a);
-    const bIndex = riskOrder.indexOf(b);
-    return aIndex >= bIndex ? a : b;
+    const riskOrder: Recommendation['riskLevel'][] = ['low', 'medium', 'high', 'critical']
+    const aIndex = riskOrder.indexOf(a)
+    const bIndex = riskOrder.indexOf(b)
+    return aIndex >= bIndex ? a : b
   }
 
   /**
@@ -448,10 +448,10 @@ export class AIAnalysisService {
     a: Recommendation['action'],
     b: Recommendation['action']
   ): Recommendation['action'] {
-    const actionOrder: Recommendation['action'][] = ['update', 'defer', 'review', 'skip'];
-    const aIndex = actionOrder.indexOf(a);
-    const bIndex = actionOrder.indexOf(b);
-    return aIndex >= bIndex ? a : b;
+    const actionOrder: Recommendation['action'][] = ['update', 'defer', 'review', 'skip']
+    const aIndex = actionOrder.indexOf(a)
+    const bIndex = actionOrder.indexOf(b)
+    return aIndex >= bIndex ? a : b
   }
 
   /**
@@ -476,7 +476,7 @@ export class AIAnalysisService {
       confidence: 0,
       warnings: ['AI analysis is disabled in configuration'],
       timestamp: new Date(),
-    };
+    }
   }
 
   /**
@@ -503,28 +503,28 @@ export class AIAnalysisService {
         'No AI CLI tools detected. Install Claude, Gemini, or Codex for AI-powered analysis.',
       ],
       timestamp: new Date(),
-    };
+    }
   }
 
   /**
    * Invalidate cache for specific packages
    */
   invalidateCache(packageNames: string[]): void {
-    this.cache.invalidateForPackages(packageNames);
+    this.cache.invalidateForPackages(packageNames)
   }
 
   /**
    * Clear all cached analysis results
    */
   clearCache(): void {
-    this.cache.clear();
+    this.cache.clear()
   }
 
   /**
    * Get cache statistics
    */
   getCacheStats() {
-    return this.cache.getStats();
+    return this.cache.getStats()
   }
 
   /**
@@ -533,43 +533,43 @@ export class AIAnalysisService {
   private async fetchSecurityData(
     packages: PackageUpdateInfo[]
   ): Promise<Map<string, SecurityVulnerabilityData>> {
-    const securityData = new Map<string, SecurityVulnerabilityData>();
+    const securityData = new Map<string, SecurityVulnerabilityData>()
 
     try {
       // Query security data for target versions
       const packagesToQuery = packages.map((pkg) => ({
         name: pkg.name,
         version: pkg.targetVersion,
-      }));
+      }))
 
-      const reports = await this.securityService.queryMultiplePackages(packagesToQuery);
+      const reports = await this.securityService.queryMultiplePackages(packagesToQuery)
 
       // Convert SecurityAdvisoryReport to SecurityVulnerabilityData
       for (const [key, report] of reports) {
         // If version has critical/high vulnerabilities, find a safe version
         let safeVersion:
           | {
-              version: string;
-              sameMajor: boolean;
-              sameMinor: boolean;
-              versionsChecked: number;
+              version: string
+              sameMajor: boolean
+              sameMinor: boolean
+              versionsChecked: number
               skippedVersions?: Array<{
-                version: string;
+                version: string
                 vulnerabilities: Array<{
-                  id: string;
-                  severity: string;
-                  summary: string;
-                }>;
-              }>;
+                  id: string
+                  severity: string
+                  summary: string
+                }>
+              }>
             }
-          | undefined;
+          | undefined
         if (report.hasCriticalVulnerabilities || report.hasHighVulnerabilities) {
           const foundSafeVersion = await this.securityService.findSafeVersion(
             report.packageName,
             report.version
-          );
+          )
           if (foundSafeVersion) {
-            safeVersion = foundSafeVersion;
+            safeVersion = foundSafeVersion
           }
         }
 
@@ -588,14 +588,14 @@ export class AIAnalysisService {
           hasHighVulnerabilities: report.hasHighVulnerabilities,
           totalVulnerabilities: report.totalVulnerabilities,
           safeVersion,
-        });
+        })
       }
     } catch (error) {
       // Log error but don't fail the analysis - security data is supplementary
-      console.error('Failed to fetch security data:', (error as Error).message);
+      console.error('Failed to fetch security data:', (error as Error).message)
     }
 
-    return securityData;
+    return securityData
   }
 
   /**
@@ -603,29 +603,29 @@ export class AIAnalysisService {
    */
   async isAvailable(): Promise<boolean> {
     if (!this.config.enabled) {
-      return false;
+      return false
     }
 
-    await this.initializeProviders();
-    const provider = await this.getBestProvider();
+    await this.initializeProviders()
+    const provider = await this.getBestProvider()
 
-    return provider !== null || this.config.fallback.useRuleEngine;
+    return provider !== null || this.config.fallback.useRuleEngine
   }
 
   /**
    * Get service status summary
    */
   async getStatus(): Promise<{
-    enabled: boolean;
-    providers: AIProviderInfo[];
-    activeProvider: string | null;
-    cacheEnabled: boolean;
-    cacheStats: ReturnType<AnalysisCache['getStats']>;
-    fallbackEnabled: boolean;
+    enabled: boolean
+    providers: AIProviderInfo[]
+    activeProvider: string | null
+    cacheEnabled: boolean
+    cacheStats: ReturnType<AnalysisCache['getStats']>
+    fallbackEnabled: boolean
   }> {
-    await this.initializeProviders();
-    const providers = await this.getAvailableProviders();
-    const bestProvider = await this.getBestProvider();
+    await this.initializeProviders()
+    const providers = await this.getAvailableProviders()
+    const bestProvider = await this.getBestProvider()
 
     return {
       enabled: this.config.enabled,
@@ -634,6 +634,6 @@ export class AIAnalysisService {
       cacheEnabled: this.config.cache.enabled,
       cacheStats: this.cache.getStats(),
       fallbackEnabled: this.config.fallback.enabled,
-    };
+    }
   }
 }

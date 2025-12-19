@@ -1,14 +1,14 @@
 import glob from 'fast-glob'
-import { type Metadata } from 'next'
-import { NextIntlClientProvider } from 'next-intl'
-import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server'
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Script from 'next/script'
+import { NextIntlClientProvider } from 'next-intl'
+import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server'
 
 import { Providers } from '@/app/[locale]/providers'
 import { Layout } from '@/components/Layout'
-import { type Section } from '@/components/SectionProvider'
-import { locales, type Locale } from '@/i18n'
+import type { Section } from '@/components/SectionProvider'
+import { type Locale, locales } from '@/i18n'
 
 import '@/styles/tailwind.css'
 
@@ -47,14 +47,14 @@ export default async function LocaleLayout({ children, params }: Props) {
   // Providing all messages to the client side is the easiest way to get started
   const messages = await getMessages({ locale })
 
-  let pages = await glob('**/*.mdx', { cwd: 'src/app/[locale]' })
-  let allSectionsEntries = (await Promise.all(
+  const pages = await glob('**/*.mdx', { cwd: 'src/app/[locale]' })
+  const allSectionsEntries = (await Promise.all(
     pages.map(async (filename) => [
-      '/' + filename.replace(/(^|\/)page\.mdx$/, ''),
+      `/${filename.replace(/(^|\/)page\.mdx$/, '')}`,
       (await import(`./${filename}`)).sections,
     ])
   )) as Array<[string, Array<Section>]>
-  let allSections = Object.fromEntries(allSectionsEntries)
+  const allSections = Object.fromEntries(allSectionsEntries)
 
   return (
     <html lang={locale} className="h-full" suppressHydrationWarning>

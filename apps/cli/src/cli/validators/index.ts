@@ -2,4 +2,4 @@
  * CLI Validators Entry Point
  */
 
-export * from './commandValidator.js';
+export * from './commandValidator.js'

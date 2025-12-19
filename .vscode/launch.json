@@ -15,10 +15,7 @@
         "PCU_DEBUG": "true"
       },
       "runtimeArgs": ["--loader", "tsx/esm"],
-      "skipFiles": [
-        "<node_internals>/**",
-        "node_modules/**"
-      ],
+      "skipFiles": ["<node_internals>/**", "node_modules/**"],
       "sourceMaps": true,
       "resolveSourceMapLocations": [
         "${workspaceFolder}/**",
@@ -39,10 +36,7 @@
         "PCU_DEBUG": "true"
       },
       "runtimeArgs": ["--loader", "tsx/esm"],
-      "skipFiles": [
-        "<node_internals>/**",
-        "node_modules/**"
-      ],
+      "skipFiles": ["<node_internals>/**", "node_modules/**"],
       "sourceMaps": true,
       "resolveSourceMapLocations": [
         "${workspaceFolder}/**",
@@ -61,10 +55,7 @@
         "NODE_ENV": "test",
         "PCU_TEST_MODE": "true"
       },
-      "skipFiles": [
-        "<node_internals>/**",
-        "node_modules/**"
-      ],
+      "skipFiles": ["<node_internals>/**", "node_modules/**"],
       "sourceMaps": true
     },
     {
@@ -79,10 +70,7 @@
         "NODE_ENV": "test",
         "PCU_TEST_MODE": "true"
       },
-      "skipFiles": [
-        "<node_internals>/**",
-        "node_modules/**"
-      ],
+      "skipFiles": ["<node_internals>/**", "node_modules/**"],
       "sourceMaps": true
     },
     {
@@ -97,10 +85,7 @@
         "NODE_ENV": "test",
         "PCU_E2E_MODE": "true"
       },
-      "skipFiles": [
-        "<node_internals>/**",
-        "node_modules/**"
-      ],
+      "skipFiles": ["<node_internals>/**", "node_modules/**"],
       "sourceMaps": true
     }
   ]

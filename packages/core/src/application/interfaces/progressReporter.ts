@@ -7,16 +7,16 @@
  */
 
 export interface ProgressReporter {
-  start(message: string, total?: number): void;
-  update(current: number, message?: string): void;
-  increment(message?: string): void;
-  success(message?: string): void;
-  fail(message?: string): void;
-  stop(): void;
+  start(message: string, total?: number): void
+  update(current: number, message?: string): void
+  increment(message?: string): void
+  success(message?: string): void
+  fail(message?: string): void
+  stop(): void
 }
 
 export interface ProgressReporterOptions {
-  title?: string;
-  total?: number;
-  current?: number;
+  title?: string
+  total?: number
+  current?: number
 }

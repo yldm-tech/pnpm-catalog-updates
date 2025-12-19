@@ -4,22 +4,22 @@
  * Provides smart prompts and auto-completion for CLI commands
  */
 
-import { FileSystemService } from '@pcu/core';
-import chalk from 'chalk';
-import inquirer from 'inquirer';
-import { StyledText } from '../themes/colorTheme.js';
+import { FileSystemService } from '@pcu/core'
+import chalk from 'chalk'
+import inquirer from 'inquirer'
+import { StyledText } from '../themes/colorTheme.js'
 
 export interface AutoCompleteOption {
-  name: string;
-  value: string;
-  description?: string;
+  name: string
+  value: string
+  description?: string
 }
 
 export class InteractivePrompts {
-  private fsService: FileSystemService;
+  private fsService: FileSystemService
 
   constructor() {
-    this.fsService = new FileSystemService();
+    this.fsService = new FileSystemService()
   }
 
   /**
@@ -29,14 +29,14 @@ export class InteractivePrompts {
     packages: Array<{ name: string; current: string; latest: string; type: string }>
   ): Promise<string[]> {
     if (packages.length === 0) {
-      return [];
+      return []
     }
 
     const choices = packages.map((pkg) => ({
       name: this.formatPackageChoice(pkg),
       value: pkg.name,
       checked: false,
-    }));
+    }))
 
     const answers = await inquirer.prompt({
       type: 'checkbox',
@@ -45,12 +45,12 @@ export class InteractivePrompts {
       choices,
       pageSize: 15,
       validate: (input: unknown) => {
-        const selected = input as string[];
-        return selected.length > 0 || 'Please select at least one package';
+        const selected = input as string[]
+        return selected.length > 0 || 'Please select at least one package'
       },
-    });
+    })
 
-    return answers.selectedPackages;
+    return answers.selectedPackages
   }
 
   /**
@@ -58,17 +58,17 @@ export class InteractivePrompts {
    */
   async selectCatalog(catalogs: string[]): Promise<string | null> {
     if (catalogs.length === 0) {
-      return null;
+      return null
     }
 
     if (catalogs.length === 1) {
-      return catalogs[0] ?? null;
+      return catalogs[0] ?? null
     }
 
     const choices = [
       { name: 'All catalogs', value: 'all' },
       ...catalogs.map((name) => ({ name, value: name })),
-    ];
+    ]
 
     const answers = await inquirer.prompt([
       {
@@ -78,9 +78,9 @@ export class InteractivePrompts {
         choices,
         pageSize: 10,
       },
-    ]);
+    ])
 
-    return answers.catalog === 'all' ? null : answers.catalog;
+    return answers.catalog === 'all' ? null : answers.catalog
   }
 
   /**
@@ -93,7 +93,7 @@ export class InteractivePrompts {
       { name: 'Minor (non-breaking)', value: 'minor' },
       { name: 'Patch (bug fixes only)', value: 'patch' },
       { name: 'Newest (latest release)', value: 'newest' },
-    ];
+    ]
 
     const answers = await inquirer.prompt([
       {
@@ -102,18 +102,18 @@ export class InteractivePrompts {
         message: StyledText.iconUpdate('Select update strategy:'),
         choices: strategies,
       },
-    ]);
+    ])
 
-    return answers.strategy;
+    return answers.strategy
   }
 
   /**
    * Confirm dangerous operations
    */
   async confirmDangerousOperation(operation: string, details?: string): Promise<boolean> {
-    console.log('');
+    console.log('')
     if (details) {
-      console.log(chalk.yellow('⚠️  Warning:'), details);
+      console.log(chalk.yellow('⚠️  Warning:'), details)
     }
 
     const answers = await inquirer.prompt([
@@ -123,9 +123,9 @@ export class InteractivePrompts {
         message: StyledText.warning(`Are you sure you want to ${operation}?`),
         default: false,
       },
-    ]);
+    ])
 
-    return answers.confirmed;
+    return answers.confirmed
   }
 
   /**
@@ -143,20 +143,20 @@ export class InteractivePrompts {
         choices: packages.map((pkg) => ({ name: pkg, value: pkg })),
         pageSize: 10,
       },
-    ]);
+    ])
 
-    return answers.package;
+    return answers.package
   }
 
   /**
    * Workspace path selection with auto-complete
    */
   async selectWorkspacePath(): Promise<string> {
-    const currentDir = process.cwd();
+    const currentDir = process.cwd()
     const choices = [
       { name: `Current directory (${currentDir})`, value: currentDir },
       { name: 'Browse for directory...', value: 'browse' },
-    ];
+    ]
 
     const answers = await inquirer.prompt([
       {
@@ -165,20 +165,20 @@ export class InteractivePrompts {
         message: StyledText.icon('📁', 'Select workspace directory:'),
         choices,
       },
-    ]);
+    ])
 
     if (answers.path === 'browse') {
-      return this.browseDirectory();
+      return this.browseDirectory()
     }
 
-    return answers.path;
+    return answers.path
   }
 
   /**
    * Browse directory structure
    */
   private async browseDirectory(currentPath = process.cwd()): Promise<string> {
-    const directoryNames = await this.fsService.listDirectories(currentPath);
+    const directoryNames = await this.fsService.listDirectories(currentPath)
     const choices = [
       { name: '.. (parent directory)', value: '..' },
       { name: `. (current: ${currentPath})`, value: '.' },
@@ -186,7 +186,7 @@ export class InteractivePrompts {
         name: `📁 ${name}`,
         value: `${currentPath}/${name}`,
       })),
-    ];
+    ]
 
     const answers = await inquirer.prompt([
       {
@@ -196,24 +196,24 @@ export class InteractivePrompts {
         choices,
         pageSize: 15,
       },
-    ]);
+    ])
 
     if (answers.selected === '.') {
-      return currentPath;
+      return currentPath
     }
 
     if (answers.selected === '..') {
-      const parent = currentPath.split('/').slice(0, -1).join('/') || '/';
-      return this.browseDirectory(parent);
+      const parent = currentPath.split('/').slice(0, -1).join('/') || '/'
+      return this.browseDirectory(parent)
     }
 
     // Check if this directory contains a pnpm workspace
-    const workspaceFiles = ['pnpm-workspace.yaml', 'pnpm-workspace.yml'];
-    let hasWorkspace = false;
+    const workspaceFiles = ['pnpm-workspace.yaml', 'pnpm-workspace.yml']
+    let hasWorkspace = false
     for (const file of workspaceFiles) {
       if (await this.fsService.exists(`${answers.selected}/${file}`)) {
-        hasWorkspace = true;
-        break;
+        hasWorkspace = true
+        break
       }
     }
 
@@ -225,21 +225,21 @@ export class InteractivePrompts {
           message: `Use ${answers.selected} as workspace?`,
           default: true,
         },
-      ]);
+      ])
 
       if (confirm.useThis) {
-        return answers.selected;
+        return answers.selected
       }
     }
 
-    return this.browseDirectory(answers.selected);
+    return this.browseDirectory(answers.selected)
   }
 
   /**
    * Multi-step configuration wizard
    */
   async configurationWizard(): Promise<any> {
-    console.log(chalk.bold.blue('\n🧙‍♂️ Configuration Wizard\n'));
+    console.log(chalk.bold.blue('\n🧙‍♂️ Configuration Wizard\n'))
 
     const themeAnswer = await inquirer.prompt({
       type: 'list',
@@ -252,21 +252,21 @@ export class InteractivePrompts {
         { name: 'Neon - High contrast', value: 'neon' },
       ],
       default: 'default',
-    });
+    })
 
     const interactiveAnswer = await inquirer.prompt({
       type: 'confirm',
       name: 'interactive',
       message: 'Enable interactive mode by default?',
       default: true,
-    });
+    })
 
     const backupAnswer = await inquirer.prompt({
       type: 'confirm',
       name: 'backup',
       message: 'Create backups before updates?',
       default: true,
-    });
+    })
 
     const strategyAnswer = await inquirer.prompt({
       type: 'list',
@@ -278,7 +278,7 @@ export class InteractivePrompts {
         { name: 'Patch updates (bug fixes)', value: 'patch' },
       ],
       default: 'latest',
-    });
+    })
 
     const timeoutAnswer = await inquirer.prompt({
       type: 'number',
@@ -286,10 +286,10 @@ export class InteractivePrompts {
       message: 'Network timeout (seconds):',
       default: 30,
       validate: (input: number | undefined) => {
-        if (input === undefined) return 'Timeout is required';
-        return input > 0 || 'Timeout must be positive';
+        if (input === undefined) return 'Timeout is required'
+        return input > 0 || 'Timeout must be positive'
       },
-    });
+    })
 
     const answers = {
       ...themeAnswer,
@@ -297,27 +297,27 @@ export class InteractivePrompts {
       ...backupAnswer,
       ...strategyAnswer,
       ...timeoutAnswer,
-    };
+    }
 
-    return answers;
+    return answers
   }
 
   /**
    * Impact preview before update
    */
   async previewImpact(impact: any): Promise<boolean> {
-    console.log(chalk.bold.blue('\n📊 Impact Preview\n'));
+    console.log(chalk.bold.blue('\n📊 Impact Preview\n'))
 
     // Display impact summary
-    console.log(`Packages to update: ${impact.totalUpdates}`);
-    console.log(`Risk level: ${impact.riskLevel}`);
-    console.log(`Affected packages: ${impact.affectedCount}`);
+    console.log(`Packages to update: ${impact.totalUpdates}`)
+    console.log(`Risk level: ${impact.riskLevel}`)
+    console.log(`Affected packages: ${impact.affectedCount}`)
 
     if (impact.securityUpdates > 0) {
-      console.log(StyledText.iconSecurity(`${impact.securityUpdates} security updates`));
+      console.log(StyledText.iconSecurity(`${impact.securityUpdates} security updates`))
     }
 
-    console.log('');
+    console.log('')
 
     const answers = await inquirer.prompt([
       {
@@ -326,9 +326,9 @@ export class InteractivePrompts {
         message: 'Proceed with update?',
         default: true,
       },
-    ]);
+    ])
 
-    return answers.proceed;
+    return answers.proceed
   }
 
   /**
@@ -340,7 +340,7 @@ export class InteractivePrompts {
       { name: 'Skip this package', value: 'skip' },
       { name: 'Continue with remaining', value: 'continue' },
       { name: 'Abort operation', value: 'abort' },
-    ];
+    ]
 
     const answers = await inquirer.prompt([
       {
@@ -349,9 +349,9 @@ export class InteractivePrompts {
         message: StyledText.iconError(`Error: ${error}`),
         choices: options,
       },
-    ]);
+    ])
 
-    return answers.action;
+    return answers.action
   }
 
   /**
@@ -365,9 +365,9 @@ export class InteractivePrompts {
         message: StyledText.iconUpdate(message),
         default: true,
       },
-    ]);
+    ])
 
-    return answers.update;
+    return answers.update
   }
 
   /**
@@ -378,11 +378,11 @@ export class InteractivePrompts {
       major: chalk.red,
       minor: chalk.yellow,
       patch: chalk.green,
-    };
+    }
 
-    const typeColor = updateTypeColor[pkg.type] || chalk.gray;
+    const typeColor = updateTypeColor[pkg.type] || chalk.gray
 
-    return `${pkg.name} ${chalk.dim(pkg.current)} → ${typeColor(pkg.latest)} ${chalk.dim(`(${pkg.type})`)}`;
+    return `${pkg.name} ${chalk.dim(pkg.current)} → ${typeColor(pkg.latest)} ${chalk.dim(`(${pkg.type})`)}`
   }
 }
 
@@ -391,7 +391,7 @@ export class InteractivePrompts {
  */
 export class AutoCompleteManager {
   static async suggestWorkspaces(current: string): Promise<string[]> {
-    const suggestions: string[] = [];
+    const suggestions: string[] = []
 
     // Common workspace patterns
     const patterns = [
@@ -399,32 +399,32 @@ export class AutoCompleteManager {
       'pnpm-workspace.yml',
       '**/*/pnpm-workspace.yaml',
       '**/*/pnpm-workspace.yml',
-    ];
+    ]
 
     for (const pattern of patterns) {
       try {
-        const { glob } = await import('glob');
-        const matches = await glob(pattern);
+        const { glob } = await import('glob')
+        const matches = await glob(pattern)
         matches.forEach((match: string) => {
-          const dir = match.replace(/\/pnpm-workspace\.ya?ml$/, '');
+          const dir = match.replace(/\/pnpm-workspace\.ya?ml$/, '')
           if (!suggestions.includes(dir)) {
-            suggestions.push(dir);
+            suggestions.push(dir)
           }
-        });
+        })
       } catch {
         // Ignore errors
       }
     }
 
-    return suggestions.filter((s) => s.toLowerCase().includes(current.toLowerCase()));
+    return suggestions.filter((s) => s.toLowerCase().includes(current.toLowerCase()))
   }
 
   static async suggestCatalogs(): Promise<string[]> {
-    return [];
+    return []
   }
 
   static async suggestPackages(): Promise<string[]> {
-    return [];
+    return []
   }
 }
 
@@ -433,8 +433,8 @@ export class AutoCompleteManager {
  */
 export class InteractiveCommandBuilder {
   static async buildCommand(): Promise<{
-    command: string;
-    options: Record<string, any>;
+    command: string
+    options: Record<string, any>
   }> {
     const baseCommand = await inquirer.prompt([
       {
@@ -448,9 +448,9 @@ export class InteractiveCommandBuilder {
           { name: 'Show workspace info', value: 'workspace' },
         ],
       },
-    ]);
+    ])
 
-    const options: Record<string, any> = {};
+    const options: Record<string, any> = {}
 
     // Common options
     const common = await inquirer.prompt([
@@ -466,13 +466,13 @@ export class InteractiveCommandBuilder {
         ],
         default: 'table',
       },
-    ]);
+    ])
 
-    options.format = common.format;
+    options.format = common.format
 
     // Command-specific options
     switch (baseCommand.command) {
-      case 'update':
+      case 'update': {
         const updateOpts = await inquirer.prompt([
           {
             type: 'confirm',
@@ -492,11 +492,12 @@ export class InteractiveCommandBuilder {
             message: 'Create backup?',
             default: true,
           },
-        ]);
-        Object.assign(options, updateOpts);
-        break;
+        ])
+        Object.assign(options, updateOpts)
+        break
+      }
 
-      case 'check':
+      case 'check': {
         const checkOpts = await inquirer.prompt([
           {
             type: 'confirm',
@@ -504,14 +505,15 @@ export class InteractiveCommandBuilder {
             message: 'Include pre-release versions?',
             default: false,
           },
-        ]);
-        options.prerelease = checkOpts.includePrerelease;
-        break;
+        ])
+        options.prerelease = checkOpts.includePrerelease
+        break
+      }
     }
 
     return {
       command: baseCommand.command,
       options,
-    };
+    }
   }
 }

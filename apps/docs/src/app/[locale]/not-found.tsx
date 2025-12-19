@@ -1,8 +1,8 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/Button'
 import { HeroPattern } from '@/components/HeroPattern'
-import { useTranslations } from 'next-intl'
 
 export default function NotFound() {
   const t = useTranslations('NotFound')

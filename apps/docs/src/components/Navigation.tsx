@@ -184,7 +184,7 @@ export function useNavigation(): Array<NavGroup> {
   const isProduction = process.env.NODE_ENV === 'production'
 
   // Define which pages go in which sections
-  const gettingStartedPages = ['quickstart', 'command-reference', 'configuration']
+  const gettingStartedPages = ['quickstart', 'command-reference', 'configuration', 'ai-analysis']
   const guidesPages = [
     'examples',
     'development',
@@ -246,6 +246,7 @@ const createStaticNavigation = (): Array<NavGroup> => {
         { title: 'Quick Start', href: '/quickstart' },
         { title: 'Command Reference', href: '/command-reference' },
         { title: 'Configuration', href: '/configuration' },
+        { title: 'AI Analysis', href: '/ai-analysis' },
       ],
     },
     {

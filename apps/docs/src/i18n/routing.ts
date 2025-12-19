@@ -17,6 +17,7 @@ export const routing = defineRouting({
     '/quickstart': '/quickstart',
     '/command-reference': '/command-reference',
     '/configuration': '/configuration',
+    '/ai-analysis': '/ai-analysis',
     '/examples': '/examples',
     '/troubleshooting': '/troubleshooting',
     '/development': '/development',

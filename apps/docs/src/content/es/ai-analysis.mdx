@@ -1,0 +1,260 @@
+export const metadata = {
+  title: 'Análisis de IA',
+  description:
+    'Utilice análisis impulsado por IA para obtener recomendaciones inteligentes para actualizaciones de dependencias, evaluaciones de seguridad y detección de cambios incompatibles.',
+};
+
+# Análisis de IA
+
+PCU se integra con herramientas CLI de IA para proporcionar análisis inteligente de dependencias, evaluaciones de seguridad y recomendaciones de actualización. {{ className: 'lead' }}
+
+## Descripción General
+
+El análisis de IA mejora las capacidades de PCU al proporcionar:
+
+- **Análisis de Impacto**: Comprenda cómo las actualizaciones afectan su código
+- **Evaluación de Seguridad**: Obtenga análisis de vulnerabilidades de seguridad impulsado por IA
+- **Verificación de Compatibilidad**: Detecte posibles cambios incompatibles
+- **Recomendaciones de Actualización**: Reciba sugerencias inteligentes para actualizaciones seguras
+
+## Proveedores de IA Soportados
+
+PCU detecta automáticamente y utiliza las herramientas CLI de IA disponibles en el siguiente orden de prioridad:
+
+| Proveedor | Prioridad | Capacidades                                         |
+| --------- | --------- | --------------------------------------------------- |
+| Gemini    | 100       | Impacto, Seguridad, Compatibilidad, Recomendaciones |
+| Claude    | 80        | Impacto, Seguridad, Compatibilidad, Recomendaciones |
+| Codex     | 60        | Impacto, Compatibilidad, Recomendaciones            |
+| Cursor    | 40        | Impacto, Recomendaciones                            |
+
+<Note>
+  Si no hay proveedores de IA disponibles, PCU recurre automáticamente a un motor de análisis basado
+  en reglas que proporciona análisis básico de dependencias utilizando reglas predefinidas.
+</Note>
+
+---
+
+## Comandos
+
+### Verificar Proveedores de IA Disponibles
+
+Vea qué herramientas de IA están disponibles en su sistema:
+
+```bash
+pcu ai
+```
+
+Este comando muestra:
+
+- Herramientas CLI de IA disponibles detectadas en su sistema
+- Información de versión para cada proveedor
+- El mejor proveedor disponible que se utilizará para el análisis
+
+### Actualización con IA
+
+Actualice dependencias con análisis impulsado por IA:
+
+<CodeGroup>
+
+```bash {{ title: 'Actualización IA Básica' }}
+pcu update --ai
+pcu u --ai
+```
+
+```bash {{ title: 'Actualización IA Interactiva' }}
+pcu update --ai --interactive
+pcu u --ai -i
+```
+
+</CodeGroup>
+
+La actualización mejorada con IA proporciona:
+
+- Evaluación de riesgo inteligente para cada actualización
+- Detección de cambios incompatibles con explicaciones
+- Identificación de vulnerabilidades de seguridad
+- Orden de actualización recomendado
+
+### Análisis con IA
+
+Analice una actualización de paquete específica con asistencia de IA:
+
+<CodeGroup>
+
+```bash {{ title: 'Analizar Paquete' }}
+pcu analyze react
+pcu a lodash
+```
+
+```bash {{ title: 'Analizar Versión Específica' }}
+pcu analyze react 19.0.0
+pcu a typescript 5.5.0
+```
+
+</CodeGroup>
+
+<Note>
+  El comando `analyze` usa el catálogo `default` por defecto. Puede especificar un catálogo
+  diferente como primer argumento: `pcu analyze my-catalog react`
+</Note>
+
+---
+
+## Tipos de Análisis
+
+### Análisis de Impacto
+
+Evalúe cómo una actualización de dependencia afectará su proyecto:
+
+- Identifique todos los paquetes del workspace que usan la dependencia
+- Analice cambios de API entre versiones
+- Estime el esfuerzo de migración requerido
+- Sugiera áreas de enfoque para pruebas
+
+### Análisis de Seguridad
+
+Proporciona evaluación enfocada en seguridad:
+
+- Identifique vulnerabilidades conocidas en la versión actual
+- Verifique correcciones de seguridad en la nueva versión
+- Evalúe actualizaciones de paquetes relacionados con seguridad
+- Recomiende mejores prácticas de seguridad
+
+### Análisis de Compatibilidad
+
+Verifique posibles problemas de compatibilidad:
+
+- Detecte cambios incompatibles de API
+- Identifique conflictos de dependencias peer
+- Verifique compatibilidad de versión de Node.js
+- Valide compatibilidad de TypeScript
+
+### Recomendaciones
+
+Genere recomendaciones accionables:
+
+- Sugiera orden óptimo de actualización
+- Recomiende rangos de versión
+- Identifique paquetes para actualizar juntos
+- Proporcione estrategias de reversión
+
+---
+
+## Comportamiento de Respaldo
+
+Cuando los proveedores de IA no están disponibles, PCU utiliza un motor de análisis basado en reglas incorporado:
+
+### Características del Análisis Basado en Reglas
+
+- **Evaluación de Salto de Versión**: Evalúe el riesgo basado en cambios de semver
+- **Patrones de Cambios Conocidos**: Detecte cambios incompatibles para paquetes populares (React, TypeScript, ESLint, etc.)
+- **Paquetes Sensibles a Seguridad**: Marque paquetes relacionados con seguridad para revisión cuidadosa
+- **Estimación de Esfuerzo**: Proporcione estimaciones de esfuerzo de migración
+
+### Niveles de Riesgo
+
+| Nivel   | Descripción                                                |
+| ------- | ---------------------------------------------------------- |
+| Bajo    | Actualizaciones patch, típicamente seguras de aplicar      |
+| Medio   | Actualizaciones minor o saltos de versión minor grandes    |
+| Alto    | Actualizaciones de versión major con cambios incompatibles |
+| Crítico | Múltiples saltos de versión major o versiones pre-release  |
+
+---
+
+## Configuración
+
+### Variables de Entorno
+
+<Properties>
+  <Property name="GEMINI_PATH" type="string">
+    Ruta personalizada al ejecutable CLI de Gemini
+  </Property>
+  <Property name="CLAUDE_PATH" type="string">
+    Ruta personalizada al ejecutable CLI de Claude
+  </Property>
+  <Property name="CODEX_PATH" type="string">
+    Ruta personalizada al ejecutable CLI de Codex
+  </Property>
+  <Property name="CURSOR_PATH" type="string">
+    Ruta personalizada al ejecutable CLI de Cursor
+  </Property>
+</Properties>
+
+### Métodos de Detección
+
+PCU utiliza múltiples estrategias para detectar proveedores de IA:
+
+1. **Variables de Entorno**: Verificar variables de ruta personalizadas
+2. **Búsqueda en PATH**: Usar comando `which` para encontrar ejecutables
+3. **Rutas Conocidas**: Verificar ubicaciones de instalación comunes
+4. **Rutas de Aplicación**: Verificar aplicaciones GUI (ej. Cursor.app)
+
+---
+
+## Ejemplos de Uso
+
+### Flujo de Trabajo de Actualización Segura
+
+```bash
+# Verificar actualizaciones con análisis de IA
+pcu check
+
+# Analizar actualizaciones específicas de alto riesgo
+pcu analyze react 19.0.0
+pcu analyze typescript 5.5.0
+
+# Realizar actualización interactiva guiada por IA
+pcu update --ai --interactive --create-backup
+```
+
+### Integración CI/CD
+
+```bash
+# Ejecutar análisis de IA en CI con salida JSON
+pcu update --ai --dry-run --format json > ai-analysis.json
+
+# Verificar actualizaciones de alto riesgo
+pcu analyze default typescript --format json | jq '.riskLevel'
+```
+
+### Análisis por Lotes
+
+```bash
+# Actualizar todos los paquetes con recomendaciones de IA
+pcu update --ai --target minor
+
+# Revisar actualizaciones major con análisis de IA
+pcu update --ai --target latest --confirm-major
+```
+
+---
+
+## Mejores Prácticas
+
+### Cuándo Usar Análisis de IA
+
+- **Actualizaciones de Versión Major**: Siempre use análisis de IA para saltos de versión major
+- **Paquetes Sensibles a Seguridad**: Use para paquetes de autenticación, criptografía y sesión
+- **Bases de Código Grandes**: La IA ayuda a identificar áreas afectadas en monorepos
+- **Detección de Cambios Incompatibles**: La IA proporciona explicaciones detalladas
+
+### Consideraciones de Rendimiento
+
+- El análisis de IA agrega tiempo de procesamiento comparado con actualizaciones estándar
+- Use `--dry-run` para previsualizar recomendaciones de IA sin aplicar cambios
+- Considere usar respaldo basado en reglas para pipelines CI/CD más rápidos cuando la IA no es crítica
+
+### Combinación con Otras Características
+
+```bash
+# Análisis de IA con escaneo de seguridad
+pcu update --ai && pcu security
+
+# Análisis de IA con respaldo
+pcu update --ai --create-backup
+
+# Análisis de IA con objetivo específico
+pcu update --ai --target minor --exclude "*-dev"
+```

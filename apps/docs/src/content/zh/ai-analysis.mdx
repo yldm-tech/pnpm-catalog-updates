@@ -1,0 +1,258 @@
+export const metadata = {
+  title: 'AI 分析',
+  description: '使用 AI 驱动的分析获取依赖更新的智能建议、安全评估和破坏性变更检测。',
+};
+
+# AI 分析
+
+PCU 集成了 AI CLI 工具，提供智能依赖分析、安全评估和更新建议。 {{ className: 'lead' }}
+
+## 概述
+
+AI 分析通过以下方式增强 PCU 的功能：
+
+- **影响分析**：了解更新如何影响您的代码库
+- **安全评估**：获取 AI 驱动的安全漏洞分析
+- **兼容性检查**：检测潜在的破坏性变更
+- **更新建议**：接收安全更新的智能建议
+
+## 支持的 AI 提供商
+
+PCU 自动检测并按以下优先级顺序使用可用的 AI CLI 工具：
+
+| 提供商 | 优先级 | 能力                     |
+| ------ | ------ | ------------------------ |
+| Gemini | 100    | 影响、安全、兼容性、建议 |
+| Claude | 80     | 影响、安全、兼容性、建议 |
+| Codex  | 60     | 影响、兼容性、建议       |
+| Cursor | 40     | 影响、建议               |
+
+<Note>
+  如果没有可用的 AI 提供商，PCU 会自动回退到基于规则的分析引擎，使用预定义规则提供基础依赖分析。
+</Note>
+
+---
+
+## 命令
+
+### 检查可用的 AI 提供商
+
+查看系统上可用的 AI 工具：
+
+```bash
+pcu ai
+```
+
+此命令显示：
+
+- 系统上检测到的可用 AI CLI 工具
+- 每个提供商的版本信息
+- 将用于分析的最佳可用提供商
+
+### AI 驱动的更新
+
+使用 AI 驱动的分析更新依赖：
+
+<CodeGroup>
+
+```bash {{ title: '基础 AI 更新' }}
+pcu update --ai
+pcu u --ai
+```
+
+```bash {{ title: '交互式 AI 更新' }}
+pcu update --ai --interactive
+pcu u --ai -i
+```
+
+</CodeGroup>
+
+AI 增强更新提供：
+
+- 每个更新的智能风险评估
+- 带说明的破坏性变更检测
+- 安全漏洞识别
+- 建议的更新顺序
+
+### AI 驱动的分析
+
+使用 AI 辅助分析特定包更新：
+
+<CodeGroup>
+
+```bash {{ title: '分析包' }}
+pcu analyze react
+pcu a lodash
+```
+
+```bash {{ title: '分析特定版本' }}
+pcu analyze react 19.0.0
+pcu a typescript 5.5.0
+```
+
+</CodeGroup>
+
+<Note>
+  `analyze` 命令默认使用 `default` catalog。您可以将不同的 catalog 指定为第一个参数：`pcu analyze
+  my-catalog react`
+</Note>
+
+---
+
+## 分析类型
+
+### 影响分析
+
+评估依赖更新将如何影响您的项目：
+
+- 识别使用该依赖的所有工作区包
+- 分析版本之间的 API 变更
+- 估算所需的迁移工作量
+- 建议测试重点区域
+
+### 安全分析
+
+提供以安全为重点的评估：
+
+- 识别当前版本中的已知漏洞
+- 检查新版本中的安全修复
+- 评估与安全相关的包更新
+- 推荐安全最佳实践
+
+### 兼容性分析
+
+检查潜在的兼容性问题：
+
+- 检测破坏性 API 变更
+- 识别对等依赖冲突
+- 检查 Node.js 版本兼容性
+- 验证 TypeScript 兼容性
+
+### 建议
+
+生成可操作的建议：
+
+- 建议最优更新顺序
+- 推荐版本范围
+- 识别应一起更新的包
+- 提供回滚策略
+
+---
+
+## 回退行为
+
+当 AI 提供商不可用时，PCU 使用内置的基于规则的分析引擎：
+
+### 基于规则的分析功能
+
+- **版本跳跃评估**：根据语义化版本变更评估风险
+- **已知破坏模式**：检测流行包（React、TypeScript、ESLint 等）的破坏性变更
+- **安全敏感包**：标记与安全相关的包以进行仔细审查
+- **工作量估算**：提供迁移工作量估算
+
+### 风险级别
+
+| 级别 | 描述                         |
+| ---- | ---------------------------- |
+| 低   | 补丁更新，通常可安全应用     |
+| 中   | 次要更新或较大的次要版本跳跃 |
+| 高   | 带有破坏性变更的主要版本更新 |
+| 关键 | 多个主要版本跳跃或预发布版本 |
+
+---
+
+## 配置
+
+### 环境变量
+
+<Properties>
+  <Property name="GEMINI_PATH" type="string">
+    Gemini CLI 可执行文件的自定义路径
+  </Property>
+  <Property name="CLAUDE_PATH" type="string">
+    Claude CLI 可执行文件的自定义路径
+  </Property>
+  <Property name="CODEX_PATH" type="string">
+    Codex CLI 可执行文件的自定义路径
+  </Property>
+  <Property name="CURSOR_PATH" type="string">
+    Cursor CLI 可执行文件的自定义路径
+  </Property>
+</Properties>
+
+### 检测方法
+
+PCU 使用多种策略检测 AI 提供商：
+
+1. **环境变量**：检查自定义路径变量
+2. **PATH 查找**：使用 `which` 命令查找可执行文件
+3. **已知路径**：检查常见安装位置
+4. **应用程序路径**：检查 GUI 应用程序（如 Cursor.app）
+
+---
+
+## 使用示例
+
+### 安全更新工作流
+
+```bash
+# 使用 AI 分析检查更新
+pcu check
+
+# 分析特定高风险更新
+pcu analyze react 19.0.0
+pcu analyze typescript 5.5.0
+
+# 执行 AI 引导的交互式更新
+pcu update --ai --interactive --create-backup
+```
+
+### CI/CD 集成
+
+```bash
+# 在 CI 中运行 AI 分析并输出 JSON
+pcu update --ai --dry-run --format json > ai-analysis.json
+
+# 检查高风险更新
+pcu analyze default typescript --format json | jq '.riskLevel'
+```
+
+### 批量分析
+
+```bash
+# 使用 AI 建议更新所有包
+pcu update --ai --target minor
+
+# 使用 AI 分析审查主要更新
+pcu update --ai --target latest --confirm-major
+```
+
+---
+
+## 最佳实践
+
+### 何时使用 AI 分析
+
+- **主要版本更新**：始终对主要版本升级使用 AI 分析
+- **安全敏感包**：用于认证、加密和会话包
+- **大型代码库**：AI 帮助识别跨 monorepo 的受影响区域
+- **破坏性变更检测**：AI 提供详细的破坏性变更解释
+
+### 性能考虑
+
+- 与标准更新相比，AI 分析会增加处理时间
+- 使用 `--dry-run` 预览 AI 建议而不应用变更
+- 当 AI 不是关键时，考虑对更快的 CI/CD 流水线使用基于规则的回退
+
+### 与其他功能结合
+
+```bash
+# AI 分析与安全扫描
+pcu update --ai && pcu security
+
+# AI 分析与备份
+pcu update --ai --create-backup
+
+# AI 分析与特定目标
+pcu update --ai --target minor --exclude "*-dev"
+```

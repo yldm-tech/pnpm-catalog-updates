@@ -33,11 +33,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  
+
   // GitHub Pages deployment paths (empty when using custom domain)
   basePath: isProduction && !useCustomDomain ? '/pnpm-catalog-updates' : '',
   assetPrefix: isProduction && !useCustomDomain ? '/pnpm-catalog-updates/' : '',
-  
+
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
   outputFileTracingIncludes: {
     '/**/*': ['./src/app/**/*.mdx'],

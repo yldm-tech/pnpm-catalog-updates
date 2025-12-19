@@ -21,15 +21,16 @@ AI analysis enhances PCU's capabilities by providing:
 
 PCU automatically detects and uses available AI CLI tools in the following priority order:
 
-| Provider | Priority | Capabilities |
-| -------- | -------- | ------------ |
+| Provider | Priority | Capabilities                                     |
+| -------- | -------- | ------------------------------------------------ |
 | Gemini   | 100      | Impact, Security, Compatibility, Recommendations |
 | Claude   | 80       | Impact, Security, Compatibility, Recommendations |
-| Codex    | 60       | Impact, Compatibility, Recommendations |
-| Cursor   | 40       | Impact, Recommendations |
+| Codex    | 60       | Impact, Compatibility, Recommendations           |
+| Cursor   | 40       | Impact, Recommendations                          |
 
 <Note>
-If no AI providers are available, PCU automatically falls back to a rule-based analysis engine that provides basic dependency analysis using predefined rules.
+  If no AI providers are available, PCU automatically falls back to a rule-based analysis engine
+  that provides basic dependency analysis using predefined rules.
 </Note>
 
 ---
@@ -45,6 +46,7 @@ pcu ai
 ```
 
 This command displays:
+
 - Available AI CLI tools detected on your system
 - Version information for each provider
 - The best available provider that will be used for analysis
@@ -68,6 +70,7 @@ pcu u --ai -i
 </CodeGroup>
 
 The AI-enhanced update provides:
+
 - Intelligent risk assessment for each update
 - Breaking change detection with explanations
 - Security vulnerability identification
@@ -92,7 +95,8 @@ pcu a typescript 5.5.0
 </CodeGroup>
 
 <Note>
-The `analyze` command uses the `default` catalog by default. You can specify a different catalog as the first argument: `pcu analyze my-catalog react`
+  The `analyze` command uses the `default` catalog by default. You can specify a different catalog
+  as the first argument: `pcu analyze my-catalog react`
 </Note>
 
 ---
@@ -150,11 +154,11 @@ When AI providers are unavailable, PCU uses a built-in rule-based analysis engin
 
 ### Risk Levels
 
-| Level    | Description |
-| -------- | ----------- |
-| Low      | Patch updates, typically safe to apply |
-| Medium   | Minor updates or large minor version jumps |
-| High     | Major version updates with breaking changes |
+| Level    | Description                                          |
+| -------- | ---------------------------------------------------- |
+| Low      | Patch updates, typically safe to apply               |
+| Medium   | Minor updates or large minor version jumps           |
+| High     | Major version updates with breaking changes          |
 | Critical | Multiple major version jumps or pre-release versions |
 
 ---

@@ -1,7 +1,7 @@
 'use client'
 
-import { Link } from '@/i18n/navigation'
 import clsx from 'clsx'
+import { Link } from '@/i18n/navigation'
 
 function ArrowIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
   return (
@@ -43,7 +43,7 @@ export function Button({ variant = 'primary', className, children, arrow, ...pro
     className
   )
 
-  let arrowIcon = (
+  const arrowIcon = (
     <ArrowIcon
       className={clsx(
         'mt-0.5 h-5 w-5',
@@ -54,7 +54,7 @@ export function Button({ variant = 'primary', className, children, arrow, ...pro
     />
   )
 
-  let inner = (
+  const inner = (
     <>
       {arrow === 'left' && arrowIcon}
       {children}

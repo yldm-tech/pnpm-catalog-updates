@@ -5,24 +5,24 @@
  * Categorizes errors and provides helpful suggestions where possible.
  */
 
-import chalk from 'chalk';
-import { Logger } from '../logger/logger.js';
-import { ErrorTracker } from './errorTracker.js';
+import chalk from 'chalk'
+import { Logger } from '../logger/logger.js'
+import { ErrorTracker } from './errorTracker.js'
 
 export interface ErrorContext {
-  packageName?: string;
-  operation?: string;
-  details?: string;
+  packageName?: string
+  operation?: string
+  details?: string
 }
 
 export interface PackageSuggestion {
-  original: string;
-  suggestions: string[];
-  reason: string;
+  original: string
+  suggestions: string[]
+  reason: string
 }
 
 export class UserFriendlyErrorHandler {
-  private static logger = Logger.getLogger('ErrorHandler');
+  private static logger = Logger.getLogger('ErrorHandler')
 
   // Common package name corrections
   private static packageSuggestions: Map<string, string[]> = new Map([
@@ -594,59 +594,63 @@ export class UserFriendlyErrorHandler {
     ['meow', ['meow']],
     ['arg', ['arg']],
     ['minimist', ['minimist']],
-  ]);
+  ])
 
   /**
    * Handle package not found errors (404)
    */
   static handlePackageNotFound(packageName: string, context?: ErrorContext): void {
-    const suggestions = this.packageSuggestions.get(packageName);
+    const suggestions = UserFriendlyErrorHandler.packageSuggestions.get(packageName)
 
     if (suggestions && suggestions.length > 0) {
-      console.log(chalk.yellow(`⚠️  包 "${packageName}" 不存在`));
-      console.log(chalk.cyan(`💡 可能的正确包名:`));
+      console.log(chalk.yellow(`⚠️  包 "${packageName}" 不存在`))
+      console.log(chalk.cyan(`💡 可能的正确包名:`))
       suggestions.forEach((suggestion) => {
-        console.log(chalk.cyan(`   • ${suggestion}`));
-      });
+        console.log(chalk.cyan(`   • ${suggestion}`))
+      })
     } else {
-      console.log(chalk.yellow(`⚠️  包 "${packageName}" 在 npm registry 中不存在`));
-      console.log(chalk.cyan(`💡 请检查包名是否正确，或者该包可能已被移除`));
+      console.log(chalk.yellow(`⚠️  包 "${packageName}" 在 npm registry 中不存在`))
+      console.log(chalk.cyan(`💡 请检查包名是否正确，或者该包可能已被移除`))
     }
 
     // Track for summary
-    ErrorTracker.trackSkippedPackage(packageName, new Error('Package not found (404)'));
+    ErrorTracker.trackSkippedPackage(packageName, new Error('Package not found (404)'))
 
     // Log technical details for debugging
-    this.logger.debug('Package not found', { packageName, context });
+    UserFriendlyErrorHandler.logger.debug('Package not found', { packageName, context })
   }
 
   /**
    * Handle empty version errors
    */
   static handleEmptyVersion(packageName: string, context?: ErrorContext): void {
-    console.log(chalk.yellow(`⚠️  包 "${packageName}" 的版本信息为空`));
-    console.log(chalk.cyan(`💡 这可能是由于:`));
-    console.log(chalk.cyan(`   • 包的 package.json 配置问题`));
-    console.log(chalk.cyan(`   • catalog 配置中的版本格式错误`));
-    console.log(chalk.cyan(`   • npm registry 数据同步问题`));
+    console.log(chalk.yellow(`⚠️  包 "${packageName}" 的版本信息为空`))
+    console.log(chalk.cyan(`💡 这可能是由于:`))
+    console.log(chalk.cyan(`   • 包的 package.json 配置问题`))
+    console.log(chalk.cyan(`   • catalog 配置中的版本格式错误`))
+    console.log(chalk.cyan(`   • npm registry 数据同步问题`))
 
     // Track for summary
-    ErrorTracker.trackSkippedPackage(packageName, new Error('Version string cannot be empty'));
+    ErrorTracker.trackSkippedPackage(packageName, new Error('Version string cannot be empty'))
 
-    this.logger.debug('Empty version string', { packageName, context });
+    UserFriendlyErrorHandler.logger.debug('Empty version string', { packageName, context })
   }
 
   /**
    * Handle network/timeout errors
    */
   static handleNetworkError(packageName: string, error: Error, context?: ErrorContext): void {
-    console.log(chalk.yellow(`⚠️  检查包 "${packageName}" 时遇到网络问题`));
-    console.log(chalk.cyan(`💡 请稍后重试，或检查网络连接`));
+    console.log(chalk.yellow(`⚠️  检查包 "${packageName}" 时遇到网络问题`))
+    console.log(chalk.cyan(`💡 请稍后重试，或检查网络连接`))
 
     // Track for summary
-    ErrorTracker.trackSkippedPackage(packageName, error);
+    ErrorTracker.trackSkippedPackage(packageName, error)
 
-    this.logger.debug('Network error', { packageName, error: error.message, context });
+    UserFriendlyErrorHandler.logger.debug('Network error', {
+      packageName,
+      error: error.message,
+      context,
+    })
   }
 
   /**
@@ -658,17 +662,17 @@ export class UserFriendlyErrorHandler {
     context?: ErrorContext
   ): void {
     // Track for statistics
-    ErrorTracker.trackSecurityFailure();
+    ErrorTracker.trackSecurityFailure()
 
     // Only show user-friendly message, don't expose technical details
-    this.logger.debug(`Security check failed for ${packageName}`, {
+    UserFriendlyErrorHandler.logger.debug(`Security check failed for ${packageName}`, {
       error: error.message,
       context,
-    });
+    })
 
     // Don't spam the user with security check failures unless it's critical
     if (context?.operation === 'update' || context?.operation === 'security-audit') {
-      console.log(chalk.yellow(`⚠️  无法检查 "${packageName}" 的安全状态`));
+      console.log(chalk.yellow(`⚠️  无法检查 "${packageName}" 的安全状态`))
     }
   }
 
@@ -682,13 +686,16 @@ export class UserFriendlyErrorHandler {
     error: Error
   ): void {
     // Log for debugging but don't spam users
-    this.logger.debug(`Retry attempt ${attempt}/${maxRetries} for ${packageName}`, {
-      error: error.message,
-    });
+    UserFriendlyErrorHandler.logger.debug(
+      `Retry attempt ${attempt}/${maxRetries} for ${packageName}`,
+      {
+        error: error.message,
+      }
+    )
 
     // Only show to user on final failure
     if (attempt === maxRetries) {
-      this.handleFinalFailure(packageName, error);
+      UserFriendlyErrorHandler.handleFinalFailure(packageName, error)
     }
   }
 
@@ -697,15 +704,18 @@ export class UserFriendlyErrorHandler {
    */
   static handleFinalFailure(packageName: string, error: Error): void {
     if (error.message.includes('404') || error.message.includes('Not found')) {
-      this.handlePackageNotFound(packageName);
+      UserFriendlyErrorHandler.handlePackageNotFound(packageName)
     } else if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
-      this.handleNetworkError(packageName, error);
+      UserFriendlyErrorHandler.handleNetworkError(packageName, error)
     } else if (error.message.includes('Version string cannot be empty')) {
-      this.handleEmptyVersion(packageName);
+      UserFriendlyErrorHandler.handleEmptyVersion(packageName)
     } else {
       // Generic error handling
-      console.log(chalk.yellow(`⚠️  跳过包 "${packageName}" (检查失败)`));
-      this.logger.debug('Package check failed', { packageName, error: error.message });
+      console.log(chalk.yellow(`⚠️  跳过包 "${packageName}" (检查失败)`))
+      UserFriendlyErrorHandler.logger.debug('Package check failed', {
+        packageName,
+        error: error.message,
+      })
     }
   }
 
@@ -719,18 +729,18 @@ export class UserFriendlyErrorHandler {
   ): void {
     // Categorize the error and provide appropriate user message
     if (error.message.includes('404') || error.message.includes('Not found')) {
-      this.handlePackageNotFound(packageName, context);
+      UserFriendlyErrorHandler.handlePackageNotFound(packageName, context)
     } else if (error.message.includes('Version string cannot be empty')) {
-      this.handleEmptyVersion(packageName, context);
+      UserFriendlyErrorHandler.handleEmptyVersion(packageName, context)
     } else if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
-      this.handleNetworkError(packageName, error, context);
+      UserFriendlyErrorHandler.handleNetworkError(packageName, error, context)
     } else {
       // For other errors, just skip silently and log for debugging
-      ErrorTracker.trackSkippedPackage(packageName, error);
-      this.logger.debug(`Package query failed for ${packageName}`, {
+      ErrorTracker.trackSkippedPackage(packageName, error)
+      UserFriendlyErrorHandler.logger.debug(`Package query failed for ${packageName}`, {
         error: error.message,
         context,
-      });
+      })
     }
   }
 
@@ -738,18 +748,18 @@ export class UserFriendlyErrorHandler {
    * Show summary of skipped packages
    */
   static showSkippedPackagesSummary(): void {
-    const totalSkipped = ErrorTracker.getTotalSkipped();
-    if (totalSkipped === 0) return;
+    const totalSkipped = ErrorTracker.getTotalSkipped()
+    if (totalSkipped === 0) return
 
-    console.log();
-    console.log(chalk.cyan(`📋 跳过了 ${totalSkipped} 个包的检查:`));
+    console.log()
+    console.log(chalk.cyan(`📋 跳过了 ${totalSkipped} 个包的检查:`))
 
-    const grouped = ErrorTracker.getSkippedPackages();
+    const grouped = ErrorTracker.getSkippedPackages()
 
     if (grouped.notFound.length > 0) {
       console.log(
         chalk.yellow(`   不存在的包 (${grouped.notFound.length}): ${grouped.notFound.join(', ')}`)
-      );
+      )
     }
 
     if (grouped.emptyVersion.length > 0) {
@@ -757,24 +767,24 @@ export class UserFriendlyErrorHandler {
         chalk.yellow(
           `   版本信息为空 (${grouped.emptyVersion.length}): ${grouped.emptyVersion.join(', ')}`
         )
-      );
+      )
     }
 
     if (grouped.network.length > 0) {
       console.log(
         chalk.yellow(`   网络问题 (${grouped.network.length}): ${grouped.network.join(', ')}`)
-      );
+      )
     }
 
     if (grouped.other.length > 0) {
       console.log(
         chalk.yellow(`   其他问题 (${grouped.other.length}): ${grouped.other.join(', ')}`)
-      );
+      )
     }
 
-    const stats = ErrorTracker.getErrorStats();
+    const stats = ErrorTracker.getErrorStats()
     if (stats.security > 0) {
-      console.log(chalk.gray(`   安全检查失败: ${stats.security} 次`));
+      console.log(chalk.gray(`   安全检查失败: ${stats.security} 次`))
     }
   }
 
@@ -782,35 +792,35 @@ export class UserFriendlyErrorHandler {
    * Get statistics for reporting
    */
   static getStatistics(): {
-    totalSkipped: number;
-    errorBreakdown: ReturnType<typeof ErrorTracker.getErrorStats>;
-    skippedPackages: ReturnType<typeof ErrorTracker.getSkippedPackages>;
+    totalSkipped: number
+    errorBreakdown: ReturnType<typeof ErrorTracker.getErrorStats>
+    skippedPackages: ReturnType<typeof ErrorTracker.getSkippedPackages>
   } {
     return {
       totalSkipped: ErrorTracker.getTotalSkipped(),
       errorBreakdown: ErrorTracker.getErrorStats(),
       skippedPackages: ErrorTracker.getSkippedPackages(),
-    };
+    }
   }
 
   /**
    * Reset error tracking (useful for testing)
    */
   static resetTracking(): void {
-    ErrorTracker.reset();
+    ErrorTracker.reset()
   }
 
   /**
    * Add a new package suggestion
    */
   static addPackageSuggestion(originalName: string, suggestions: string[]): void {
-    this.packageSuggestions.set(originalName, suggestions);
+    UserFriendlyErrorHandler.packageSuggestions.set(originalName, suggestions)
   }
 
   /**
    * Get suggestions for a package name
    */
   static getPackageSuggestions(packageName: string): string[] {
-    return this.packageSuggestions.get(packageName) || [];
+    return UserFriendlyErrorHandler.packageSuggestions.get(packageName) || []
   }
 }

@@ -1,0 +1,295 @@
+export const metadata = {
+  title: 'AI Analysis',
+  description:
+    'Use AI-powered analysis to get intelligent recommendations for dependency updates, security assessments, and breaking change detection.',
+};
+
+# AI Analysis
+
+PCU integrates with AI CLI tools to provide intelligent dependency analysis, security assessments, and update recommendations. {{ className: 'lead' }}
+
+## Overview
+
+AI analysis enhances PCU's capabilities by providing:
+
+- **Impact Analysis**: Understand how updates affect your codebase
+- **Security Assessment**: Get AI-powered security vulnerability analysis
+- **Compatibility Checking**: Detect potential breaking changes
+- **Update Recommendations**: Receive intelligent suggestions for safe updates
+
+## Supported AI Providers
+
+PCU automatically detects and uses available AI CLI tools in the following priority order:
+
+| Provider | Priority | Capabilities                                     |
+| -------- | -------- | ------------------------------------------------ |
+| Gemini   | 100      | Impact, Security, Compatibility, Recommendations |
+| Claude   | 80       | Impact, Security, Compatibility, Recommendations |
+| Codex    | 60       | Impact, Compatibility, Recommendations           |
+| Cursor   | 40       | Impact, Recommendations                          |
+
+<Note>
+  If no AI providers are available, PCU automatically falls back to a rule-based analysis engine
+  that provides basic dependency analysis using predefined rules.
+</Note>
+
+---
+
+## Commands
+
+### Check Available AI Providers
+
+View which AI tools are available on your system:
+
+```bash
+pcu ai
+```
+
+This command displays:
+
+- Available AI CLI tools detected on your system
+- Version information for each provider
+- The best available provider that will be used for analysis
+
+### AI Command Options
+
+<Properties>
+  <Property name="--status" type="boolean" default="true">
+    Show status of all AI providers (default behavior)
+  </Property>
+  <Property name="--test" type="boolean">
+    Test AI analysis with a sample request to verify provider connectivity
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    Show AI analysis cache statistics including hit rate and size
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    Clear the AI analysis cache to free up space or reset cached responses
+  </Property>
+</Properties>
+
+<CodeGroup>
+
+```bash {{ title: 'Check AI Status' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'Test AI Provider' }}
+pcu ai --test
+```
+
+```bash {{ title: 'Cache Management' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### AI-Powered Update
+
+Update dependencies with AI-powered analysis:
+
+<CodeGroup>
+
+```bash {{ title: 'Basic AI Update' }}
+pcu update --ai
+pcu u --ai
+```
+
+```bash {{ title: 'Interactive AI Update' }}
+pcu update --ai --interactive
+pcu u --ai -i
+```
+
+</CodeGroup>
+
+The AI-enhanced update provides:
+
+- Intelligent risk assessment for each update
+- Breaking change detection with explanations
+- Security vulnerability identification
+- Recommended update order
+
+### AI-Powered Analysis
+
+Analyze a specific package update with AI assistance:
+
+<CodeGroup>
+
+```bash {{ title: 'Analyze Package' }}
+pcu analyze react
+pcu a lodash
+```
+
+```bash {{ title: 'Analyze Specific Version' }}
+pcu analyze react 19.0.0
+pcu a typescript 5.5.0
+```
+
+</CodeGroup>
+
+<Note>
+  The `analyze` command uses the `default` catalog by default. You can specify a different catalog
+  as the first argument: `pcu analyze my-catalog react`
+</Note>
+
+---
+
+## Analysis Types
+
+### Impact Analysis
+
+Evaluates how a dependency update will affect your project:
+
+- Identifies all workspace packages using the dependency
+- Analyzes API changes between versions
+- Estimates migration effort required
+- Suggests testing focus areas
+
+### Security Analysis
+
+Provides security-focused assessment:
+
+- Identifies known vulnerabilities in current version
+- Checks for security fixes in new version
+- Evaluates security-sensitive package updates
+- Recommends security best practices
+
+### Compatibility Analysis
+
+Checks for potential compatibility issues:
+
+- Detects breaking API changes
+- Identifies peer dependency conflicts
+- Checks Node.js version compatibility
+- Validates TypeScript compatibility
+
+### Recommendations
+
+Generates actionable recommendations:
+
+- Suggests optimal update order
+- Recommends version ranges
+- Identifies packages to update together
+- Provides rollback strategies
+
+---
+
+## Fallback Behavior
+
+When AI providers are unavailable, PCU uses a built-in rule-based analysis engine:
+
+### Rule-Based Analysis Features
+
+- **Version Jump Assessment**: Evaluates risk based on semver changes
+- **Known Breaking Patterns**: Detects breaking changes for popular packages (React, TypeScript, ESLint, etc.)
+- **Security-Sensitive Packages**: Flags security-related packages for careful review
+- **Effort Estimation**: Provides migration effort estimates
+
+### Risk Levels
+
+| Level    | Description                                          |
+| -------- | ---------------------------------------------------- |
+| Low      | Patch updates, typically safe to apply               |
+| Medium   | Minor updates or large minor version jumps           |
+| High     | Major version updates with breaking changes          |
+| Critical | Multiple major version jumps or pre-release versions |
+
+---
+
+## Configuration
+
+### Environment Variables
+
+<Properties>
+  <Property name="GEMINI_PATH" type="string">
+    Custom path to Gemini CLI executable
+  </Property>
+  <Property name="CLAUDE_PATH" type="string">
+    Custom path to Claude CLI executable
+  </Property>
+  <Property name="CODEX_PATH" type="string">
+    Custom path to Codex CLI executable
+  </Property>
+  <Property name="CURSOR_PATH" type="string">
+    Custom path to Cursor CLI executable
+  </Property>
+</Properties>
+
+### Detection Methods
+
+PCU uses multiple strategies to detect AI providers:
+
+1. **Environment Variables**: Check custom path variables
+2. **PATH Lookup**: Use `which` command to find executables
+3. **Known Paths**: Check common installation locations
+4. **Application Paths**: Check for GUI applications (e.g., Cursor.app)
+
+---
+
+## Usage Examples
+
+### Safe Update Workflow
+
+```bash
+# Check for updates with AI analysis
+pcu check
+
+# Analyze specific high-risk updates
+pcu analyze react 19.0.0
+pcu analyze typescript 5.5.0
+
+# Perform AI-guided interactive update
+pcu update --ai --interactive --create-backup
+```
+
+### CI/CD Integration
+
+```bash
+# Run AI analysis in CI with JSON output
+pcu update --ai --dry-run --format json > ai-analysis.json
+
+# Check for high-risk updates
+pcu analyze default typescript --format json | jq '.riskLevel'
+```
+
+### Batch Analysis
+
+```bash
+# Update all packages with AI recommendations
+pcu update --ai --target minor
+
+# Review major updates with AI analysis
+pcu update --ai --target latest --confirm-major
+```
+
+---
+
+## Best Practices
+
+### When to Use AI Analysis
+
+- **Major Version Updates**: Always use AI analysis for major version bumps
+- **Security-Sensitive Packages**: Use for auth, crypto, and session packages
+- **Large Codebases**: AI helps identify affected areas across monorepos
+- **Breaking Change Detection**: AI provides detailed breaking change explanations
+
+### Performance Considerations
+
+- AI analysis adds processing time compared to standard updates
+- Use `--dry-run` to preview AI recommendations without applying changes
+- Consider using rule-based fallback for faster CI/CD pipelines when AI is not critical
+
+### Combining with Other Features
+
+```bash
+# AI analysis with security scanning
+pcu update --ai && pcu security
+
+# AI analysis with backup
+pcu update --ai --create-backup
+
+# AI analysis with specific target
+pcu update --ai --target minor --exclude "*-dev"
+```

@@ -5,23 +5,23 @@
  * Handles package.json structure and catalog dependency references.
  */
 
-import { WorkspacePath } from '../value-objects/workspacePath.js';
+import type { WorkspacePath } from '../value-objects/workspacePath.js'
 
-export type PackageId = string;
-export type PackageName = string;
+export type PackageId = string
+export type PackageName = string
 export type DependencyType =
   | 'dependencies'
   | 'devDependencies'
   | 'peerDependencies'
-  | 'optionalDependencies';
+  | 'optionalDependencies'
 
 export class Package {
-  private readonly id: PackageId;
-  private readonly name: PackageName;
-  private readonly path: WorkspacePath;
-  private readonly dependencies: DependencyCollection;
-  private readonly catalogReferences: CatalogReference[];
-  private readonly originalData: PackageJsonData;
+  private readonly id: PackageId
+  private readonly name: PackageName
+  private readonly path: WorkspacePath
+  private readonly dependencies: DependencyCollection
+  private readonly catalogReferences: CatalogReference[]
+  private readonly originalData: PackageJsonData
 
   private constructor(
     id: PackageId,
@@ -31,12 +31,12 @@ export class Package {
     catalogReferences: CatalogReference[],
     originalData: PackageJsonData
   ) {
-    this.id = id;
-    this.name = name;
-    this.path = path;
-    this.dependencies = dependencies;
-    this.catalogReferences = [...catalogReferences];
-    this.originalData = { ...originalData };
+    this.id = id
+    this.name = name
+    this.path = path
+    this.dependencies = dependencies
+    this.catalogReferences = [...catalogReferences]
+    this.originalData = { ...originalData }
   }
 
   /**
@@ -48,45 +48,45 @@ export class Package {
     path: WorkspacePath,
     packageJsonData: PackageJsonData
   ): Package {
-    const dependencies = DependencyCollection.fromPackageJson(packageJsonData);
-    const catalogReferences = Package.extractCatalogReferences(packageJsonData);
+    const dependencies = DependencyCollection.fromPackageJson(packageJsonData)
+    const catalogReferences = Package.extractCatalogReferences(packageJsonData)
 
-    return new Package(id, name, path, dependencies, catalogReferences, packageJsonData);
+    return new Package(id, name, path, dependencies, catalogReferences, packageJsonData)
   }
 
   /**
    * Get package identifier
    */
   public getId(): PackageId {
-    return this.id;
+    return this.id
   }
 
   /**
    * Get package name
    */
   public getName(): PackageName {
-    return this.name;
+    return this.name
   }
 
   /**
    * Get package path
    */
   public getPath(): WorkspacePath {
-    return this.path;
+    return this.path
   }
 
   /**
    * Get all dependencies
    */
   public getDependencies(): DependencyCollection {
-    return this.dependencies;
+    return this.dependencies
   }
 
   /**
    * Get catalog references
    */
   public getCatalogReferences(): CatalogReference[] {
-    return [...this.catalogReferences];
+    return [...this.catalogReferences]
   }
 
   /**
@@ -96,7 +96,7 @@ export class Package {
     return this.catalogReferences.map(
       (ref) =>
         new CatalogDependency(ref.getPackageName(), ref.getCatalogName(), ref.getDependencyType())
-    );
+    )
   }
 
   /**
@@ -105,7 +105,7 @@ export class Package {
   public usesCatalogDependency(catalogName: string, packageName: string): boolean {
     return this.catalogReferences.some(
       (ref) => ref.getCatalogName() === catalogName && ref.getPackageName() === packageName
-    );
+    )
   }
 
   /**
@@ -118,12 +118,12 @@ export class Package {
   ): void {
     const reference = this.catalogReferences.find(
       (ref) => ref.getCatalogName() === catalogName && ref.getPackageName() === packageName
-    );
+    )
 
     if (!reference) {
       throw new Error(
         `Package "${this.name}" does not reference "${packageName}" from catalog "${catalogName}"`
-      );
+      )
     }
 
     // Update the dependency in the collection
@@ -131,14 +131,14 @@ export class Package {
       reference.getDependencyType(),
       packageName,
       `catalog:${catalogName === 'default' ? '' : catalogName}`
-    );
+    )
   }
 
   /**
    * Get dependencies of a specific type
    */
   public getDependenciesByType(type: DependencyType): Map<string, string> {
-    return this.dependencies.getDependenciesByType(type);
+    return this.dependencies.getDependenciesByType(type)
   }
 
   /**
@@ -146,84 +146,84 @@ export class Package {
    */
   public toPackageJsonData(): PackageJsonData {
     // Start with original package.json to preserve fields like scripts, author, etc.
-    const data: PackageJsonData = { ...this.originalData };
+    const data: PackageJsonData = { ...this.originalData }
 
     // Replace dependency sections with updated versions
-    data.dependencies = Object.fromEntries(this.dependencies.getDependenciesByType('dependencies'));
+    data.dependencies = Object.fromEntries(this.dependencies.getDependenciesByType('dependencies'))
     data.devDependencies = Object.fromEntries(
       this.dependencies.getDependenciesByType('devDependencies')
-    );
+    )
     data.peerDependencies = Object.fromEntries(
       this.dependencies.getDependenciesByType('peerDependencies')
-    );
+    )
     data.optionalDependencies = Object.fromEntries(
       this.dependencies.getDependenciesByType('optionalDependencies')
-    );
+    )
 
-    return data;
+    return data
   }
 
   /**
    * Extract catalog references from package.json data
    */
   private static extractCatalogReferences(packageJsonData: PackageJsonData): CatalogReference[] {
-    const references: CatalogReference[] = [];
+    const references: CatalogReference[] = []
     const dependencyTypes: DependencyType[] = [
       'dependencies',
       'devDependencies',
       'peerDependencies',
       'optionalDependencies',
-    ];
+    ]
 
     for (const depType of dependencyTypes) {
-      const deps = packageJsonData[depType] || {};
+      const deps = packageJsonData[depType] || {}
 
       for (const [packageName, version] of Object.entries(deps)) {
         if (typeof version === 'string' && version.startsWith('catalog:')) {
-          const catalogName = version === 'catalog:' ? 'default' : version.substring(8);
-          references.push(new CatalogReference(catalogName, packageName, depType));
+          const catalogName = version === 'catalog:' ? 'default' : version.substring(8)
+          references.push(new CatalogReference(catalogName, packageName, depType))
         }
       }
     }
 
-    return references;
+    return references
   }
 
   /**
    * Validate package structure
    */
   public validate(): PackageValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
+    const errors: string[] = []
+    const warnings: string[] = []
 
     // Validate package name
     if (!this.isValidPackageName(this.name)) {
-      errors.push(`Invalid package name: "${this.name}"`);
+      errors.push(`Invalid package name: "${this.name}"`)
     }
 
     // Validate catalog references
     for (const ref of this.catalogReferences) {
       if (!this.isValidPackageName(ref.getPackageName())) {
-        errors.push(`Invalid dependency name in catalog reference: "${ref.getPackageName()}"`);
+        errors.push(`Invalid dependency name in catalog reference: "${ref.getPackageName()}"`)
       }
     }
 
-    return new PackageValidationResult(errors.length === 0, errors, warnings);
+    return new PackageValidationResult(errors.length === 0, errors, warnings)
   }
 
   /**
    * Check if package name is valid
    */
   private isValidPackageName(packageName: string): boolean {
-    const validPackageNameRegex = /^(@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
-    return validPackageNameRegex.test(packageName);
+    const validPackageNameRegex = /^(@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/
+    return validPackageNameRegex.test(packageName)
   }
 
   /**
    * Check equality with another package
    */
   public equals(other: Package): boolean {
-    return this.id === other.id && this.name === other.name && this.path.equals(other.path);
+    return this.id === other.id && this.name === other.name && this.path.equals(other.path)
   }
 }
 
@@ -238,15 +238,15 @@ export class CatalogReference {
   ) {}
 
   public getCatalogName(): string {
-    return this.catalogName;
+    return this.catalogName
   }
 
   public getPackageName(): string {
-    return this.packageName;
+    return this.packageName
   }
 
   public getDependencyType(): DependencyType {
-    return this.dependencyType;
+    return this.dependencyType
   }
 
   public equals(other: CatalogReference): boolean {
@@ -254,7 +254,7 @@ export class CatalogReference {
       this.catalogName === other.catalogName &&
       this.packageName === other.packageName &&
       this.dependencyType === other.dependencyType
-    );
+    )
   }
 }
 
@@ -269,15 +269,15 @@ export class CatalogDependency {
   ) {}
 
   public getPackageName(): string {
-    return this.packageName;
+    return this.packageName
   }
 
   public getCatalogName(): string {
-    return this.catalogName;
+    return this.catalogName
   }
 
   public getDependencyType(): DependencyType {
-    return this.dependencyType;
+    return this.dependencyType
   }
 }
 
@@ -285,43 +285,43 @@ export class CatalogDependency {
  * Dependency Collection Value Object
  */
 export class DependencyCollection {
-  private readonly dependencies: Map<DependencyType, Map<string, string>>;
+  private readonly dependencies: Map<DependencyType, Map<string, string>>
 
   private constructor(dependencies: Map<DependencyType, Map<string, string>>) {
-    this.dependencies = dependencies;
+    this.dependencies = dependencies
   }
 
   public static empty(): DependencyCollection {
-    const deps = new Map<DependencyType, Map<string, string>>();
-    deps.set('dependencies', new Map());
-    deps.set('devDependencies', new Map());
-    deps.set('peerDependencies', new Map());
-    deps.set('optionalDependencies', new Map());
-    return new DependencyCollection(deps);
+    const deps = new Map<DependencyType, Map<string, string>>()
+    deps.set('dependencies', new Map())
+    deps.set('devDependencies', new Map())
+    deps.set('peerDependencies', new Map())
+    deps.set('optionalDependencies', new Map())
+    return new DependencyCollection(deps)
   }
 
   public static fromPackageJson(packageJsonData: PackageJsonData): DependencyCollection {
-    const deps = new Map<DependencyType, Map<string, string>>();
+    const deps = new Map<DependencyType, Map<string, string>>()
 
-    deps.set('dependencies', new Map(Object.entries(packageJsonData.dependencies || {})));
-    deps.set('devDependencies', new Map(Object.entries(packageJsonData.devDependencies || {})));
-    deps.set('peerDependencies', new Map(Object.entries(packageJsonData.peerDependencies || {})));
+    deps.set('dependencies', new Map(Object.entries(packageJsonData.dependencies || {})))
+    deps.set('devDependencies', new Map(Object.entries(packageJsonData.devDependencies || {})))
+    deps.set('peerDependencies', new Map(Object.entries(packageJsonData.peerDependencies || {})))
     deps.set(
       'optionalDependencies',
       new Map(Object.entries(packageJsonData.optionalDependencies || {}))
-    );
+    )
 
-    return new DependencyCollection(deps);
+    return new DependencyCollection(deps)
   }
 
   public getDependenciesByType(type: DependencyType): Map<string, string> {
-    return new Map(this.dependencies.get(type) || []);
+    return new Map(this.dependencies.get(type) || [])
   }
 
   public updateDependency(type: DependencyType, packageName: string, version: string): void {
-    const typeMap = this.dependencies.get(type);
+    const typeMap = this.dependencies.get(type)
     if (typeMap) {
-      typeMap.set(packageName, version);
+      typeMap.set(packageName, version)
     }
   }
 
@@ -331,7 +331,7 @@ export class DependencyCollection {
   ): DependencyCollection {
     // This would filter dependencies that match catalog references
     // Implementation would require catalog reference information
-    return this;
+    return this
   }
 }
 
@@ -339,13 +339,13 @@ export class DependencyCollection {
  * Package.json Data Interface
  */
 export interface PackageJsonData {
-  name: string;
-  version?: string;
-  dependencies?: Record<string, string>;
-  devDependencies?: Record<string, string>;
-  peerDependencies?: Record<string, string>;
-  optionalDependencies?: Record<string, string>;
-  [key: string]: any;
+  name: string
+  version?: string
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+  [key: string]: any
 }
 
 /**
@@ -359,22 +359,22 @@ export class PackageValidationResult {
   ) {}
 
   public getIsValid(): boolean {
-    return this.isValid;
+    return this.isValid
   }
 
   public getErrors(): string[] {
-    return [...this.errors];
+    return [...this.errors]
   }
 
   public getWarnings(): string[] {
-    return [...this.warnings];
+    return [...this.warnings]
   }
 
   public hasErrors(): boolean {
-    return this.errors.length > 0;
+    return this.errors.length > 0
   }
 
   public hasWarnings(): boolean {
-    return this.warnings.length > 0;
+    return this.warnings.length > 0
   }
 }

@@ -28,6 +28,6 @@
     "vite": "catalog:",
     "vitest": "catalog:",
     "eslint": "catalog:",
-    "@vitejs/plugin-react": "^4.2.0"
+    "@vitejs/plugin-react": "catalog:"
   }
 }

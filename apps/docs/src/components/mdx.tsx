@@ -1,20 +1,14 @@
-import { Link } from '@/i18n/navigation'
 import clsx from 'clsx'
-
 import { Feedback } from '@/components/Feedback'
 import { Heading } from '@/components/Heading'
 import { Prose } from '@/components/Prose'
+import { Link } from '@/i18n/navigation'
 import { isValidRoute } from '@/utils/routing'
 
 export const a = Link
 export { Button } from '@/components/Button'
 export { Code as code, CodeGroup, Pre as pre } from '@/components/Code'
 export { Guides } from '@/components/Guides'
-export { Libraries } from '@/components/Libraries'
-export { Library } from '@/components/Library'
-export { Resources } from '@/components/Resources'
-export { Tag } from '@/components/Tag'
-
 // Common icons
 export { BellIcon } from '@/components/icons/BellIcon'
 export { BookIcon } from '@/components/icons/BookIcon'
@@ -24,10 +18,14 @@ export { CogIcon } from '@/components/icons/CogIcon'
 export { EnvelopeIcon } from '@/components/icons/EnvelopeIcon'
 export { UserIcon } from '@/components/icons/UserIcon'
 export { UsersIcon } from '@/components/icons/UsersIcon'
+export { Libraries } from '@/components/Libraries'
+export { Library } from '@/components/Library'
+export { Resources } from '@/components/Resources'
+export { Tag } from '@/components/Tag'
 
 export function wrapper({ children }: { children: React.ReactNode }) {
   return (
-    <article className="flex h-full flex-col pb-10 pt-16">
+    <article className="flex h-full flex-col pt-16 pb-10">
       <Prose className="flex-auto">{children}</Prose>
       <footer className="mx-auto mt-16 w-full max-w-2xl lg:max-w-5xl">
         <Feedback />
@@ -123,10 +121,7 @@ export function Col({ children, sticky = false }: { children: React.ReactNode; s
 export function Properties({ children }: { children: React.ReactNode }) {
   return (
     <div className="my-6">
-      <ul
-        role="list"
-        className="m-0 max-w-[calc(var(--container-lg)-(--spacing(8)))] list-none divide-y divide-zinc-900/5 p-0 dark:divide-white/5"
-      >
+      <ul className="m-0 max-w-[calc(var(--container-lg)-(--spacing(8)))] list-none divide-y divide-zinc-900/5 p-0 dark:divide-white/5">
         {children}
       </ul>
     </div>

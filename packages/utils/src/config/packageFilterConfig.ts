@@ -6,50 +6,50 @@
  */
 
 export interface PackageRule {
-  patterns: string[];
-  target?: 'latest' | 'greatest' | 'minor' | 'patch' | 'newest';
-  autoUpdate?: boolean;
-  requireConfirmation?: boolean;
-  groupUpdate?: boolean;
-  relatedPackages?: string[]; // 相关包会自动遵循相同的版本策略
+  patterns: string[]
+  target?: 'latest' | 'greatest' | 'minor' | 'patch' | 'newest'
+  autoUpdate?: boolean
+  requireConfirmation?: boolean
+  groupUpdate?: boolean
+  relatedPackages?: string[] // 相关包会自动遵循相同的版本策略
 }
 
 export interface SecurityConfig {
-  autoFixVulnerabilities?: boolean;
-  allowMajorForSecurity?: boolean;
-  notifyOnSecurityUpdate?: boolean;
+  autoFixVulnerabilities?: boolean
+  allowMajorForSecurity?: boolean
+  notifyOnSecurityUpdate?: boolean
 }
 
 export interface DefaultsConfig {
-  target?: 'latest' | 'greatest' | 'minor' | 'patch' | 'newest';
-  includePrerelease?: boolean;
-  interactive?: boolean;
-  dryRun?: boolean;
-  createBackup?: boolean;
-  format?: 'table' | 'json' | 'yaml' | 'minimal';
+  target?: 'latest' | 'greatest' | 'minor' | 'patch' | 'newest'
+  includePrerelease?: boolean
+  interactive?: boolean
+  dryRun?: boolean
+  createBackup?: boolean
+  format?: 'table' | 'json' | 'yaml' | 'minimal'
 }
 
 export interface AdvancedConfig {
-  concurrency?: number;
-  timeout?: number;
-  retries?: number;
-  cacheValidityMinutes?: number;
-  checkForUpdates?: boolean;
+  concurrency?: number
+  timeout?: number
+  retries?: number
+  cacheValidityMinutes?: number
+  checkForUpdates?: boolean
 }
 
 export interface MonorepoConfig {
-  syncVersions?: string[];
-  catalogPriority?: string[];
+  syncVersions?: string[]
+  catalogPriority?: string[]
 }
 
 export interface PackageFilterConfig {
-  exclude?: string[];
-  include?: string[];
-  defaults?: DefaultsConfig;
-  packageRules?: PackageRule[];
-  security?: SecurityConfig;
-  advanced?: AdvancedConfig;
-  monorepo?: MonorepoConfig;
+  exclude?: string[]
+  include?: string[]
+  defaults?: DefaultsConfig
+  packageRules?: PackageRule[]
+  security?: SecurityConfig
+  advanced?: AdvancedConfig
+  monorepo?: MonorepoConfig
 }
 
 /**
@@ -134,9 +134,9 @@ export const DEFAULT_PACKAGE_FILTER_CONFIG: Required<PackageFilterConfig> = {
     syncVersions: [],
     catalogPriority: ['default'],
   },
-};
+}
 
 /**
  * Configuration file names to look for
  */
-export const CONFIG_FILE_NAMES = ['.pcurc.json', '.pcurc.js', 'pcu.config.json', 'pcu.config.js'];
+export const CONFIG_FILE_NAMES = ['.pcurc.json', '.pcurc.js', 'pcu.config.json', 'pcu.config.js']

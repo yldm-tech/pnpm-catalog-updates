@@ -1,0 +1,295 @@
+export const metadata = {
+  title: 'KI-Analyse',
+  description:
+    'Nutzen Sie KI-gestützte Analyse für intelligente Empfehlungen zu Abhängigkeitsaktualisierungen, Sicherheitsbewertungen und Erkennung von Breaking Changes.',
+};
+
+# KI-Analyse
+
+PCU integriert sich mit KI-CLI-Tools, um intelligente Abhängigkeitsanalyse, Sicherheitsbewertungen und Update-Empfehlungen bereitzustellen. {{ className: 'lead' }}
+
+## Übersicht
+
+Die KI-Analyse erweitert die Fähigkeiten von PCU durch:
+
+- **Auswirkungsanalyse**: Verstehen Sie, wie Updates Ihre Codebasis beeinflussen
+- **Sicherheitsbewertung**: Erhalten Sie KI-gestützte Sicherheitslückenanalyse
+- **Kompatibilitätsprüfung**: Erkennen Sie potenzielle Breaking Changes
+- **Update-Empfehlungen**: Erhalten Sie intelligente Vorschläge für sichere Updates
+
+## Unterstützte KI-Anbieter
+
+PCU erkennt automatisch verfügbare KI-CLI-Tools und verwendet sie in der folgenden Prioritätsreihenfolge:
+
+| Anbieter | Priorität | Fähigkeiten                                          |
+| -------- | --------- | ---------------------------------------------------- |
+| Gemini   | 100       | Auswirkung, Sicherheit, Kompatibilität, Empfehlungen |
+| Claude   | 80        | Auswirkung, Sicherheit, Kompatibilität, Empfehlungen |
+| Codex    | 60        | Auswirkung, Kompatibilität, Empfehlungen             |
+| Cursor   | 40        | Auswirkung, Empfehlungen                             |
+
+<Note>
+  Wenn keine KI-Anbieter verfügbar sind, fällt PCU automatisch auf eine regelbasierte Analyse-Engine
+  zurück, die grundlegende Abhängigkeitsanalyse mit vordefinierten Regeln bietet.
+</Note>
+
+---
+
+## Befehle
+
+### Verfügbare KI-Anbieter prüfen
+
+Zeigen Sie an, welche KI-Tools auf Ihrem System verfügbar sind:
+
+```bash
+pcu ai
+```
+
+Dieser Befehl zeigt:
+
+- Auf Ihrem System erkannte verfügbare KI-CLI-Tools
+- Versionsinformationen für jeden Anbieter
+- Der beste verfügbare Anbieter, der für die Analyse verwendet wird
+
+### KI-Befehlsoptionen
+
+<Properties>
+  <Property name="--status" type="boolean" default="true">
+    Status aller KI-Anbieter anzeigen (Standardverhalten)
+  </Property>
+  <Property name="--test" type="boolean">
+    KI-Analyse mit einer Beispielanfrage testen, um Anbieterverbindung zu überprüfen
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    KI-Analyse-Cache-Statistiken einschließlich Trefferrate und Größe anzeigen
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    KI-Analyse-Cache leeren, um Speicherplatz freizugeben oder zwischengespeicherte Antworten zurückzusetzen
+  </Property>
+</Properties>
+
+<CodeGroup>
+
+```bash {{ title: 'KI-Status prüfen' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'KI-Anbieter testen' }}
+pcu ai --test
+```
+
+```bash {{ title: 'Cache-Verwaltung' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### KI-gestütztes Update
+
+Abhängigkeiten mit KI-gestützter Analyse aktualisieren:
+
+<CodeGroup>
+
+```bash {{ title: 'Basis KI-Update' }}
+pcu update --ai
+pcu u --ai
+```
+
+```bash {{ title: 'Interaktives KI-Update' }}
+pcu update --ai --interactive
+pcu u --ai -i
+```
+
+</CodeGroup>
+
+Das KI-erweiterte Update bietet:
+
+- Intelligente Risikobewertung für jedes Update
+- Breaking-Change-Erkennung mit Erklärungen
+- Identifizierung von Sicherheitslücken
+- Empfohlene Update-Reihenfolge
+
+### KI-gestützte Analyse
+
+Analysieren Sie ein spezifisches Paket-Update mit KI-Unterstützung:
+
+<CodeGroup>
+
+```bash {{ title: 'Paket analysieren' }}
+pcu analyze react
+pcu a lodash
+```
+
+```bash {{ title: 'Spezifische Version analysieren' }}
+pcu analyze react 19.0.0
+pcu a typescript 5.5.0
+```
+
+</CodeGroup>
+
+<Note>
+  Der `analyze`-Befehl verwendet standardmäßig den `default`-Katalog. Sie können einen anderen
+  Katalog als erstes Argument angeben: `pcu analyze my-catalog react`
+</Note>
+
+---
+
+## Analysetypen
+
+### Auswirkungsanalyse
+
+Bewerten Sie, wie ein Abhängigkeitsupdate Ihr Projekt beeinflusst:
+
+- Identifizieren Sie alle Workspace-Pakete, die die Abhängigkeit verwenden
+- Analysieren Sie API-Änderungen zwischen Versionen
+- Schätzen Sie den erforderlichen Migrationsaufwand
+- Schlagen Sie Testfokusbereiche vor
+
+### Sicherheitsanalyse
+
+Bietet sicherheitsorientierte Bewertung:
+
+- Identifizieren Sie bekannte Schwachstellen in der aktuellen Version
+- Prüfen Sie auf Sicherheitsfixes in der neuen Version
+- Bewerten Sie sicherheitsrelevante Paket-Updates
+- Empfehlen Sie Sicherheits-Best-Practices
+
+### Kompatibilitätsanalyse
+
+Prüfen Sie auf potenzielle Kompatibilitätsprobleme:
+
+- Erkennen Sie Breaking API-Änderungen
+- Identifizieren Sie Peer-Dependency-Konflikte
+- Prüfen Sie Node.js-Versionskompatibilität
+- Validieren Sie TypeScript-Kompatibilität
+
+### Empfehlungen
+
+Generieren Sie umsetzbare Empfehlungen:
+
+- Schlagen Sie optimale Update-Reihenfolge vor
+- Empfehlen Sie Versionsbereiche
+- Identifizieren Sie Pakete, die zusammen aktualisiert werden sollten
+- Bieten Sie Rollback-Strategien
+
+---
+
+## Fallback-Verhalten
+
+Wenn KI-Anbieter nicht verfügbar sind, verwendet PCU eine integrierte regelbasierte Analyse-Engine:
+
+### Regelbasierte Analysefunktionen
+
+- **Versionssprung-Bewertung**: Bewerten Sie das Risiko basierend auf Semver-Änderungen
+- **Bekannte Breaking-Muster**: Erkennen Sie Breaking Changes für beliebte Pakete (React, TypeScript, ESLint, etc.)
+- **Sicherheitssensible Pakete**: Markieren Sie sicherheitsrelevante Pakete zur sorgfältigen Überprüfung
+- **Aufwandsschätzung**: Bieten Sie Migrationsaufwandsschätzungen
+
+### Risikostufen
+
+| Stufe    | Beschreibung                                             |
+| -------- | -------------------------------------------------------- |
+| Niedrig  | Patch-Updates, typischerweise sicher anzuwenden          |
+| Mittel   | Minor-Updates oder große Minor-Versionssprünge           |
+| Hoch     | Major-Versionsupdate mit Breaking Changes                |
+| Kritisch | Mehrere Major-Versionssprünge oder Pre-Release-Versionen |
+
+---
+
+## Konfiguration
+
+### Umgebungsvariablen
+
+<Properties>
+  <Property name="GEMINI_PATH" type="string">
+    Benutzerdefinierter Pfad zur Gemini CLI-Executable
+  </Property>
+  <Property name="CLAUDE_PATH" type="string">
+    Benutzerdefinierter Pfad zur Claude CLI-Executable
+  </Property>
+  <Property name="CODEX_PATH" type="string">
+    Benutzerdefinierter Pfad zur Codex CLI-Executable
+  </Property>
+  <Property name="CURSOR_PATH" type="string">
+    Benutzerdefinierter Pfad zur Cursor CLI-Executable
+  </Property>
+</Properties>
+
+### Erkennungsmethoden
+
+PCU verwendet mehrere Strategien zur Erkennung von KI-Anbietern:
+
+1. **Umgebungsvariablen**: Prüfen benutzerdefinierter Pfadvariablen
+2. **PATH-Suche**: Verwenden des `which`-Befehls zum Finden von Executables
+3. **Bekannte Pfade**: Prüfen gängiger Installationsorte
+4. **Anwendungspfade**: Prüfen auf GUI-Anwendungen (z.B. Cursor.app)
+
+---
+
+## Verwendungsbeispiele
+
+### Sicherer Update-Workflow
+
+```bash
+# Updates mit KI-Analyse prüfen
+pcu check
+
+# Spezifische Hochrisiko-Updates analysieren
+pcu analyze react 19.0.0
+pcu analyze typescript 5.5.0
+
+# KI-geführtes interaktives Update durchführen
+pcu update --ai --interactive --create-backup
+```
+
+### CI/CD-Integration
+
+```bash
+# KI-Analyse im CI mit JSON-Ausgabe ausführen
+pcu update --ai --dry-run --format json > ai-analysis.json
+
+# Auf Hochrisiko-Updates prüfen
+pcu analyze default typescript --format json | jq '.riskLevel'
+```
+
+### Batch-Analyse
+
+```bash
+# Alle Pakete mit KI-Empfehlungen aktualisieren
+pcu update --ai --target minor
+
+# Major-Updates mit KI-Analyse überprüfen
+pcu update --ai --target latest --confirm-major
+```
+
+---
+
+## Best Practices
+
+### Wann KI-Analyse verwenden
+
+- **Major-Versionsupdate**: Verwenden Sie immer KI-Analyse für Major-Versionsupgrades
+- **Sicherheitssensible Pakete**: Verwenden Sie für Auth-, Crypto- und Session-Pakete
+- **Große Codebasen**: KI hilft, betroffene Bereiche in Monorepos zu identifizieren
+- **Breaking-Change-Erkennung**: KI liefert detaillierte Breaking-Change-Erklärungen
+
+### Leistungsüberlegungen
+
+- KI-Analyse fügt Verarbeitungszeit im Vergleich zu Standard-Updates hinzu
+- Verwenden Sie `--dry-run`, um KI-Empfehlungen ohne Anwendung von Änderungen anzuzeigen
+- Erwägen Sie regelbasierten Fallback für schnellere CI/CD-Pipelines, wenn KI nicht kritisch ist
+
+### Kombination mit anderen Funktionen
+
+```bash
+# KI-Analyse mit Sicherheitsscan
+pcu update --ai && pcu security
+
+# KI-Analyse mit Backup
+pcu update --ai --create-backup
+
+# KI-Analyse mit spezifischem Ziel
+pcu update --ai --target minor --exclude "*-dev"
+```

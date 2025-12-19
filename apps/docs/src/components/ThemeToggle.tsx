@@ -22,9 +22,9 @@ function MoonIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
 }
 
 export function ThemeToggle() {
-  let { resolvedTheme, setTheme } = useTheme()
-  let otherTheme = resolvedTheme === 'dark' ? 'light' : 'dark'
-  let [mounted, setMounted] = useState(false)
+  const { resolvedTheme, setTheme } = useTheme()
+  const otherTheme = resolvedTheme === 'dark' ? 'light' : 'dark'
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -37,7 +37,7 @@ export function ThemeToggle() {
       aria-label={mounted ? `Switch to ${otherTheme} theme` : 'Toggle theme'}
       onClick={() => setTheme(otherTheme)}
     >
-      <span className="pointer-fine:hidden absolute size-12" />
+      <span className="absolute size-12 pointer-fine:hidden" />
       <SunIcon className="h-5 w-5 stroke-zinc-900 dark:hidden" />
       <MoonIcon className="hidden h-5 w-5 stroke-white dark:block" />
     </button>

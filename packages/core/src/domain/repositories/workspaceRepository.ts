@@ -5,44 +5,44 @@
  * This is a domain interface implemented by infrastructure layer.
  */
 
-import { Workspace } from '../entities/workspace.js';
-import { WorkspaceConfig } from '../value-objects/workspaceConfig.js';
-import { WorkspaceId } from '../value-objects/workspaceId.js';
-import { WorkspacePath } from '../value-objects/workspacePath.js';
+import type { Workspace } from '../entities/workspace.js'
+import type { WorkspaceConfig } from '../value-objects/workspaceConfig.js'
+import type { WorkspaceId } from '../value-objects/workspaceId.js'
+import type { WorkspacePath } from '../value-objects/workspacePath.js'
 
 export interface WorkspaceRepository {
   /**
    * Find a workspace by its path
    */
-  findByPath(path: WorkspacePath): Promise<Workspace | null>;
+  findByPath(path: WorkspacePath): Promise<Workspace | null>
 
   /**
    * Find a workspace by its ID
    */
-  findById(id: WorkspaceId): Promise<Workspace | null>;
+  findById(id: WorkspaceId): Promise<Workspace | null>
 
   /**
    * Save a workspace
    */
-  save(workspace: Workspace): Promise<void>;
+  save(workspace: Workspace): Promise<void>
 
   /**
    * Load workspace configuration from path
    */
-  loadConfiguration(path: WorkspacePath): Promise<WorkspaceConfig>;
+  loadConfiguration(path: WorkspacePath): Promise<WorkspaceConfig>
 
   /**
    * Save workspace configuration to path
    */
-  saveConfiguration(path: WorkspacePath, config: WorkspaceConfig): Promise<void>;
+  saveConfiguration(path: WorkspacePath, config: WorkspaceConfig): Promise<void>
 
   /**
    * Check if a path contains a valid pnpm workspace
    */
-  isValidWorkspace(path: WorkspacePath): Promise<boolean>;
+  isValidWorkspace(path: WorkspacePath): Promise<boolean>
 
   /**
    * Discover workspace from current working directory or given path
    */
-  discoverWorkspace(searchPath?: WorkspacePath): Promise<Workspace | null>;
+  discoverWorkspace(searchPath?: WorkspacePath): Promise<Workspace | null>
 }

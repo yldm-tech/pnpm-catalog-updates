@@ -1,9 +1,9 @@
-import { slugifyWithCounter } from '@sindresorhus/slugify';
-import * as acorn from 'acorn';
-import { toString } from 'mdast-util-to-string';
-import { mdxAnnotations } from 'mdx-annotations';
-import shiki from 'shiki';
-import { visit } from 'unist-util-visit';
+import { slugifyWithCounter } from '@sindresorhus/slugify'
+import * as acorn from 'acorn'
+import { toString } from 'mdast-util-to-string'
+import { mdxAnnotations } from 'mdx-annotations'
+import shiki from 'shiki'
+import { visit } from 'unist-util-visit'
 
 function rehypeParseCodeBlocks() {
   return (tree) => {
@@ -11,58 +11,58 @@ function rehypeParseCodeBlocks() {
       if (node.tagName === 'code') {
         parentNode.properties.language = node.properties.className
           ? node.properties?.className[0]?.replace(/^language-/, '')
-          : 'txt';
+          : 'txt'
 
         // Extract title from annotations
-        let title = null;
+        let title = null
 
         // Check parent node data (fallback)
         if (parentNode.data?.meta) {
-          const titleMatch = parentNode.data.meta.match(/title:\s*['"]([^'"]*)['"]/);
-          if (titleMatch) title = titleMatch[1];
+          const titleMatch = parentNode.data.meta.match(/title:\s*['"]([^'"]*)['"]/)
+          if (titleMatch) title = titleMatch[1]
         }
 
         // Check annotation property directly
         if (parentNode.properties?.annotation) {
           try {
             // The annotation string uses single quotes, so we need to replace them
-            let annotationStr = parentNode.properties.annotation;
+            let annotationStr = parentNode.properties.annotation
             if (typeof annotationStr === 'string') {
               // Replace single quotes with double quotes for proper JSON parsing
-              annotationStr = annotationStr.replace(/'/g, '"');
-              const annotation = JSON.parse(annotationStr);
-              if (annotation.title) title = annotation.title;
+              annotationStr = annotationStr.replace(/'/g, '"')
+              const annotation = JSON.parse(annotationStr)
+              if (annotation.title) title = annotation.title
             }
           } catch (e) {
             // If JSON parsing fails, try regex extraction
-            const titleMatch = parentNode.properties.annotation.match(/title:\s*['"]([^'"]*)['"]/);
-            if (titleMatch) title = titleMatch[1];
+            const titleMatch = parentNode.properties.annotation.match(/title:\s*['"]([^'"]*)['"]/)
+            if (titleMatch) title = titleMatch[1]
           }
         }
 
         if (title) {
-          parentNode.properties.title = title;
+          parentNode.properties.title = title
         }
       }
-    });
-  };
+    })
+  }
 }
 
-let highlighter;
+let highlighter
 
 function rehypeShiki() {
   return async (tree) => {
-    highlighter = highlighter ?? (await shiki.getHighlighter({ theme: 'css-variables' }));
+    highlighter = highlighter ?? (await shiki.getHighlighter({ theme: 'css-variables' }))
 
     visit(tree, 'element', (node) => {
       if (node.tagName === 'pre' && node.children[0]?.tagName === 'code') {
-        let codeNode = node.children[0];
-        let textNode = codeNode.children[0];
+        const codeNode = node.children[0]
+        const textNode = codeNode.children[0]
 
-        node.properties.code = textNode.value;
+        node.properties.code = textNode.value
 
         if (node.properties.language) {
-          let tokens = highlighter.codeToThemedTokens(textNode.value, node.properties.language);
+          const tokens = highlighter.codeToThemedTokens(textNode.value, node.properties.language)
 
           textNode.value = shiki.renderToHtml(tokens, {
             elements: {
@@ -70,7 +70,7 @@ function rehypeShiki() {
               code: ({ children }) => children,
               line: ({ children }) => `<span>${children}</span>`,
             },
-          });
+          })
 
           // Special handling for diff highlighting
           if (node.properties.language === 'diff') {
@@ -82,40 +82,40 @@ function rehypeShiki() {
               .replace(
                 /<span><span style="color: var\(--shiki-color-text\)">\+([^<]*)<\/span><\/span>/g,
                 '<span><span style="color: var(--color-green-300); background-color: rgb(187 247 208 / 0.1);">+$1</span></span>'
-              );
+              )
           }
         }
       }
-    });
-  };
+    })
+  }
 }
 
 function rehypeSlugify() {
   return (tree) => {
-    let slugify = slugifyWithCounter();
+    const slugify = slugifyWithCounter()
     visit(tree, 'element', (node) => {
       if (node.tagName === 'h2' && !node.properties.id) {
-        node.properties.id = slugify(toString(node));
+        node.properties.id = slugify(toString(node))
       }
-    });
-  };
+    })
+  }
 }
 
 function rehypeAddMDXExports(getExports) {
   return (tree) => {
-    let exports = Object.entries(getExports(tree));
+    const exports = Object.entries(getExports(tree))
 
-    for (let [name, value] of exports) {
-      for (let node of tree.children) {
+    for (const [name, value] of exports) {
+      for (const node of tree.children) {
         if (
           node.type === 'mdxjsEsm' &&
           new RegExp(`export\\s+const\\s+${name}\\s*=`).test(node.value)
         ) {
-          return;
+          return
         }
       }
 
-      let exportStr = `export const ${name} = ${value}`;
+      const exportStr = `export const ${name} = ${value}`
 
       tree.children.push({
         type: 'mdxjsEsm',
@@ -126,27 +126,27 @@ function rehypeAddMDXExports(getExports) {
             ecmaVersion: 'latest',
           }),
         },
-      });
+      })
     }
-  };
+  }
 }
 
 function getSections(node) {
-  let sections = [];
+  const sections = []
 
-  for (let child of node.children ?? []) {
+  for (const child of node.children ?? []) {
     if (child.type === 'element' && child.tagName === 'h2') {
       sections.push(`{
         title: ${JSON.stringify(toString(child))},
         id: ${JSON.stringify(child.properties.id)},
         ...${child.properties.annotation}
-      }`);
+      }`)
     } else if (child.children) {
-      sections.push(...getSections(child));
+      sections.push(...getSections(child))
     }
   }
 
-  return sections;
+  return sections
 }
 
 export const rehypePlugins = [
@@ -160,4 +160,4 @@ export const rehypePlugins = [
       sections: `[${getSections(tree).join()}]`,
     }),
   ],
-];
+]

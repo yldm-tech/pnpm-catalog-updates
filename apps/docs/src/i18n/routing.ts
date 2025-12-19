@@ -1,5 +1,5 @@
-import { locales } from '@/i18n'
 import { defineRouting } from 'next-intl/routing'
+import { locales } from '@/i18n'
 
 export const routing = defineRouting({
   // A list of all locales that are supported
@@ -17,6 +17,7 @@ export const routing = defineRouting({
     '/quickstart': '/quickstart',
     '/command-reference': '/command-reference',
     '/configuration': '/configuration',
+    '/ai-analysis': '/ai-analysis',
     '/examples': '/examples',
     '/troubleshooting': '/troubleshooting',
     '/development': '/development',

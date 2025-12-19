@@ -27,7 +27,7 @@
     "vitest": "catalog:",
     "@testing-library/react": "catalog:react17",
     "eslint": "catalog:",
-    "@vitejs/plugin-react": "^4.2.0"
+    "@vitejs/plugin-react": "catalog:"
   },
   "browserslist": {
     "production": [

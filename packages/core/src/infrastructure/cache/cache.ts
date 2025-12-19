@@ -5,44 +5,44 @@
  * Supports both in-memory and file-based caching with TTL and size limits.
  */
 
-import { createHash } from 'crypto';
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
-import { homedir } from 'os';
-import { join } from 'path';
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 
 export interface CacheEntry<T = any> {
-  key: string;
-  value: T;
-  timestamp: number;
-  ttl: number; // Time to live in milliseconds
-  size: number; // Estimated size in bytes
+  key: string
+  value: T
+  timestamp: number
+  ttl: number // Time to live in milliseconds
+  size: number // Estimated size in bytes
 }
 
 export interface CacheOptions {
-  ttl?: number; // Default TTL in milliseconds
-  maxSize?: number; // Max total cache size in bytes
-  maxEntries?: number; // Max number of entries
-  persistToDisk?: boolean; // Whether to persist cache to disk
-  cacheDir?: string; // Directory for file-based cache
+  ttl?: number // Default TTL in milliseconds
+  maxSize?: number // Max total cache size in bytes
+  maxEntries?: number // Max number of entries
+  persistToDisk?: boolean // Whether to persist cache to disk
+  cacheDir?: string // Directory for file-based cache
 }
 
 export interface CacheStats {
-  totalEntries: number;
-  totalSize: number;
-  hitRate: number;
-  missRate: number;
-  hits: number;
-  misses: number;
+  totalEntries: number
+  totalSize: number
+  hitRate: number
+  missRate: number
+  hits: number
+  misses: number
 }
 
 export class Cache<T = any> {
-  private entries = new Map<string, CacheEntry<T>>();
+  private entries = new Map<string, CacheEntry<T>>()
   private stats = {
     hits: 0,
     misses: 0,
-  };
+  }
 
-  private options: Required<CacheOptions>;
+  private options: Required<CacheOptions>
 
   constructor(name: string, options: CacheOptions = {}) {
     this.options = {
@@ -51,44 +51,44 @@ export class Cache<T = any> {
       maxEntries: options.maxEntries || 1000,
       persistToDisk: options.persistToDisk || false,
       cacheDir: options.cacheDir || join(homedir(), '.pcu', 'cache', name),
-    };
+    }
 
     if (this.options.persistToDisk) {
-      this.loadFromDisk();
+      this.loadFromDisk()
     }
 
     // Setup cleanup interval
-    setInterval(() => this.cleanup(), 300000); // Clean every 5 minutes
+    setInterval(() => this.cleanup(), 300000) // Clean every 5 minutes
   }
 
   /**
    * Get value from cache
    */
   get(key: string): T | undefined {
-    const entry = this.entries.get(key);
+    const entry = this.entries.get(key)
 
     if (!entry) {
-      this.stats.misses++;
-      return undefined;
+      this.stats.misses++
+      return undefined
     }
 
     // Check if entry has expired
     if (Date.now() - entry.timestamp > entry.ttl) {
-      this.entries.delete(key);
-      this.stats.misses++;
-      return undefined;
+      this.entries.delete(key)
+      this.stats.misses++
+      return undefined
     }
 
-    this.stats.hits++;
-    return entry.value;
+    this.stats.hits++
+    return entry.value
   }
 
   /**
    * Set value in cache
    */
   set(key: string, value: T, ttl?: number): void {
-    const entryTtl = ttl || this.options.ttl;
-    const size = this.estimateSize(value);
+    const entryTtl = ttl || this.options.ttl
+    const size = this.estimateSize(value)
 
     const entry: CacheEntry<T> = {
       key,
@@ -96,20 +96,20 @@ export class Cache<T = any> {
       timestamp: Date.now(),
       ttl: entryTtl,
       size,
-    };
+    }
 
     // Remove old entry if exists
     if (this.entries.has(key)) {
-      this.entries.delete(key);
+      this.entries.delete(key)
     }
 
     // Check size limits before adding
-    this.ensureCapacity(size);
+    this.ensureCapacity(size)
 
-    this.entries.set(key, entry);
+    this.entries.set(key, entry)
 
     if (this.options.persistToDisk) {
-      this.saveToDisk(key, entry);
+      this.saveToDisk(key, entry)
     }
   }
 
@@ -117,44 +117,44 @@ export class Cache<T = any> {
    * Check if key exists in cache
    */
   has(key: string): boolean {
-    const entry = this.entries.get(key);
+    const entry = this.entries.get(key)
 
     if (!entry) {
-      return false;
+      return false
     }
 
     // Check if expired
     if (Date.now() - entry.timestamp > entry.ttl) {
-      this.entries.delete(key);
-      return false;
+      this.entries.delete(key)
+      return false
     }
 
-    return true;
+    return true
   }
 
   /**
    * Delete entry from cache
    */
   delete(key: string): boolean {
-    const deleted = this.entries.delete(key);
+    const deleted = this.entries.delete(key)
 
     if (deleted && this.options.persistToDisk) {
-      this.deleteFromDisk(key);
+      this.deleteFromDisk(key)
     }
 
-    return deleted;
+    return deleted
   }
 
   /**
    * Clear all cache entries
    */
   clear(): void {
-    this.entries.clear();
-    this.stats.hits = 0;
-    this.stats.misses = 0;
+    this.entries.clear()
+    this.stats.hits = 0
+    this.stats.misses = 0
 
     if (this.options.persistToDisk) {
-      this.clearDisk();
+      this.clearDisk()
     }
   }
 
@@ -162,7 +162,7 @@ export class Cache<T = any> {
    * Get cache statistics
    */
   getStats(): CacheStats {
-    const total = this.stats.hits + this.stats.misses;
+    const total = this.stats.hits + this.stats.misses
 
     return {
       totalEntries: this.entries.size,
@@ -171,40 +171,40 @@ export class Cache<T = any> {
       missRate: total > 0 ? this.stats.misses / total : 0,
       hits: this.stats.hits,
       misses: this.stats.misses,
-    };
+    }
   }
 
   /**
    * Get or set with factory function
    */
   async getOrSet(key: string, factory: () => Promise<T> | T, ttl?: number): Promise<T> {
-    const cached = this.get(key);
+    const cached = this.get(key)
 
     if (cached !== undefined) {
-      return cached;
+      return cached
     }
 
-    const value = await factory();
-    this.set(key, value, ttl);
+    const value = await factory()
+    this.set(key, value, ttl)
 
-    return value;
+    return value
   }
 
   /**
    * Cleanup expired entries
    */
   private cleanup(): void {
-    const now = Date.now();
-    const expiredKeys: string[] = [];
+    const now = Date.now()
+    const expiredKeys: string[] = []
 
     for (const [key, entry] of this.entries) {
       if (now - entry.timestamp > entry.ttl) {
-        expiredKeys.push(key);
+        expiredKeys.push(key)
       }
     }
 
     for (const key of expiredKeys) {
-      this.delete(key);
+      this.delete(key)
     }
   }
 
@@ -214,12 +214,12 @@ export class Cache<T = any> {
   private ensureCapacity(newEntrySize: number): void {
     // Check entry count limit
     while (this.entries.size >= this.options.maxEntries) {
-      this.evictOldest();
+      this.evictOldest()
     }
 
     // Check size limit
     while (this.getTotalSize() + newEntrySize > this.options.maxSize) {
-      this.evictOldest();
+      this.evictOldest()
     }
   }
 
@@ -227,18 +227,18 @@ export class Cache<T = any> {
    * Evict oldest entry
    */
   private evictOldest(): void {
-    let oldestKey: string | undefined;
-    let oldestTimestamp = Date.now();
+    let oldestKey: string | undefined
+    let oldestTimestamp = Date.now()
 
     for (const [key, entry] of this.entries) {
       if (entry.timestamp < oldestTimestamp) {
-        oldestTimestamp = entry.timestamp;
-        oldestKey = key;
+        oldestTimestamp = entry.timestamp
+        oldestKey = key
       }
     }
 
     if (oldestKey) {
-      this.delete(oldestKey);
+      this.delete(oldestKey)
     }
   }
 
@@ -246,11 +246,11 @@ export class Cache<T = any> {
    * Get total cache size
    */
   private getTotalSize(): number {
-    let totalSize = 0;
+    let totalSize = 0
     for (const entry of this.entries.values()) {
-      totalSize += entry.size;
+      totalSize += entry.size
     }
-    return totalSize;
+    return totalSize
   }
 
   /**
@@ -258,9 +258,9 @@ export class Cache<T = any> {
    */
   private estimateSize(value: T): number {
     try {
-      return JSON.stringify(value).length * 2; // Rough UTF-16 estimate
+      return JSON.stringify(value).length * 2 // Rough UTF-16 estimate
     } catch {
-      return 1000; // Default estimate for non-serializable values
+      return 1000 // Default estimate for non-serializable values
     }
   }
 
@@ -270,27 +270,27 @@ export class Cache<T = any> {
   private loadFromDisk(): void {
     try {
       if (!existsSync(this.options.cacheDir)) {
-        return;
+        return
       }
 
-      const indexPath = join(this.options.cacheDir, 'index.json');
+      const indexPath = join(this.options.cacheDir, 'index.json')
       if (!existsSync(indexPath)) {
-        return;
+        return
       }
 
-      const indexContent = readFileSync(indexPath, 'utf-8');
-      const index = JSON.parse(indexContent);
+      const indexContent = readFileSync(indexPath, 'utf-8')
+      const index = JSON.parse(indexContent)
 
       for (const key of index.keys || []) {
         try {
-          const entryPath = join(this.options.cacheDir, this.getFilename(key));
+          const entryPath = join(this.options.cacheDir, this.getFilename(key))
           if (existsSync(entryPath)) {
-            const entryContent = readFileSync(entryPath, 'utf-8');
-            const entry = JSON.parse(entryContent);
+            const entryContent = readFileSync(entryPath, 'utf-8')
+            const entry = JSON.parse(entryContent)
 
             // Check if entry is still valid
             if (Date.now() - entry.timestamp <= entry.ttl) {
-              this.entries.set(key, entry);
+              this.entries.set(key, entry)
             }
           }
         } catch {
@@ -308,14 +308,14 @@ export class Cache<T = any> {
   private saveToDisk(key: string, entry: CacheEntry<T>): void {
     try {
       if (!existsSync(this.options.cacheDir)) {
-        mkdirSync(this.options.cacheDir, { recursive: true });
+        mkdirSync(this.options.cacheDir, { recursive: true })
       }
 
-      const entryPath = join(this.options.cacheDir, this.getFilename(key));
-      writeFileSync(entryPath, JSON.stringify(entry), 'utf-8');
+      const entryPath = join(this.options.cacheDir, this.getFilename(key))
+      writeFileSync(entryPath, JSON.stringify(entry), 'utf-8')
 
       // Update index
-      this.updateDiskIndex();
+      this.updateDiskIndex()
     } catch {
       // Ignore disk saving errors
     }
@@ -326,11 +326,11 @@ export class Cache<T = any> {
    */
   private deleteFromDisk(key: string): void {
     try {
-      const entryPath = join(this.options.cacheDir, this.getFilename(key));
+      const entryPath = join(this.options.cacheDir, this.getFilename(key))
       if (existsSync(entryPath)) {
-        unlinkSync(entryPath);
+        unlinkSync(entryPath)
       }
-      this.updateDiskIndex();
+      this.updateDiskIndex()
     } catch {
       // Ignore disk deletion errors
     }
@@ -342,8 +342,8 @@ export class Cache<T = any> {
   private clearDisk(): void {
     try {
       if (existsSync(this.options.cacheDir)) {
-        const fs = require('fs');
-        fs.rmSync(this.options.cacheDir, { recursive: true, force: true });
+        const fs = require('node:fs')
+        fs.rmSync(this.options.cacheDir, { recursive: true, force: true })
       }
     } catch {
       // Ignore disk clearing errors
@@ -355,12 +355,12 @@ export class Cache<T = any> {
    */
   private updateDiskIndex(): void {
     try {
-      const indexPath = join(this.options.cacheDir, 'index.json');
+      const indexPath = join(this.options.cacheDir, 'index.json')
       const index = {
         keys: Array.from(this.entries.keys()),
         lastUpdated: Date.now(),
-      };
-      writeFileSync(indexPath, JSON.stringify(index), 'utf-8');
+      }
+      writeFileSync(indexPath, JSON.stringify(index), 'utf-8')
     } catch {
       // Ignore index update errors
     }
@@ -371,8 +371,8 @@ export class Cache<T = any> {
    */
   private getFilename(key: string): string {
     // Use hash to create safe filename
-    const hash = createHash('md5').update(key).digest('hex');
-    return `${hash}.json`;
+    const hash = createHash('md5').update(key).digest('hex')
+    return `${hash}.json`
   }
 }
 
@@ -387,49 +387,49 @@ export class RegistryCache extends Cache<any> {
       maxEntries: 500,
       persistToDisk: true,
       ...options,
-    });
+    })
   }
 
   /**
    * Cache package info
    */
   setPackageInfo(packageName: string, info: any, ttl?: number): void {
-    this.set(`package:${packageName}`, info, ttl);
+    this.set(`package:${packageName}`, info, ttl)
   }
 
   /**
    * Get cached package info
    */
   getPackageInfo(packageName: string): any | undefined {
-    return this.get(`package:${packageName}`);
+    return this.get(`package:${packageName}`)
   }
 
   /**
    * Cache version list
    */
   setVersions(packageName: string, versions: string[], ttl?: number): void {
-    this.set(`versions:${packageName}`, versions, ttl);
+    this.set(`versions:${packageName}`, versions, ttl)
   }
 
   /**
    * Get cached versions
    */
   getVersions(packageName: string): string[] | undefined {
-    return this.get(`versions:${packageName}`);
+    return this.get(`versions:${packageName}`)
   }
 
   /**
    * Cache security report
    */
   setSecurityReport(packageName: string, version: string, report: any, ttl?: number): void {
-    this.set(`security:${packageName}:${version}`, report, ttl);
+    this.set(`security:${packageName}:${version}`, report, ttl)
   }
 
   /**
    * Get cached security report
    */
   getSecurityReport(packageName: string, version: string): any | undefined {
-    return this.get(`security:${packageName}:${version}`);
+    return this.get(`security:${packageName}:${version}`)
   }
 }
 
@@ -444,38 +444,38 @@ export class WorkspaceCache extends Cache<any> {
       maxEntries: 200,
       persistToDisk: false, // Don't persist workspace cache
       ...options,
-    });
+    })
   }
 
   /**
    * Cache workspace info
    */
   setWorkspaceInfo(workspacePath: string, info: any, ttl?: number): void {
-    this.set(`workspace:${workspacePath}`, info, ttl);
+    this.set(`workspace:${workspacePath}`, info, ttl)
   }
 
   /**
    * Get cached workspace info
    */
   getWorkspaceInfo(workspacePath: string): any | undefined {
-    return this.get(`workspace:${workspacePath}`);
+    return this.get(`workspace:${workspacePath}`)
   }
 
   /**
    * Cache package.json content
    */
   setPackageJson(filePath: string, content: any, ttl?: number): void {
-    this.set(`package-json:${filePath}`, content, ttl);
+    this.set(`package-json:${filePath}`, content, ttl)
   }
 
   /**
    * Get cached package.json
    */
   getPackageJson(filePath: string): any | undefined {
-    return this.get(`package-json:${filePath}`);
+    return this.get(`package-json:${filePath}`)
   }
 }
 
 // Export singleton instances
-export const registryCache = new RegistryCache();
-export const workspaceCache = new WorkspaceCache();
+export const registryCache = new RegistryCache()
+export const workspaceCache = new WorkspaceCache()

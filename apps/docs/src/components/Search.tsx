@@ -1,19 +1,19 @@
 'use client'
 
 import {
-  createAutocomplete,
   type AutocompleteApi,
   type AutocompleteCollection,
   type AutocompleteState,
+  createAutocomplete,
 } from '@algolia/autocomplete-core'
 import { Dialog, DialogBackdrop, DialogPanel } from '@headlessui/react'
 import clsx from 'clsx'
-import { useTranslations } from 'next-intl'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   Fragment,
-  Suspense,
   forwardRef,
+  Suspense,
   useCallback,
   useEffect,
   useId,
@@ -23,7 +23,7 @@ import {
 import Highlighter from 'react-highlight-words'
 
 import { navigation } from '@/components/Navigation'
-import { type Result } from '@/mdx/search.mjs'
+import type { Result } from '@/mdx/search.mjs'
 import { useMobileNavigationStore } from './MobileNavigation'
 
 type EmptyObject = Record<string, never>
@@ -36,12 +36,12 @@ type Autocomplete = AutocompleteApi<
 >
 
 function useAutocomplete({ onNavigate }: { onNavigate: () => void }) {
-  let id = useId()
-  let router = useRouter()
-  let t = useTranslations('Search')
-  let [autocompleteState, setAutocompleteState] = useState<AutocompleteState<Result> | EmptyObject>(
-    {}
-  )
+  const id = useId()
+  const router = useRouter()
+  const t = useTranslations('Search')
+  const [autocompleteState, setAutocompleteState] = useState<
+    AutocompleteState<Result> | EmptyObject
+  >({})
 
   function navigate({ itemUrl }: { itemUrl?: string }) {
     if (itemUrl) {
@@ -51,7 +51,7 @@ function useAutocomplete({ onNavigate }: { onNavigate: () => void }) {
     onNavigate()
   }
 
-  let [autocomplete] = useState<Autocomplete>(() =>
+  const [autocomplete] = useState<Autocomplete>(() =>
     createAutocomplete<Result, React.SyntheticEvent, React.MouseEvent, React.KeyboardEvent>({
       id,
       placeholder: t('placeholder'),
@@ -112,7 +112,7 @@ function NoResultsIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
 }
 
 function LoadingIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
-  let id = useId()
+  const id = useId()
 
   return (
     <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
@@ -157,12 +157,14 @@ function SearchResult({
   collection: AutocompleteCollection<Result>
   query: string
 }) {
-  let id = useId()
+  const id = useId()
 
-  let sectionTitle = navigation.find((section) =>
+  const sectionTitle = navigation.find((section) =>
     section.links.find((link) => link.href === result.url.split('#')[0])
   )?.title
-  let hierarchy = [sectionTitle, result.pageTitle].filter((x): x is string => typeof x === 'string')
+  const hierarchy = [sectionTitle, result.pageTitle].filter(
+    (x): x is string => typeof x === 'string'
+  )
 
   return (
     <li
@@ -226,7 +228,7 @@ function SearchResults({
         <NoResultsIcon className="mx-auto h-5 w-5 stroke-zinc-900 dark:stroke-zinc-600" />
         <p className="mt-2 text-xs text-zinc-700 dark:text-zinc-400">
           {t('noResults')}{' '}
-          <strong className="break-words font-semibold text-zinc-900 dark:text-white">
+          <strong className="font-semibold break-words text-zinc-900 dark:text-white">
             &lsquo;{query}&rsquo;
           </strong>
           . {t('tryAgain')}
@@ -259,16 +261,16 @@ const SearchInput = forwardRef<
     onClose: () => void
   }
 >(function SearchInput({ autocomplete, autocompleteState, onClose }, inputRef) {
-  let inputProps = autocomplete.getInputProps({ inputElement: null })
+  const inputProps = autocomplete.getInputProps({ inputElement: null })
 
   return (
     <div className="group relative flex h-12">
-      <SearchIcon className="pointer-events-none absolute left-3 top-0 h-full w-5 stroke-zinc-500" />
+      <SearchIcon className="pointer-events-none absolute top-0 left-3 h-full w-5 stroke-zinc-500" />
       <input
         ref={inputRef}
         data-autofocus
         className={clsx(
-          'outline-hidden flex-auto appearance-none bg-transparent pl-10 text-zinc-900 placeholder:text-zinc-500 focus:w-full focus:flex-none sm:text-sm dark:text-white [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden',
+          'flex-auto appearance-none bg-transparent pl-10 text-zinc-900 outline-hidden placeholder:text-zinc-500 focus:w-full focus:flex-none sm:text-sm dark:text-white [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden',
           autocompleteState.status === 'stalled' ? 'pr-11' : 'pr-4'
         )}
         {...inputProps}
@@ -310,17 +312,17 @@ function SearchDialog({
   className?: string
   onNavigate?: () => void
 }) {
-  let formRef = useRef<React.ElementRef<'form'>>(null)
-  let panelRef = useRef<React.ElementRef<'div'>>(null)
-  let inputRef = useRef<React.ElementRef<typeof SearchInput>>(null)
-  let { autocomplete, autocompleteState } = useAutocomplete({
+  const formRef = useRef<React.ElementRef<'form'>>(null)
+  const panelRef = useRef<React.ElementRef<'div'>>(null)
+  const inputRef = useRef<React.ElementRef<typeof SearchInput>>(null)
+  const { autocomplete, autocompleteState } = useAutocomplete({
     onNavigate() {
       onNavigate()
       setOpen(false)
     },
   })
-  let pathname = usePathname()
-  let searchParams = useSearchParams()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     setOpen(false)
@@ -356,13 +358,13 @@ function SearchDialog({
     >
       <DialogBackdrop
         transition
-        className="backdrop-blur-xs data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in fixed inset-0 bg-zinc-400/25 dark:bg-black/40"
+        className="fixed inset-0 bg-zinc-400/25 backdrop-blur-xs data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in dark:bg-black/40"
       />
 
       <div className="fixed inset-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-20 md:py-32 lg:px-8 lg:py-[15vh]">
         <DialogPanel
           transition
-          className="ring-zinc-900/7.5 data-closed:scale-95 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in mx-auto transform-gpu overflow-hidden rounded-lg bg-zinc-50 shadow-xl ring-1 sm:max-w-xl dark:bg-zinc-900 dark:ring-zinc-800"
+          className="mx-auto transform-gpu overflow-hidden rounded-lg bg-zinc-50 shadow-xl ring-1 ring-zinc-900/7.5 data-closed:scale-95 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:max-w-xl dark:bg-zinc-900 dark:ring-zinc-800"
         >
           <div {...autocomplete.getRootProps({})}>
             <form
@@ -379,7 +381,7 @@ function SearchDialog({
               />
               <div
                 ref={panelRef}
-                className="dark:bg-white/2.5 border-t border-zinc-200 bg-white empty:hidden dark:border-zinc-100/5"
+                className="border-t border-zinc-200 bg-white empty:hidden dark:border-zinc-100/5 dark:bg-white/2.5"
                 {...autocomplete.getPanelProps({})}
               >
                 {autocompleteState.isOpen && (
@@ -399,8 +401,8 @@ function SearchDialog({
 }
 
 function useSearchProps() {
-  let buttonRef = useRef<React.ElementRef<'button'>>(null)
-  let [open, setOpen] = useState(false)
+  const buttonRef = useRef<React.ElementRef<'button'>>(null)
+  const [open, setOpen] = useState(false)
 
   return {
     buttonProps: {
@@ -413,7 +415,7 @@ function useSearchProps() {
       open,
       setOpen: useCallback(
         (open: boolean) => {
-          let { width = 0, height = 0 } = buttonRef.current?.getBoundingClientRect() ?? {}
+          const { width = 0, height = 0 } = buttonRef.current?.getBoundingClientRect() ?? {}
           if (!open || (width !== 0 && height !== 0)) {
             setOpen(open)
           }
@@ -425,8 +427,8 @@ function useSearchProps() {
 }
 
 export function Search() {
-  let [modifierKey, setModifierKey] = useState<string>()
-  let { buttonProps, dialogProps } = useSearchProps()
+  const [modifierKey, setModifierKey] = useState<string>()
+  const { buttonProps, dialogProps } = useSearchProps()
   const t = useTranslations('Search')
 
   useEffect(() => {
@@ -437,7 +439,7 @@ export function Search() {
     <div className="hidden lg:block lg:max-w-md lg:flex-auto">
       <button
         type="button"
-        className="hidden h-8 w-full items-center gap-2 rounded-full bg-white pl-2 pr-3 text-sm text-zinc-500 ring-1 ring-zinc-900/10 transition hover:ring-zinc-900/20 lg:flex dark:bg-white/5 dark:text-zinc-400 dark:ring-inset dark:ring-white/10 dark:hover:ring-white/20"
+        className="hidden h-8 w-full items-center gap-2 rounded-full bg-white pr-3 pl-2 text-sm text-zinc-500 ring-1 ring-zinc-900/10 transition hover:ring-zinc-900/20 lg:flex dark:bg-white/5 dark:text-zinc-400 dark:ring-white/10 dark:ring-inset dark:hover:ring-white/20"
         {...buttonProps}
       >
         <SearchIcon className="h-5 w-5 stroke-current" />
@@ -455,8 +457,8 @@ export function Search() {
 }
 
 export function MobileSearch() {
-  let { close } = useMobileNavigationStore()
-  let { buttonProps, dialogProps } = useSearchProps()
+  const { close } = useMobileNavigationStore()
+  const { buttonProps, dialogProps } = useSearchProps()
   const t = useTranslations('Search')
 
   return (
@@ -467,7 +469,7 @@ export function MobileSearch() {
         aria-label={t('placeholder')}
         {...buttonProps}
       >
-        <span className="pointer-fine:hidden absolute size-12" />
+        <span className="absolute size-12 pointer-fine:hidden" />
         <SearchIcon className="h-5 w-5 stroke-zinc-900 dark:stroke-white" />
       </button>
       <Suspense fallback={null}>

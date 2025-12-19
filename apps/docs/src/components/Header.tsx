@@ -1,4 +1,4 @@
-import { Link } from '@/i18n/navigation'
+import { CloseButton } from '@headlessui/react'
 import clsx from 'clsx'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { forwardRef } from 'react'
@@ -12,18 +12,18 @@ import {
 } from '@/components/MobileNavigation'
 import { MobileSearch, Search } from '@/components/Search'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { CloseButton } from '@headlessui/react'
+import { Link } from '@/i18n/navigation'
 
 export const Header = forwardRef<
   React.ComponentRef<'div'>,
   React.ComponentPropsWithoutRef<typeof motion.div>
 >(function Header({ className, ...props }, ref) {
-  let { isOpen: mobileNavIsOpen } = useMobileNavigationStore()
-  let isInsideMobileNavigation = useIsInsideMobileNavigation()
+  const { isOpen: mobileNavIsOpen } = useMobileNavigationStore()
+  const isInsideMobileNavigation = useIsInsideMobileNavigation()
 
-  let { scrollY } = useScroll()
-  let bgOpacityLight = useTransform(scrollY, [0, 72], ['50%', '90%'])
-  let bgOpacityDark = useTransform(scrollY, [0, 72], ['20%', '80%'])
+  const { scrollY } = useScroll()
+  const bgOpacityLight = useTransform(scrollY, [0, 72], ['50%', '90%'])
+  const bgOpacityDark = useTransform(scrollY, [0, 72], ['20%', '80%'])
 
   return (
     <motion.div

@@ -4,45 +4,45 @@
  * Provides consistent color schemes and styling across the CLI
  */
 
-import chalk from 'chalk';
+import chalk from 'chalk'
 
 export interface ColorTheme {
   // Brand colors
-  primary: (text: string) => string;
-  secondary: (text: string) => string;
-  accent: (text: string) => string;
+  primary: (text: string) => string
+  secondary: (text: string) => string
+  accent: (text: string) => string
 
   // Semantic colors
-  success: (text: string) => string;
-  warning: (text: string) => string;
-  error: (text: string) => string;
-  info: (text: string) => string;
+  success: (text: string) => string
+  warning: (text: string) => string
+  error: (text: string) => string
+  info: (text: string) => string
 
   // UI colors
-  text: (text: string) => string;
-  muted: (text: string) => string;
-  border: (text: string) => string;
-  background: (text: string) => string;
+  text: (text: string) => string
+  muted: (text: string) => string
+  border: (text: string) => string
+  background: (text: string) => string
 
   // Status colors
-  pending: (text: string) => string;
-  processing: (text: string) => string;
-  completed: (text: string) => string;
+  pending: (text: string) => string
+  processing: (text: string) => string
+  completed: (text: string) => string
 
   // Version colors
-  major: (text: string) => string;
-  minor: (text: string) => string;
-  patch: (text: string) => string;
-  prerelease: (text: string) => string;
+  major: (text: string) => string
+  minor: (text: string) => string
+  patch: (text: string) => string
+  prerelease: (text: string) => string
 
   // Risk levels
-  riskHigh: (text: string) => string;
-  riskMedium: (text: string) => string;
-  riskLow: (text: string) => string;
+  riskHigh: (text: string) => string
+  riskMedium: (text: string) => string
+  riskLow: (text: string) => string
 }
 
 export class ThemeManager {
-  private static currentTheme: ColorTheme;
+  private static currentTheme: ColorTheme
 
   static themes = {
     default: {
@@ -160,18 +160,18 @@ export class ThemeManager {
       riskMedium: (text: string) => chalk.hex('#ffff00')(text),
       riskLow: (text: string) => chalk.hex('#00ff00')(text),
     },
-  };
+  }
 
   static setTheme(themeName: keyof typeof ThemeManager.themes): void {
-    this.currentTheme = this.themes[themeName];
+    ThemeManager.currentTheme = ThemeManager.themes[themeName]
   }
 
   static getTheme(): ColorTheme {
-    return this.currentTheme || this.themes.default;
+    return ThemeManager.currentTheme || ThemeManager.themes.default
   }
 
   static listThemes(): string[] {
-    return Object.keys(this.themes);
+    return Object.keys(ThemeManager.themes)
   }
 }
 
@@ -179,149 +179,149 @@ export class ThemeManager {
  * Styled text utilities
  */
 export class StyledText {
-  private static theme = ThemeManager.getTheme();
+  private static theme = ThemeManager.getTheme()
 
   static updateTheme(): void {
-    this.theme = ThemeManager.getTheme();
+    StyledText.theme = ThemeManager.getTheme()
   }
 
   // Brand styles
   static brand(text: string): string {
-    return this.theme.primary(text);
+    return StyledText.theme.primary(text)
   }
 
   static secondary(text: string): string {
-    return this.theme.secondary(text);
+    return StyledText.theme.secondary(text)
   }
 
   static accent(text: string): string {
-    return this.theme.accent(text);
+    return StyledText.theme.accent(text)
   }
 
   // Semantic styles
   static success(text: string): string {
-    return this.theme.success(text);
+    return StyledText.theme.success(text)
   }
 
   static warning(text: string): string {
-    return this.theme.warning(text);
+    return StyledText.theme.warning(text)
   }
 
   static error(text: string): string {
-    return this.theme.error(text);
+    return StyledText.theme.error(text)
   }
 
   static info(text: string): string {
-    return this.theme.info(text);
+    return StyledText.theme.info(text)
   }
 
   // UI styles
   static text(text: string): string {
-    return this.theme.text(text);
+    return StyledText.theme.text(text)
   }
 
   static muted(text: string): string {
-    return this.theme.muted(text);
+    return StyledText.theme.muted(text)
   }
 
   static border(text: string): string {
-    return this.theme.border(text);
+    return StyledText.theme.border(text)
   }
 
   // Status styles
   static pending(text: string): string {
-    return this.theme.pending(text);
+    return StyledText.theme.pending(text)
   }
 
   static processing(text: string): string {
-    return this.theme.processing(text);
+    return StyledText.theme.processing(text)
   }
 
   static completed(text: string): string {
-    return this.theme.completed(text);
+    return StyledText.theme.completed(text)
   }
 
   // Version styles
   static versionMajor(text: string): string {
-    return this.theme.major(text);
+    return StyledText.theme.major(text)
   }
 
   static versionMinor(text: string): string {
-    return this.theme.minor(text);
+    return StyledText.theme.minor(text)
   }
 
   static versionPatch(text: string): string {
-    return this.theme.patch(text);
+    return StyledText.theme.patch(text)
   }
 
   static versionPrerelease(text: string): string {
-    return this.theme.prerelease(text);
+    return StyledText.theme.prerelease(text)
   }
 
   // Risk styles
   static riskHigh(text: string): string {
-    return this.theme.riskHigh(text);
+    return StyledText.theme.riskHigh(text)
   }
 
   static riskMedium(text: string): string {
-    return this.theme.riskMedium(text);
+    return StyledText.theme.riskMedium(text)
   }
 
   static riskLow(text: string): string {
-    return this.theme.riskLow(text);
+    return StyledText.theme.riskLow(text)
   }
 
   // Icons
   static icon(icon: string, text?: string): string {
-    return text ? `${icon} ${text}` : icon;
+    return text ? `${icon} ${text}` : icon
   }
 
   static iconSuccess(text?: string): string {
-    return this.icon('✅', text);
+    return StyledText.icon('✅', text)
   }
 
   static iconWarning(text?: string): string {
-    return this.icon('⚠️', text);
+    return StyledText.icon('⚠️', text)
   }
 
   static iconError(text?: string): string {
-    return this.icon('❌', text);
+    return StyledText.icon('❌', text)
   }
 
   static iconInfo(text?: string): string {
-    return this.icon('ℹ️', text);
+    return StyledText.icon('ℹ️', text)
   }
 
   static iconPackage(text?: string): string {
-    return this.icon('📦', text);
+    return StyledText.icon('📦', text)
   }
 
   static iconCatalog(text?: string): string {
-    return this.icon('📋', text);
+    return StyledText.icon('📋', text)
   }
 
   static iconUpdate(text?: string): string {
-    return this.icon('🔄', text);
+    return StyledText.icon('🔄', text)
   }
 
   static iconSecurity(text?: string): string {
-    return this.icon('🔒', text);
+    return StyledText.icon('🔒', text)
   }
 
   static iconAnalysis(text?: string): string {
-    return this.icon('🔍', text);
+    return StyledText.icon('🔍', text)
   }
 
   static iconCheck(text?: string): string {
-    return this.icon('✅', text);
+    return StyledText.icon('✅', text)
   }
 
   static iconProgress(text?: string): string {
-    return this.icon('⏳', text);
+    return StyledText.icon('⏳', text)
   }
 
   static iconComplete(text?: string): string {
-    return this.icon('🎉', text);
+    return StyledText.icon('🎉', text)
   }
 }
 
@@ -330,15 +330,15 @@ export class StyledText {
  */
 export class TableStyles {
   static createHeaderStyle(color: any) {
-    return (text: string) => color.bold(text);
+    return (text: string) => color.bold(text)
   }
 
   static createBorderStyle(color: any) {
-    return (text: string) => color.dim(text);
+    return (text: string) => color.dim(text)
   }
 
   static createCellStyle(color: any) {
-    return (text: string) => color(text);
+    return (text: string) => color(text)
   }
 }
 
@@ -346,10 +346,10 @@ export class TableStyles {
  * Theme configuration interface
  */
 export interface ThemeConfig {
-  name: string;
-  colors: Partial<ColorTheme>;
-  icons: Record<string, string>;
-  styles: Record<string, any>;
+  name: string
+  colors: Partial<ColorTheme>
+  icons: Record<string, string>
+  styles: Record<string, any>
 }
 
 /**
@@ -376,4 +376,4 @@ export const themePresets = {
     description: 'Balanced colors for general use',
     theme: 'default',
   },
-};
+}

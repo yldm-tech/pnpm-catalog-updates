@@ -5,42 +5,46 @@
  * Provides consistent option parsing and validation.
  */
 
-import { Option } from 'commander';
+import { Option } from 'commander'
 
 export interface GlobalCliOptions {
-  workspace?: string;
-  verbose?: boolean;
-  color?: boolean;
-  registry?: string;
-  timeout?: number;
-  config?: string;
+  workspace?: string
+  verbose?: boolean
+  color?: boolean
+  registry?: string
+  timeout?: number
+  config?: string
 }
 
 export interface CheckCliOptions extends GlobalCliOptions {
-  catalog?: string;
-  format?: 'table' | 'json' | 'yaml' | 'minimal';
-  target?: 'latest' | 'greatest' | 'minor' | 'patch' | 'newest';
-  prerelease?: boolean;
-  include?: string[];
-  exclude?: string[];
+  catalog?: string
+  format?: 'table' | 'json' | 'yaml' | 'minimal'
+  target?: 'latest' | 'greatest' | 'minor' | 'patch' | 'newest'
+  prerelease?: boolean
+  include?: string[]
+  exclude?: string[]
 }
 
 export interface UpdateCliOptions extends CheckCliOptions {
-  interactive?: boolean;
-  dryRun?: boolean;
-  force?: boolean;
-  createBackup?: boolean;
+  interactive?: boolean
+  dryRun?: boolean
+  force?: boolean
+  createBackup?: boolean
 }
 
 export interface AnalyzeCliOptions extends GlobalCliOptions {
-  format?: 'table' | 'json' | 'yaml' | 'minimal';
+  format?: 'table' | 'json' | 'yaml' | 'minimal'
+  ai?: boolean
+  provider?: 'auto' | 'claude' | 'gemini' | 'codex'
+  analysisType?: 'impact' | 'security' | 'compatibility' | 'recommend'
+  skipCache?: boolean
 }
 
 export interface WorkspaceCliOptions extends GlobalCliOptions {
-  validate?: boolean;
-  stats?: boolean;
-  info?: boolean;
-  format?: 'table' | 'json' | 'yaml' | 'minimal';
+  validate?: boolean
+  stats?: boolean
+  info?: boolean
+  format?: 'table' | 'json' | 'yaml' | 'minimal'
 }
 
 /**
@@ -60,7 +64,7 @@ export const globalOptions = [
     .env('PCU_TIMEOUT'),
 
   new Option('--config <path>', 'path to configuration file').env('PCU_CONFIG'),
-];
+]
 
 /**
  * Check command specific options
@@ -85,7 +89,7 @@ export const checkOptions = [
   new Option('--include <pattern...>', 'include packages matching pattern').env('PCU_INCLUDE'),
 
   new Option('--exclude <pattern...>', 'exclude packages matching pattern').env('PCU_EXCLUDE'),
-];
+]
 
 /**
  * Update command specific options
@@ -100,7 +104,7 @@ export const updateOptions = [
   new Option('--force', 'force updates even if risky').env('PCU_FORCE'),
 
   new Option('--create-backup', 'create backup files before updating').env('PCU_CREATE_BACKUP'),
-];
+]
 
 /**
  * Analyze command specific options
@@ -112,7 +116,21 @@ export const analyzeOptions = [
     .choices(['table', 'json', 'yaml', 'minimal'])
     .default('table')
     .env('PCU_OUTPUT_FORMAT'),
-];
+
+  new Option('--ai', 'enable AI-powered analysis').env('PCU_AI_ENABLED'),
+
+  new Option('--provider <name>', 'AI provider to use')
+    .choices(['auto', 'claude', 'gemini', 'codex'])
+    .default('auto')
+    .env('PCU_AI_PROVIDER'),
+
+  new Option('--analysis-type <type>', 'type of AI analysis')
+    .choices(['impact', 'security', 'compatibility', 'recommend'])
+    .default('impact')
+    .env('PCU_AI_ANALYSIS_TYPE'),
+
+  new Option('--skip-cache', 'skip AI analysis cache').env('PCU_AI_SKIP_CACHE'),
+]
 
 /**
  * Workspace command specific options
@@ -130,7 +148,7 @@ export const workspaceOptions = [
     .choices(['table', 'json', 'yaml', 'minimal'])
     .default('table')
     .env('PCU_OUTPUT_FORMAT'),
-];
+]
 
 /**
  * Option groups for better help organization
@@ -178,203 +196,242 @@ export const optionGroups = {
       new Option('--timeout <ms>', 'request timeout').argParser(parseInt),
     ],
   },
-};
+}
 
 /**
  * Utility functions for option handling
  */
 export class OptionUtils {
+  private static parseBoolean(value: unknown): boolean {
+    if (value === undefined || value === null) return false
+    if (typeof value === 'boolean') return value
+    if (typeof value === 'number') return value !== 0
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase()
+      if (normalized === '') return false
+      if (['false', '0', 'no', 'off', 'n'].includes(normalized)) return false
+      if (['true', '1', 'yes', 'on', 'y'].includes(normalized)) return true
+      return true
+    }
+    return Boolean(value)
+  }
+
   /**
    * Parse and validate global options
    */
   static parseGlobalOptions(options: any): GlobalCliOptions {
-    const parsed: GlobalCliOptions = {};
+    const parsed: GlobalCliOptions = {}
 
     if (options.workspace) {
-      parsed.workspace = String(options.workspace).trim();
+      parsed.workspace = String(options.workspace).trim()
     }
 
     if (options.verbose !== undefined) {
-      parsed.verbose = Boolean(options.verbose);
+      parsed.verbose = OptionUtils.parseBoolean(options.verbose)
     }
 
     if (options.color !== undefined) {
-      parsed.color = Boolean(options.color);
+      parsed.color = OptionUtils.parseBoolean(options.color)
     }
 
     if (options.registry) {
-      parsed.registry = String(options.registry).trim();
+      parsed.registry = String(options.registry).trim()
     }
 
     if (options.timeout) {
-      const timeout = parseInt(String(options.timeout), 10);
-      if (!isNaN(timeout) && timeout > 0) {
-        parsed.timeout = timeout;
+      const timeout = parseInt(String(options.timeout), 10)
+      if (!Number.isNaN(timeout) && timeout > 0) {
+        parsed.timeout = timeout
       }
     }
 
     if (options.config) {
-      parsed.config = String(options.config).trim();
+      parsed.config = String(options.config).trim()
     }
 
-    return parsed;
+    return parsed
   }
 
   /**
    * Parse check command options
    */
   static parseCheckOptions(options: any): CheckCliOptions {
-    const global = this.parseGlobalOptions(options);
-    const check: CheckCliOptions = { ...global };
+    const global = OptionUtils.parseGlobalOptions(options)
+    const check: CheckCliOptions = { ...global }
 
     if (options.catalog) {
-      check.catalog = String(options.catalog).trim();
+      check.catalog = String(options.catalog).trim()
     }
 
     if (options.format && typeof options.format === 'string') {
-      check.format = options.format as Exclude<CheckCliOptions['format'], undefined>;
+      check.format = options.format as Exclude<CheckCliOptions['format'], undefined>
     }
 
     if (options.target && typeof options.target === 'string') {
-      check.target = options.target as Exclude<CheckCliOptions['target'], undefined>;
+      check.target = options.target as Exclude<CheckCliOptions['target'], undefined>
     }
 
     if (options.prerelease !== undefined) {
-      check.prerelease = Boolean(options.prerelease);
+      check.prerelease = OptionUtils.parseBoolean(options.prerelease)
     }
 
     if (options.include) {
       check.include = Array.isArray(options.include)
         ? options.include.map((p: any) => String(p).trim()).filter(Boolean)
-        : [String(options.include).trim()].filter(Boolean);
+        : [String(options.include).trim()].filter(Boolean)
     }
 
     if (options.exclude) {
       check.exclude = Array.isArray(options.exclude)
         ? options.exclude.map((p: any) => String(p).trim()).filter(Boolean)
-        : [String(options.exclude).trim()].filter(Boolean);
+        : [String(options.exclude).trim()].filter(Boolean)
     }
 
-    return check;
+    return check
   }
 
   /**
    * Parse update command options
    */
   static parseUpdateOptions(options: any): UpdateCliOptions {
-    const check = this.parseCheckOptions(options);
-    const update: UpdateCliOptions = { ...check };
+    const check = OptionUtils.parseCheckOptions(options)
+    const update: UpdateCliOptions = { ...check }
 
     if (options.interactive !== undefined) {
-      update.interactive = Boolean(options.interactive);
+      update.interactive = OptionUtils.parseBoolean(options.interactive)
     }
 
     if (options.dryRun !== undefined) {
-      update.dryRun = Boolean(options.dryRun);
+      update.dryRun = OptionUtils.parseBoolean(options.dryRun)
     }
 
     if (options.force !== undefined) {
-      update.force = Boolean(options.force);
+      update.force = OptionUtils.parseBoolean(options.force)
     }
 
     if (options.createBackup !== undefined) {
-      update.createBackup = Boolean(options.createBackup);
+      update.createBackup = OptionUtils.parseBoolean(options.createBackup)
     }
 
-    return update;
+    return update
   }
 
   /**
    * Parse analyze command options
    */
   static parseAnalyzeOptions(options: any): AnalyzeCliOptions {
-    const global = this.parseGlobalOptions(options);
-    const analyze: AnalyzeCliOptions = { ...global };
+    const global = OptionUtils.parseGlobalOptions(options)
+    const analyze: AnalyzeCliOptions = { ...global }
 
     if (options.format && typeof options.format === 'string') {
-      analyze.format = options.format as Exclude<AnalyzeCliOptions['format'], undefined>;
+      analyze.format = options.format as Exclude<AnalyzeCliOptions['format'], undefined>
     }
 
-    return analyze;
+    if (options.ai !== undefined) {
+      analyze.ai = OptionUtils.parseBoolean(options.ai)
+    }
+
+    if (options.provider && typeof options.provider === 'string') {
+      analyze.provider = options.provider as Exclude<AnalyzeCliOptions['provider'], undefined>
+    }
+
+    if (options.analysisType && typeof options.analysisType === 'string') {
+      analyze.analysisType = options.analysisType as Exclude<
+        AnalyzeCliOptions['analysisType'],
+        undefined
+      >
+    }
+
+    if (options.skipCache !== undefined) {
+      analyze.skipCache = OptionUtils.parseBoolean(options.skipCache)
+    }
+
+    return analyze
   }
 
   /**
    * Parse workspace command options
    */
   static parseWorkspaceOptions(options: any): WorkspaceCliOptions {
-    const global = this.parseGlobalOptions(options);
-    const workspace: WorkspaceCliOptions = { ...global };
+    const global = OptionUtils.parseGlobalOptions(options)
+    const workspace: WorkspaceCliOptions = { ...global }
 
     if (options.validate !== undefined) {
-      workspace.validate = Boolean(options.validate);
+      workspace.validate = OptionUtils.parseBoolean(options.validate)
     }
 
     if (options.stats !== undefined) {
-      workspace.stats = Boolean(options.stats);
+      workspace.stats = OptionUtils.parseBoolean(options.stats)
     }
 
     if (options.info !== undefined) {
-      workspace.info = Boolean(options.info);
+      workspace.info = OptionUtils.parseBoolean(options.info)
     }
 
     if (options.format && typeof options.format === 'string') {
-      workspace.format = options.format as Exclude<WorkspaceCliOptions['format'], undefined>;
+      workspace.format = options.format as Exclude<WorkspaceCliOptions['format'], undefined>
     }
 
-    return workspace;
+    return workspace
   }
 
   /**
    * Generate help text for option group
    */
   static generateHelpText(groupName: keyof typeof optionGroups): string {
-    const group = optionGroups[groupName];
-    if (!group) return '';
+    const group = optionGroups[groupName]
+    if (!group) return ''
 
-    const lines = [`${group.title}:`];
+    const lines = [`${group.title}:`]
 
     for (const option of group.options) {
-      const flags = option.flags;
-      const description = option.description || '';
-      const choices = option.argChoices ? ` (choices: ${option.argChoices.join(', ')})` : '';
-      const defaultValue = option.defaultValue ? ` (default: ${option.defaultValue})` : '';
+      const flags = option.flags
+      const description = option.description || ''
+      const choices = option.argChoices ? ` (choices: ${option.argChoices.join(', ')})` : ''
+      const defaultValue = option.defaultValue ? ` (default: ${option.defaultValue})` : ''
 
-      lines.push(`  ${flags.padEnd(30)} ${description}${choices}${defaultValue}`);
+      lines.push(`  ${flags.padEnd(30)} ${description}${choices}${defaultValue}`)
     }
 
-    return lines.join('\n');
+    return lines.join('\n')
   }
 
   /**
    * Validate option combinations
    */
   static validateOptionCombinations(command: string, options: any): string[] {
-    const errors: string[] = [];
+    const errors: string[] = []
 
     switch (command) {
       case 'update':
-        if (options.interactive && options.dryRun) {
-          errors.push('Cannot use --interactive with --dry-run');
+        if (
+          OptionUtils.parseBoolean(options.interactive) &&
+          OptionUtils.parseBoolean(options.dryRun)
+        ) {
+          errors.push('Cannot use --interactive with --dry-run')
         }
-        break;
+        break
 
-      case 'workspace':
-        const actionCount = [options.validate, options.stats, options.info].filter(Boolean).length;
+      case 'workspace': {
+        const actionCount = [options.validate, options.stats, options.info].filter((v) =>
+          OptionUtils.parseBoolean(v)
+        ).length
         if (actionCount > 1) {
-          errors.push('Cannot use multiple workspace actions simultaneously');
+          errors.push('Cannot use multiple workspace actions simultaneously')
         }
         if (actionCount === 0) {
           // Default to info
-          options.info = true;
+          options.info = true
         }
-        break;
+        break
+      }
     }
 
     // Global validations
-    if (options.verbose && options.silent) {
-      errors.push('Cannot use both --verbose and --silent');
+    if (OptionUtils.parseBoolean(options.verbose) && OptionUtils.parseBoolean(options.silent)) {
+      errors.push('Cannot use both --verbose and --silent')
     }
 
-    return errors;
+    return errors
   }
 }

@@ -1,0 +1,296 @@
+export const metadata = {
+  title: 'Analyse IA',
+  description:
+    "Utilisez l'analyse alimentée par IA pour obtenir des recommandations intelligentes pour les mises à jour de dépendances, les évaluations de sécurité et la détection des changements incompatibles.",
+};
+
+# Analyse IA
+
+PCU s'intègre aux outils CLI d'IA pour fournir une analyse intelligente des dépendances, des évaluations de sécurité et des recommandations de mise à jour. {{ className: 'lead' }}
+
+## Aperçu
+
+L'analyse IA améliore les capacités de PCU en fournissant :
+
+- **Analyse d'Impact** : Comprenez comment les mises à jour affectent votre code
+- **Évaluation de Sécurité** : Obtenez une analyse des vulnérabilités alimentée par IA
+- **Vérification de Compatibilité** : Détectez les changements incompatibles potentiels
+- **Recommandations de Mise à Jour** : Recevez des suggestions intelligentes pour des mises à jour sûres
+
+## Fournisseurs IA Supportés
+
+PCU détecte automatiquement et utilise les outils CLI d'IA disponibles dans l'ordre de priorité suivant :
+
+| Fournisseur | Priorité | Capacités                                        |
+| ----------- | -------- | ------------------------------------------------ |
+| Gemini      | 100      | Impact, Sécurité, Compatibilité, Recommandations |
+| Claude      | 80       | Impact, Sécurité, Compatibilité, Recommandations |
+| Codex       | 60       | Impact, Compatibilité, Recommandations           |
+| Cursor      | 40       | Impact, Recommandations                          |
+
+<Note>
+  Si aucun fournisseur IA n'est disponible, PCU se replie automatiquement sur un moteur d'analyse
+  basé sur des règles qui fournit une analyse de base des dépendances en utilisant des règles
+  prédéfinies.
+</Note>
+
+---
+
+## Commandes
+
+### Vérifier les Fournisseurs IA Disponibles
+
+Affichez les outils IA disponibles sur votre système :
+
+```bash
+pcu ai
+```
+
+Cette commande affiche :
+
+- Les outils CLI d'IA disponibles détectés sur votre système
+- Les informations de version pour chaque fournisseur
+- Le meilleur fournisseur disponible qui sera utilisé pour l'analyse
+
+### Options de la Commande AI
+
+<Properties>
+  <Property name="--status" type="boolean" default="true">
+    Afficher l'état de tous les fournisseurs IA (comportement par défaut)
+  </Property>
+  <Property name="--test" type="boolean">
+    Tester l'analyse IA avec une requête d'exemple pour vérifier la connectivité du fournisseur
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    Afficher les statistiques du cache d'analyse IA incluant le taux de succès et la taille
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    Vider le cache d'analyse IA pour libérer de l'espace ou réinitialiser les réponses en cache
+  </Property>
+</Properties>
+
+<CodeGroup>
+
+```bash {{ title: 'Vérifier le Statut IA' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'Tester le Fournisseur IA' }}
+pcu ai --test
+```
+
+```bash {{ title: 'Gestion du Cache' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### Mise à Jour avec IA
+
+Mettez à jour les dépendances avec une analyse alimentée par IA :
+
+<CodeGroup>
+
+```bash {{ title: 'Mise à Jour IA Basique' }}
+pcu update --ai
+pcu u --ai
+```
+
+```bash {{ title: 'Mise à Jour IA Interactive' }}
+pcu update --ai --interactive
+pcu u --ai -i
+```
+
+</CodeGroup>
+
+La mise à jour améliorée par IA fournit :
+
+- Une évaluation intelligente des risques pour chaque mise à jour
+- La détection des changements incompatibles avec explications
+- L'identification des vulnérabilités de sécurité
+- L'ordre de mise à jour recommandé
+
+### Analyse avec IA
+
+Analysez une mise à jour de package spécifique avec l'assistance de l'IA :
+
+<CodeGroup>
+
+```bash {{ title: 'Analyser un Package' }}
+pcu analyze react
+pcu a lodash
+```
+
+```bash {{ title: 'Analyser une Version Spécifique' }}
+pcu analyze react 19.0.0
+pcu a typescript 5.5.0
+```
+
+</CodeGroup>
+
+<Note>
+  La commande `analyze` utilise le catalogue `default` par défaut. Vous pouvez spécifier un
+  catalogue différent comme premier argument : `pcu analyze my-catalog react`
+</Note>
+
+---
+
+## Types d'Analyse
+
+### Analyse d'Impact
+
+Évaluez comment une mise à jour de dépendance affectera votre projet :
+
+- Identifiez tous les packages du workspace utilisant la dépendance
+- Analysez les changements d'API entre les versions
+- Estimez l'effort de migration requis
+- Suggérez les zones de test prioritaires
+
+### Analyse de Sécurité
+
+Fournit une évaluation axée sur la sécurité :
+
+- Identifiez les vulnérabilités connues dans la version actuelle
+- Vérifiez les correctifs de sécurité dans la nouvelle version
+- Évaluez les mises à jour de packages liés à la sécurité
+- Recommandez les meilleures pratiques de sécurité
+
+### Analyse de Compatibilité
+
+Vérifiez les problèmes de compatibilité potentiels :
+
+- Détectez les changements d'API incompatibles
+- Identifiez les conflits de dépendances peer
+- Vérifiez la compatibilité de version Node.js
+- Validez la compatibilité TypeScript
+
+### Recommandations
+
+Générez des recommandations actionnables :
+
+- Suggérez l'ordre de mise à jour optimal
+- Recommandez les plages de versions
+- Identifiez les packages à mettre à jour ensemble
+- Fournissez des stratégies de retour arrière
+
+---
+
+## Comportement de Repli
+
+Lorsque les fournisseurs IA ne sont pas disponibles, PCU utilise un moteur d'analyse basé sur des règles intégré :
+
+### Fonctionnalités de l'Analyse Basée sur les Règles
+
+- **Évaluation du Saut de Version** : Évaluez le risque basé sur les changements semver
+- **Modèles de Changements Connus** : Détectez les changements incompatibles pour les packages populaires (React, TypeScript, ESLint, etc.)
+- **Packages Sensibles à la Sécurité** : Signalez les packages liés à la sécurité pour un examen attentif
+- **Estimation de l'Effort** : Fournissez des estimations d'effort de migration
+
+### Niveaux de Risque
+
+| Niveau   | Description                                                    |
+| -------- | -------------------------------------------------------------- |
+| Faible   | Mises à jour patch, généralement sûres à appliquer             |
+| Moyen    | Mises à jour minor ou grands sauts de version minor            |
+| Élevé    | Mises à jour de version majeure avec changements incompatibles |
+| Critique | Multiples sauts de version majeure ou versions pré-release     |
+
+---
+
+## Configuration
+
+### Variables d'Environnement
+
+<Properties>
+  <Property name="GEMINI_PATH" type="string">
+    Chemin personnalisé vers l'exécutable CLI Gemini
+  </Property>
+  <Property name="CLAUDE_PATH" type="string">
+    Chemin personnalisé vers l'exécutable CLI Claude
+  </Property>
+  <Property name="CODEX_PATH" type="string">
+    Chemin personnalisé vers l'exécutable CLI Codex
+  </Property>
+  <Property name="CURSOR_PATH" type="string">
+    Chemin personnalisé vers l'exécutable CLI Cursor
+  </Property>
+</Properties>
+
+### Méthodes de Détection
+
+PCU utilise plusieurs stratégies pour détecter les fournisseurs IA :
+
+1. **Variables d'Environnement** : Vérifier les variables de chemin personnalisées
+2. **Recherche PATH** : Utiliser la commande `which` pour trouver les exécutables
+3. **Chemins Connus** : Vérifier les emplacements d'installation courants
+4. **Chemins d'Application** : Vérifier les applications GUI (ex. Cursor.app)
+
+---
+
+## Exemples d'Utilisation
+
+### Workflow de Mise à Jour Sécurisé
+
+```bash
+# Vérifier les mises à jour avec analyse IA
+pcu check
+
+# Analyser les mises à jour spécifiques à haut risque
+pcu analyze react 19.0.0
+pcu analyze typescript 5.5.0
+
+# Effectuer une mise à jour interactive guidée par IA
+pcu update --ai --interactive --create-backup
+```
+
+### Intégration CI/CD
+
+```bash
+# Exécuter l'analyse IA en CI avec sortie JSON
+pcu update --ai --dry-run --format json > ai-analysis.json
+
+# Vérifier les mises à jour à haut risque
+pcu analyze default typescript --format json | jq '.riskLevel'
+```
+
+### Analyse par Lots
+
+```bash
+# Mettre à jour tous les packages avec les recommandations IA
+pcu update --ai --target minor
+
+# Examiner les mises à jour majeures avec analyse IA
+pcu update --ai --target latest --confirm-major
+```
+
+---
+
+## Meilleures Pratiques
+
+### Quand Utiliser l'Analyse IA
+
+- **Mises à Jour de Version Majeure** : Toujours utiliser l'analyse IA pour les montées de version majeure
+- **Packages Sensibles à la Sécurité** : Utiliser pour les packages d'authentification, de cryptographie et de session
+- **Grandes Bases de Code** : L'IA aide à identifier les zones affectées dans les monorepos
+- **Détection de Changements Incompatibles** : L'IA fournit des explications détaillées
+
+### Considérations de Performance
+
+- L'analyse IA ajoute du temps de traitement par rapport aux mises à jour standard
+- Utilisez `--dry-run` pour prévisualiser les recommandations IA sans appliquer de changements
+- Envisagez d'utiliser le repli basé sur les règles pour des pipelines CI/CD plus rapides quand l'IA n'est pas critique
+
+### Combinaison avec d'Autres Fonctionnalités
+
+```bash
+# Analyse IA avec scan de sécurité
+pcu update --ai && pcu security
+
+# Analyse IA avec sauvegarde
+pcu update --ai --create-backup
+
+# Analyse IA avec cible spécifique
+pcu update --ai --target minor --exclude "*-dev"
+```

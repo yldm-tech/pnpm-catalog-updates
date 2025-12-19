@@ -1,5 +1,5 @@
-import { defineConfig } from 'tsup';
-import path from 'path';
+import path from 'node:path'
+import { defineConfig } from 'tsup'
 
 export default defineConfig({
   entry: ['src/index.ts'],
@@ -20,7 +20,7 @@ export default defineConfig({
     options.alias = {
       '@pcu/core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
       '@pcu/utils': path.resolve(__dirname, '../../packages/utils/src/index.ts'),
-    };
-    return options;
+    }
+    return options
   },
-});
+})

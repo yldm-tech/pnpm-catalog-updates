@@ -33,8 +33,8 @@
     "@types/lodash": "catalog:",
     "typescript": "catalog:",
     "rollup": "catalog:",
-    "@rollup/plugin-typescript": "^11.1.0",
-    "@rollup/plugin-node-resolve": "^15.2.0",
+    "@rollup/plugin-typescript": "catalog:",
+    "@rollup/plugin-node-resolve": "catalog:",
     "vitest": "catalog:",
     "eslint": "catalog:"
   },

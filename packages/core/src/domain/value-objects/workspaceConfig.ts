@@ -5,15 +5,15 @@
  * Includes catalog mode, package patterns, and other workspace-specific settings.
  */
 
-import { CatalogMode } from '../entities/catalog.js';
+import { CatalogMode } from '../entities/catalog.js'
 
 export class WorkspaceConfig {
-  private readonly catalogMode: CatalogMode;
-  private readonly packagePatterns: string[];
-  private readonly catalogs: Map<string, CatalogDefinition>;
-  private readonly shamefullyHoist: boolean;
-  private readonly linkWorkspacePackages: boolean | 'deep';
-  private readonly originalData: PnpmWorkspaceData;
+  private readonly catalogMode: CatalogMode
+  private readonly packagePatterns: string[]
+  private readonly catalogs: Map<string, CatalogDefinition>
+  private readonly shamefullyHoist: boolean
+  private readonly linkWorkspacePackages: boolean | 'deep'
+  private readonly originalData: PnpmWorkspaceData
 
   private constructor(
     catalogMode: CatalogMode,
@@ -23,33 +23,33 @@ export class WorkspaceConfig {
     linkWorkspacePackages: boolean | 'deep' = true,
     originalData: PnpmWorkspaceData = {} as PnpmWorkspaceData
   ) {
-    this.catalogMode = catalogMode;
-    this.packagePatterns = [...packagePatterns];
-    this.catalogs = new Map(catalogs);
-    this.shamefullyHoist = shamefullyHoist;
-    this.linkWorkspacePackages = linkWorkspacePackages;
-    this.originalData = { ...originalData };
+    this.catalogMode = catalogMode
+    this.packagePatterns = [...packagePatterns]
+    this.catalogs = new Map(catalogs)
+    this.shamefullyHoist = shamefullyHoist
+    this.linkWorkspacePackages = linkWorkspacePackages
+    this.originalData = { ...originalData }
   }
 
   /**
    * Create a WorkspaceConfig from pnpm-workspace.yaml data
    */
   public static fromWorkspaceData(data: PnpmWorkspaceData): WorkspaceConfig {
-    const packagePatterns = data.packages || [];
-    const catalogMode = data.catalogMode || CatalogMode.MANUAL;
+    const packagePatterns = data.packages || []
+    const catalogMode = data.catalogMode || CatalogMode.MANUAL
 
     // Process catalogs
-    const catalogs = new Map<string, CatalogDefinition>();
+    const catalogs = new Map<string, CatalogDefinition>()
 
     // Add default catalog if exists
     if (data.catalog) {
-      catalogs.set('default', new CatalogDefinition('default', data.catalog));
+      catalogs.set('default', new CatalogDefinition('default', data.catalog))
     }
 
     // Add named catalogs if they exist
     if (data.catalogs) {
       for (const [name, dependencies] of Object.entries(data.catalogs)) {
-        catalogs.set(name, new CatalogDefinition(name, dependencies));
+        catalogs.set(name, new CatalogDefinition(name, dependencies))
       }
     }
 
@@ -60,7 +60,7 @@ export class WorkspaceConfig {
       data.shamefullyHoist,
       data.linkWorkspacePackages,
       data
-    );
+    )
   }
 
   /**
@@ -69,7 +69,7 @@ export class WorkspaceConfig {
   public static createDefault(): WorkspaceConfig {
     const defaultData: PnpmWorkspaceData = {
       packages: ['packages/*'],
-    };
+    }
     return new WorkspaceConfig(
       CatalogMode.MANUAL,
       ['packages/*'],
@@ -77,70 +77,70 @@ export class WorkspaceConfig {
       false,
       true,
       defaultData
-    );
+    )
   }
 
   /**
    * Get catalog mode
    */
   public getCatalogMode(): CatalogMode {
-    return this.catalogMode;
+    return this.catalogMode
   }
 
   /**
    * Get package patterns
    */
   public getPackagePatterns(): string[] {
-    return [...this.packagePatterns];
+    return [...this.packagePatterns]
   }
 
   /**
    * Get catalog definitions
    */
   public getCatalogDefinitions(): Map<string, CatalogDefinition> {
-    return new Map(this.catalogs);
+    return new Map(this.catalogs)
   }
 
   /**
    * Get a specific catalog definition
    */
   public getCatalogDefinition(name: string): CatalogDefinition | undefined {
-    return this.catalogs.get(name);
+    return this.catalogs.get(name)
   }
 
   /**
    * Check if a catalog is defined
    */
   public hasCatalog(name: string): boolean {
-    return this.catalogs.has(name);
+    return this.catalogs.has(name)
   }
 
   /**
    * Get all catalog names
    */
   public getCatalogNames(): string[] {
-    return Array.from(this.catalogs.keys());
+    return Array.from(this.catalogs.keys())
   }
 
   /**
    * Check if shamefully hoist is enabled
    */
   public isShamefullyHoist(): boolean {
-    return this.shamefullyHoist;
+    return this.shamefullyHoist
   }
 
   /**
    * Get link workspace packages setting
    */
   public getLinkWorkspacePackages(): boolean | 'deep' {
-    return this.linkWorkspacePackages;
+    return this.linkWorkspacePackages
   }
 
   /**
    * Check if workspace has any catalogs
    */
   public hasCatalogs(): boolean {
-    return this.catalogs.size > 0;
+    return this.catalogs.size > 0
   }
 
   /**
@@ -151,17 +151,17 @@ export class WorkspaceConfig {
     packageName: string,
     version: string
   ): WorkspaceConfig {
-    const catalogDef = this.catalogs.get(catalogName);
+    const catalogDef = this.catalogs.get(catalogName)
     if (!catalogDef) {
-      throw new Error(`Catalog "${catalogName}" not found`);
+      throw new Error(`Catalog "${catalogName}" not found`)
     }
 
     // Create updated catalog definition
-    const updatedCatalogDef = catalogDef.updateDependencyVersion(packageName, version);
+    const updatedCatalogDef = catalogDef.updateDependencyVersion(packageName, version)
 
     // Create new catalogs map with the updated definition
-    const updatedCatalogs = new Map(this.catalogs);
-    updatedCatalogs.set(catalogName, updatedCatalogDef);
+    const updatedCatalogs = new Map(this.catalogs)
+    updatedCatalogs.set(catalogName, updatedCatalogDef)
 
     // Return new WorkspaceConfig instance
     return new WorkspaceConfig(
@@ -171,53 +171,53 @@ export class WorkspaceConfig {
       this.shamefullyHoist,
       this.linkWorkspacePackages,
       this.originalData
-    );
+    )
   }
 
   /**
    * Get the default catalog definition
    */
   public getDefaultCatalog(): CatalogDefinition | undefined {
-    return this.catalogs.get('default');
+    return this.catalogs.get('default')
   }
 
   /**
    * Validate workspace configuration
    */
   public validate(): WorkspaceConfigValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
+    const errors: string[] = []
+    const warnings: string[] = []
 
     // Validate package patterns
     if (this.packagePatterns.length === 0) {
-      warnings.push('No package patterns defined - workspace may not discover any packages');
+      warnings.push('No package patterns defined - workspace may not discover any packages')
     }
 
     // Validate package patterns format
     for (const pattern of this.packagePatterns) {
       if (!pattern || pattern.trim().length === 0) {
-        errors.push('Empty package pattern found');
+        errors.push('Empty package pattern found')
       }
 
       // Basic glob pattern validation
       if (pattern.includes('**') && pattern.indexOf('**') !== pattern.lastIndexOf('**')) {
-        warnings.push(`Complex glob pattern may be inefficient: ${pattern}`);
+        warnings.push(`Complex glob pattern may be inefficient: ${pattern}`)
       }
     }
 
     // Validate catalog definitions
     for (const [name, catalogDef] of this.catalogs) {
-      const validationResult = catalogDef.validate();
-      errors.push(...validationResult.getErrors().map((err) => `Catalog "${name}": ${err}`));
-      warnings.push(...validationResult.getWarnings().map((warn) => `Catalog "${name}": ${warn}`));
+      const validationResult = catalogDef.validate()
+      errors.push(...validationResult.getErrors().map((err) => `Catalog "${name}": ${err}`))
+      warnings.push(...validationResult.getWarnings().map((warn) => `Catalog "${name}": ${warn}`))
     }
 
     // Check for conflicting settings
     if (this.catalogMode === CatalogMode.STRICT && this.catalogs.size === 0) {
-      errors.push('Catalog mode is set to "strict" but no catalogs are defined');
+      errors.push('Catalog mode is set to "strict" but no catalogs are defined')
     }
 
-    return new WorkspaceConfigValidationResult(errors.length === 0, errors, warnings);
+    return new WorkspaceConfigValidationResult(errors.length === 0, errors, warnings)
   }
 
   /**
@@ -225,58 +225,58 @@ export class WorkspaceConfig {
    */
   public toPnpmWorkspaceData(): PnpmWorkspaceData {
     // Start with the original data to preserve all fields
-    const data: PnpmWorkspaceData = { ...this.originalData };
+    const data: PnpmWorkspaceData = { ...this.originalData }
 
     // Update the fields that we manage
-    data.packages = this.packagePatterns;
+    data.packages = this.packagePatterns
 
     // Add catalog mode if not default
     if (this.catalogMode !== CatalogMode.MANUAL) {
-      data.catalogMode = this.catalogMode;
+      data.catalogMode = this.catalogMode
     } else {
       // Remove catalogMode if it's back to default
-      delete data.catalogMode;
+      delete data.catalogMode
     }
 
     // Update catalogs
-    const defaultCatalog = this.catalogs.get('default');
+    const defaultCatalog = this.catalogs.get('default')
     if (defaultCatalog) {
-      data.catalog = defaultCatalog.getDependencies();
+      data.catalog = defaultCatalog.getDependencies()
     } else {
       // Remove catalog if it no longer exists
-      delete data.catalog;
+      delete data.catalog
     }
 
-    const namedCatalogs: Record<string, Record<string, string>> = {};
+    const namedCatalogs: Record<string, Record<string, string>> = {}
     for (const [name, catalogDef] of this.catalogs) {
       if (name !== 'default') {
-        namedCatalogs[name] = catalogDef.getDependencies();
+        namedCatalogs[name] = catalogDef.getDependencies()
       }
     }
 
     if (Object.keys(namedCatalogs).length > 0) {
-      data.catalogs = namedCatalogs;
+      data.catalogs = namedCatalogs
     } else {
       // Remove catalogs if none exist
-      delete data.catalogs;
+      delete data.catalogs
     }
 
     // Update other settings
     if (this.shamefullyHoist) {
-      data.shamefullyHoist = this.shamefullyHoist;
+      data.shamefullyHoist = this.shamefullyHoist
     } else {
       // Remove if false/default
-      delete data.shamefullyHoist;
+      delete data.shamefullyHoist
     }
 
     if (this.linkWorkspacePackages !== true) {
-      data.linkWorkspacePackages = this.linkWorkspacePackages;
+      data.linkWorkspacePackages = this.linkWorkspacePackages
     } else {
       // Remove if true/default
-      delete data.linkWorkspacePackages;
+      delete data.linkWorkspacePackages
     }
 
-    return data;
+    return data
   }
 
   /**
@@ -289,7 +289,7 @@ export class WorkspaceConfig {
       this.shamefullyHoist === other.shamefullyHoist &&
       this.linkWorkspacePackages === other.linkWorkspacePackages &&
       this.catalogsEqual(other.catalogs)
-    );
+    )
   }
 
   /**
@@ -297,17 +297,17 @@ export class WorkspaceConfig {
    */
   private catalogsEqual(otherCatalogs: Map<string, CatalogDefinition>): boolean {
     if (this.catalogs.size !== otherCatalogs.size) {
-      return false;
+      return false
     }
 
     for (const [name, catalogDef] of this.catalogs) {
-      const otherCatalogDef = otherCatalogs.get(name);
+      const otherCatalogDef = otherCatalogs.get(name)
       if (!otherCatalogDef || !catalogDef.equals(otherCatalogDef)) {
-        return false;
+        return false
       }
     }
 
-    return true;
+    return true
   }
 }
 
@@ -315,76 +315,76 @@ export class WorkspaceConfig {
  * Catalog Definition Value Object
  */
 export class CatalogDefinition {
-  private readonly name: string;
-  private readonly dependencies: Record<string, string>;
+  private readonly name: string
+  private readonly dependencies: Record<string, string>
 
   constructor(name: string, dependencies: Record<string, string>) {
-    this.name = name;
-    this.dependencies = { ...dependencies };
+    this.name = name
+    this.dependencies = { ...dependencies }
   }
 
   public getName(): string {
-    return this.name;
+    return this.name
   }
 
   public getDependencies(): Record<string, string> {
-    return { ...this.dependencies };
+    return { ...this.dependencies }
   }
 
   public getDependencyNames(): string[] {
-    return Object.keys(this.dependencies);
+    return Object.keys(this.dependencies)
   }
 
   public hasDependency(packageName: string): boolean {
-    return packageName in this.dependencies;
+    return packageName in this.dependencies
   }
 
   public getDependencyVersion(packageName: string): string | undefined {
-    return this.dependencies[packageName];
+    return this.dependencies[packageName]
   }
 
   /**
    * Update a dependency version (returns a new instance)
    */
   public updateDependencyVersion(packageName: string, version: string): CatalogDefinition {
-    const updatedDependencies = { ...this.dependencies };
-    updatedDependencies[packageName] = version;
-    return new CatalogDefinition(this.name, updatedDependencies);
+    const updatedDependencies = { ...this.dependencies }
+    updatedDependencies[packageName] = version
+    return new CatalogDefinition(this.name, updatedDependencies)
   }
 
   public validate(): CatalogDefinitionValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
+    const errors: string[] = []
+    const warnings: string[] = []
 
     // Validate name
     if (!this.name || this.name.trim().length === 0) {
-      errors.push('Catalog name cannot be empty');
+      errors.push('Catalog name cannot be empty')
     }
 
     // Validate dependencies
     for (const [packageName, version] of Object.entries(this.dependencies)) {
       if (!packageName || packageName.trim().length === 0) {
-        errors.push('Package name cannot be empty');
+        errors.push('Package name cannot be empty')
       }
 
       if (!version || version.trim().length === 0) {
-        errors.push(`Version for package "${packageName}" cannot be empty`);
+        errors.push(`Version for package "${packageName}" cannot be empty`)
       }
 
       // Basic package name validation
       if (!/^(@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/.test(packageName)) {
-        warnings.push(`Package name "${packageName}" may not be valid`);
+        warnings.push(`Package name "${packageName}" may not be valid`)
       }
     }
 
-    return new CatalogDefinitionValidationResult(errors.length === 0, errors, warnings);
+    return new CatalogDefinitionValidationResult(errors.length === 0, errors, warnings)
   }
 
   public equals(other: CatalogDefinition): boolean {
     return (
       this.name === other.name &&
       JSON.stringify(this.dependencies) === JSON.stringify(other.dependencies)
-    );
+    )
   }
 }
 
@@ -392,13 +392,13 @@ export class CatalogDefinition {
  * pnpm-workspace.yaml data interface
  */
 export interface PnpmWorkspaceData {
-  packages: string[];
-  catalog?: Record<string, string>;
-  catalogs?: Record<string, Record<string, string>>;
-  catalogMode?: CatalogMode;
-  shamefullyHoist?: boolean;
-  linkWorkspacePackages?: boolean | 'deep';
-  [key: string]: any;
+  packages: string[]
+  catalog?: Record<string, string>
+  catalogs?: Record<string, Record<string, string>>
+  catalogMode?: CatalogMode
+  shamefullyHoist?: boolean
+  linkWorkspacePackages?: boolean | 'deep'
+  [key: string]: any
 }
 
 /**
@@ -412,23 +412,23 @@ export class WorkspaceConfigValidationResult {
   ) {}
 
   public getIsValid(): boolean {
-    return this.isValid;
+    return this.isValid
   }
 
   public getErrors(): string[] {
-    return [...this.errors];
+    return [...this.errors]
   }
 
   public getWarnings(): string[] {
-    return [...this.warnings];
+    return [...this.warnings]
   }
 
   public hasErrors(): boolean {
-    return this.errors.length > 0;
+    return this.errors.length > 0
   }
 
   public hasWarnings(): boolean {
-    return this.warnings.length > 0;
+    return this.warnings.length > 0
   }
 }
 
@@ -443,22 +443,22 @@ export class CatalogDefinitionValidationResult {
   ) {}
 
   public getIsValid(): boolean {
-    return this.isValid;
+    return this.isValid
   }
 
   public getErrors(): string[] {
-    return [...this.errors];
+    return [...this.errors]
   }
 
   public getWarnings(): string[] {
-    return [...this.warnings];
+    return [...this.warnings]
   }
 
   public hasErrors(): boolean {
-    return this.errors.length > 0;
+    return this.errors.length > 0
   }
 
   public hasWarnings(): boolean {
-    return this.warnings.length > 0;
+    return this.warnings.length > 0
   }
 }

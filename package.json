@@ -27,7 +27,7 @@
   "engines": {
     "node": ">=22.0.0"
   },
-  "packageManager": "pnpm@10.25.0+sha512.5e82639027af37cf832061bcc6d639c219634488e0f2baebe785028a793de7b525ffcd3f7ff574f5e9860654e098fe852ba8ac5dd5cefe1767d23a020a92f501",
+  "packageManager": "pnpm@10.26.1+sha512.664074abc367d2c9324fdc18037097ce0a8f126034160f709928e9e9f95d98714347044e5c3164d65bd5da6c59c6be362b107546292a8eecb7999196e5ce58fa",
   "type": "module",
   "scripts": {
     "build": "turbo build",
@@ -37,10 +37,8 @@
     "test": "turbo test",
     "test:watch": "turbo test:watch",
     "test:coverage": "turbo test:coverage",
-    "lint": "turbo lint",
-    "lint:fix": "turbo lint:fix",
-    "format": "turbo format",
-    "format:check": "turbo format:check",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean",
     "prepare": "husky install",
@@ -53,47 +51,42 @@
     "pcu": "workspace:*"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.8",
+    "@biomejs/biome": "^2.3.10",
+    "@changesets/cli": "catalog:",
     "@eslint/js": "catalog:",
-    "@types/fs-extra": "^11.0.4",
-    "@types/inquirer": "^9.0.9",
-    "@types/lodash": "^4.17.21",
-    "@types/node": "^25.0.1",
-    "@types/semver": "^7.7.1",
-    "@typescript-eslint/eslint-plugin": "^8.49.0",
-    "@typescript-eslint/parser": "^8.49.0",
-    "@vitest/coverage-v8": "^4.0.15",
-    "@vitest/ui": "^4.0.15",
+    "@types/fs-extra": "catalog:",
+    "@types/inquirer": "catalog:",
+    "@types/lodash": "catalog:",
+    "@types/node": "catalog:",
+    "@types/semver": "catalog:",
+    "@typescript-eslint/eslint-plugin": "catalog:",
+    "@typescript-eslint/parser": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "@vitest/ui": "catalog:",
     "eslint": "catalog:",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-prettier": "^5.5.4",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
-    "msw": "^2.12.4",
+    "eslint-config-prettier": "catalog:",
+    "eslint-plugin-import": "catalog:",
+    "eslint-plugin-node": "catalog:",
+    "eslint-plugin-prettier": "catalog:",
+    "husky": "catalog:",
+    "lint-staged": "catalog:",
+    "msw": "catalog:",
     "prettier": "catalog:",
     "prettier-plugin-organize-imports": "catalog:",
     "prettier-plugin-tailwindcss": "catalog:",
-    "rimraf": "^6.1.2",
+    "rimraf": "catalog:",
+    "tsx": "catalog:",
     "turbo": "catalog:",
-    "tsx": "^4.21.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "lint-staged": {
-    "*.{ts,js}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,md,yml,yaml}": [
-      "prettier --write"
+    "*.{ts,tsx,js,jsx,json,md,css}": [
+      "biome check --write --no-errors-on-unmatched"
     ]
   },
   "volta": {
     "node": ">=22",
     "pnpm": ">=10"
-  },
-  "peerDependencies": {},
-  "optionalDependencies": {}
+  }
 }

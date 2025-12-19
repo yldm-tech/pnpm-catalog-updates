@@ -1,17 +1,16 @@
 'use client'
 
-import { Link, usePathname } from '@/i18n/navigation'
-import { routing } from '@/i18n/routing'
+import { CloseButton } from '@headlessui/react'
 import clsx from 'clsx'
 import { AnimatePresence, motion, useIsPresent } from 'framer-motion'
 import { useTranslations } from 'next-intl'
 import { useRef } from 'react'
-
 import { useIsInsideMobileNavigation } from '@/components/MobileNavigation'
 import { useSectionStore } from '@/components/SectionProvider'
 import { Tag } from '@/components/Tag'
+import { Link, usePathname } from '@/i18n/navigation'
+import type { routing } from '@/i18n/routing'
 import { remToPx } from '@/utils/remToPx'
-import { CloseButton } from '@headlessui/react'
 
 type ValidHref = keyof typeof routing.pathnames
 
@@ -20,11 +19,12 @@ interface NavGroup {
   links: Array<{
     title: string
     href: string // Keep as string to allow anchor links for internal use
+    tag?: string
   }>
 }
 
 function useInitialValue<T>(value: T, condition = true) {
-  let initialValue = useRef(value).current
+  const initialValue = useRef(value).current
   return condition ? initialValue : value
 }
 
@@ -47,7 +47,7 @@ function NavLink({
       href={href as ValidHref}
       aria-current={active ? 'page' : undefined}
       className={clsx(
-        'flex justify-between gap-2 py-1 pr-3 text-sm transition',
+        'flex items-center gap-2 py-1 pr-3 text-sm transition',
         isAnchorLink ? 'pl-7' : 'pl-4',
         active
           ? 'text-zinc-900 dark:text-white'
@@ -56,28 +56,37 @@ function NavLink({
     >
       <span className="truncate">{children}</span>
       {tag && (
-        <Tag variant="small" color="zinc">
-          {tag}
-        </Tag>
+        <motion.span
+          className="shrink-0"
+          animate={{
+            opacity: [1, 0.6, 1],
+            scale: [1, 1.1, 1],
+          }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Tag variant="medium" color={tag === 'new' ? 'sky' : 'zinc'}>
+            {tag}
+          </Tag>
+        </motion.span>
       )}
     </CloseButton>
   )
 }
 
 function VisibleSectionHighlight({ group, pathname }: { group: NavGroup; pathname: string }) {
-  let [sections, visibleSections] = useInitialValue(
+  const [sections, visibleSections] = useInitialValue(
     [useSectionStore((s) => s.sections), useSectionStore((s) => s.visibleSections)],
     useIsInsideMobileNavigation()
   )
 
-  let isPresent = useIsPresent()
-  let firstVisibleSectionIndex = Math.max(
+  const isPresent = useIsPresent()
+  const firstVisibleSectionIndex = Math.max(
     0,
     [{ id: '_top' }, ...sections].findIndex((section) => section.id === visibleSections[0])
   )
-  let itemHeight = remToPx(2)
-  let height = isPresent ? Math.max(1, visibleSections.length) * itemHeight : itemHeight
-  let top =
+  const itemHeight = remToPx(2)
+  const height = isPresent ? Math.max(1, visibleSections.length) * itemHeight : itemHeight
+  const top =
     group.links.findIndex((link) => link.href === pathname) * itemHeight +
     firstVisibleSectionIndex * itemHeight
 
@@ -87,17 +96,17 @@ function VisibleSectionHighlight({ group, pathname }: { group: NavGroup; pathnam
       initial={{ opacity: 0 }}
       animate={{ opacity: 1, transition: { delay: 0.2 } }}
       exit={{ opacity: 0 }}
-      className="bg-zinc-800/2.5 dark:bg-white/2.5 absolute inset-x-0 top-0 will-change-transform"
+      className="absolute inset-x-0 top-0 bg-zinc-800/2.5 will-change-transform dark:bg-white/2.5"
       style={{ borderRadius: 8, height, top }}
     />
   )
 }
 
 function ActivePageMarker({ group, pathname }: { group: NavGroup; pathname: string }) {
-  let itemHeight = remToPx(2)
-  let offset = remToPx(0.25)
-  let activePageIndex = group.links.findIndex((link) => link.href === pathname)
-  let top = offset + activePageIndex * itemHeight
+  const itemHeight = remToPx(2)
+  const offset = remToPx(0.25)
+  const activePageIndex = group.links.findIndex((link) => link.href === pathname)
+  const top = offset + activePageIndex * itemHeight
 
   return (
     <motion.div
@@ -115,13 +124,13 @@ function NavigationGroup({ group, className }: { group: NavGroup; className?: st
   // If this is the mobile navigation then we always render the initial
   // state, so that the state does not change during the close animation.
   // The state will still update when we re-open (re-render) the navigation.
-  let isInsideMobileNavigation = useIsInsideMobileNavigation()
-  let [pathname, sections] = useInitialValue(
+  const isInsideMobileNavigation = useIsInsideMobileNavigation()
+  const [pathname, sections] = useInitialValue(
     [usePathname(), useSectionStore((s) => s.sections)],
     isInsideMobileNavigation
   )
 
-  let isActiveGroup = group.links.findIndex((link) => link.href === pathname) !== -1
+  const isActiveGroup = group.links.findIndex((link) => link.href === pathname) !== -1
 
   return (
     <li className={clsx('relative mt-6', className)}>
@@ -139,10 +148,10 @@ function NavigationGroup({ group, className }: { group: NavGroup; className?: st
         <AnimatePresence initial={false}>
           {isActiveGroup && <ActivePageMarker group={group} pathname={pathname} />}
         </AnimatePresence>
-        <ul role="list" className="border-l border-transparent">
+        <ul className="border-l border-transparent">
           {group.links.map((link) => (
             <motion.li key={link.href} layout="position" className="relative">
-              <NavLink href={link.href} active={link.href === pathname}>
+              <NavLink href={link.href} active={link.href === pathname} tag={link.tag}>
                 {link.title}
               </NavLink>
               <AnimatePresence mode="popLayout" initial={false}>
@@ -184,7 +193,12 @@ export function useNavigation(): Array<NavGroup> {
   const isProduction = process.env.NODE_ENV === 'production'
 
   // Define which pages go in which sections
-  const gettingStartedPages = ['quickstart', 'command-reference', 'configuration']
+  const gettingStartedPages = [
+    { page: 'quickstart' },
+    { page: 'command-reference' },
+    { page: 'configuration' },
+    { page: 'ai-analysis', tag: 'new' },
+  ]
   const guidesPages = [
     'examples',
     'development',
@@ -209,12 +223,18 @@ export function useNavigation(): Array<NavGroup> {
     href: `/${page}`,
   })
 
+  const createNavLinkWithTag = (item: { page: string; tag?: string }) => ({
+    title: t(item.page),
+    href: `/${item.page}`,
+    tag: item.tag,
+  })
+
   const navGroups = [
     {
       title: tCommon('gettingStarted'),
       links: [
         { title: tCommon('introduction'), href: '/' },
-        ...gettingStartedPages.map(createNavLink),
+        ...gettingStartedPages.map(createNavLinkWithTag),
       ],
     },
     {
@@ -246,6 +266,7 @@ const createStaticNavigation = (): Array<NavGroup> => {
         { title: 'Quick Start', href: '/quickstart' },
         { title: 'Command Reference', href: '/command-reference' },
         { title: 'Configuration', href: '/configuration' },
+        { title: 'AI Analysis', href: '/ai-analysis', tag: 'new' },
       ],
     },
     {
@@ -288,7 +309,7 @@ export function Navigation(props: React.ComponentPropsWithoutRef<'nav'>) {
 
   return (
     <nav {...props}>
-      <ul role="list">
+      <ul>
         {navigation.map((group, groupIndex) => (
           <NavigationGroup
             key={group.title}

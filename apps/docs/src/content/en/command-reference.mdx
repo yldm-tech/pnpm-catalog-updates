@@ -15,11 +15,12 @@ PCU provides several main commands with both full names and convenient shortcuts
 | Full Command    | Shortcuts & Aliases | Description                                     |
 | --------------- | ------------------- | ----------------------------------------------- |
 | `pcu init`      | `pcu i`             | Initialize PNPM workspace and PCU configuration |
-| `pcu check`     | `pcu chk`, `pcu -c` | Check for outdated catalog dependencies         |
-| `pcu update`    | `pcu u`, `pcu -u`   | Update catalog dependencies                     |
-| `pcu analyze`   | `pcu a`, `pcu -a`   | Analyze impact of dependency updates            |
-| `pcu workspace` | `pcu w`, `pcu -s`   | Show workspace information and validation       |
-| `pcu theme`     | `pcu t`, `pcu -t`   | Configure color themes and UI settings          |
+| `pcu check`     | `pcu chk`, `pcu -c`, `pcu --check` | Check for outdated catalog dependencies         |
+| `pcu update`    | `pcu u`, `pcu -u`, `pcu --update`  | Update catalog dependencies                     |
+| `pcu analyze`   | `pcu a`, `pcu -a`, `pcu --analyze` | Analyze impact of dependency updates            |
+| `pcu ai`        | -                   | Check AI provider status and manage AI cache    |
+| `pcu workspace` | `pcu w`, `pcu -s`, `pcu --workspace-info` | Show workspace information and validation       |
+| `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | Configure color themes and UI settings          |
 | `pcu security`  | `pcu sec`           | Security vulnerability scanning and fixes       |
 | `pcu help`      | `pcu h`, `pcu -h`   | Display help information                        |
 
@@ -904,107 +905,6 @@ pcu -t -i
 ```
 
 Launches a guided theme selection wizard that allows you to preview themes and configure UI settings interactively.
-
----
-
-## `pcu security` - Security Vulnerability Scanning
-
-Scan for security vulnerabilities using npm audit and optional Snyk integration, with automated fix capabilities.
-
-<CodeGroup>
-
-```bash {{ title: 'Basic Security Scan' }}
-pcu security
-pcu sec
-```
-
-```bash {{ title: 'Advanced Security Scanning' }}
-pcu security --fix-vulns --severity high
-pcu sec --snyk --include-dev
-pcu security --format json --workspace ./my-project
-```
-
-</CodeGroup>
-
-### Options
-
-<Properties>
-  <Property name="--audit" type="boolean" default="true">
-    Perform npm audit scan
-  </Property>
-  <Property name="--fix-vulns" type="boolean">
-    Automatically fix vulnerabilities using npm audit fix
-  </Property>
-  <Property name="--severity" type="enum">
-    Filter by severity level: low, moderate, high, critical
-  </Property>
-  <Property name="--include-dev" type="boolean">
-    Include development dependencies in scan
-  </Property>
-  <Property name="--snyk" type="boolean">
-    Include Snyk security scan (requires snyk CLI)
-  </Property>
-  <Property name="-f, --format" type="enum" default="table">
-    Output format: table, json, yaml, minimal
-  </Property>
-  <Property name="-w, --workspace" type="string">
-    Workspace directory path
-  </Property>
-  <Property name="-v, --verbose" type="boolean">
-    Show detailed vulnerability information
-  </Property>
-</Properties>
-
-### Security Report Features
-
-- **Comprehensive Scanning**: Integrates npm audit and Snyk for thorough vulnerability detection
-- **Severity Classification**: Critical, high, moderate, low, and info level vulnerabilities
-- **Automated Fixes**: Apply security patches automatically with `--fix-vulns`
-- **Package Recommendations**: Suggests specific version updates to resolve vulnerabilities
-- **Development Dependencies**: Option to include or exclude dev dependencies from scan
-- **Exit Codes**: Returns appropriate exit codes (0 for clean, 1 for vulnerabilities found)
-
-### Usage Examples
-
-#### Basic Vulnerability Scan
-
-```bash
-pcu security
-```
-
-Performs a standard security scan using npm audit.
-
-#### Scan with Automatic Fixes
-
-```bash
-pcu security --fix-vulns
-```
-
-Scans for vulnerabilities and automatically applies available fixes.
-
-#### High Severity Filter
-
-```bash
-pcu security --severity high
-```
-
-Shows only high and critical severity vulnerabilities.
-
-#### Comprehensive Scan with Snyk
-
-```bash
-pcu security --snyk --include-dev --verbose
-```
-
-Runs both npm audit and Snyk scan, including development dependencies with detailed output.
-
-#### JSON Export for CI/CD
-
-```bash
-pcu security --format json > security-report.json
-```
-
-Exports security scan results as JSON for automated processing.
 
 ---
 

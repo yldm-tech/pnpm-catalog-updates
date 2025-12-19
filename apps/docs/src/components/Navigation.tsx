@@ -54,17 +54,18 @@ function NavLink({
           : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
       )}
     >
-      <span className="truncate">
-        {children}
-        {tag && (
-          <>
-            {' '}
-            <Tag variant="small" color={tag === 'new' ? 'sky' : 'zinc'}>
-              {tag}
-            </Tag>
-          </>
-        )}
-      </span>
+      <span className="truncate">{children}</span>
+      {tag && (
+        <motion.sup
+          className="-ml-0.5"
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Tag variant="small" color={tag === 'new' ? 'sky' : 'zinc'}>
+            {tag}
+          </Tag>
+        </motion.sup>
+      )}
     </CloseButton>
   )
 }

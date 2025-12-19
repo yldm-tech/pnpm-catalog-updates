@@ -19,6 +19,7 @@ interface NavGroup {
   links: Array<{
     title: string
     href: string // Keep as string to allow anchor links for internal use
+    tag?: string
   }>
 }
 
@@ -55,7 +56,7 @@ function NavLink({
     >
       <span className="truncate">{children}</span>
       {tag && (
-        <Tag variant="small" color="zinc">
+        <Tag variant="small" color={tag === 'new' ? 'sky' : 'zinc'}>
           {tag}
         </Tag>
       )}
@@ -141,7 +142,7 @@ function NavigationGroup({ group, className }: { group: NavGroup; className?: st
         <ul className="border-l border-transparent">
           {group.links.map((link) => (
             <motion.li key={link.href} layout="position" className="relative">
-              <NavLink href={link.href} active={link.href === pathname}>
+              <NavLink href={link.href} active={link.href === pathname} tag={link.tag}>
                 {link.title}
               </NavLink>
               <AnimatePresence mode="popLayout" initial={false}>
@@ -183,7 +184,12 @@ export function useNavigation(): Array<NavGroup> {
   const isProduction = process.env.NODE_ENV === 'production'
 
   // Define which pages go in which sections
-  const gettingStartedPages = ['quickstart', 'command-reference', 'configuration', 'ai-analysis']
+  const gettingStartedPages = [
+    { page: 'quickstart' },
+    { page: 'command-reference' },
+    { page: 'configuration' },
+    { page: 'ai-analysis', tag: 'new' },
+  ]
   const guidesPages = [
     'examples',
     'development',
@@ -208,12 +214,18 @@ export function useNavigation(): Array<NavGroup> {
     href: `/${page}`,
   })
 
+  const createNavLinkWithTag = (item: { page: string; tag?: string }) => ({
+    title: t(item.page),
+    href: `/${item.page}`,
+    tag: item.tag,
+  })
+
   const navGroups = [
     {
       title: tCommon('gettingStarted'),
       links: [
         { title: tCommon('introduction'), href: '/' },
-        ...gettingStartedPages.map(createNavLink),
+        ...gettingStartedPages.map(createNavLinkWithTag),
       ],
     },
     {
@@ -245,7 +257,7 @@ const createStaticNavigation = (): Array<NavGroup> => {
         { title: 'Quick Start', href: '/quickstart' },
         { title: 'Command Reference', href: '/command-reference' },
         { title: 'Configuration', href: '/configuration' },
-        { title: 'AI Analysis', href: '/ai-analysis' },
+        { title: 'AI Analysis', href: '/ai-analysis', tag: 'new' },
       ],
     },
     {

@@ -26,7 +26,7 @@ function FeedbackButton(
   return (
     <button
       type="submit"
-      className="hover:bg-zinc-900/2.5 px-3 text-sm font-medium text-zinc-600 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white"
+      className="px-3 text-sm font-medium text-zinc-600 transition hover:bg-zinc-900/2.5 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white"
       {...props}
     />
   )
@@ -67,7 +67,7 @@ const FeedbackThanks = forwardRef<React.ElementRef<'div'>, React.ComponentPropsW
         ref={ref}
         className={clsx(className, 'absolute inset-0 flex justify-center md:justify-start')}
       >
-        <div className="flex items-center gap-3 rounded-full bg-amber-50/50 py-1 pl-1.5 pr-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-500/20 dark:bg-amber-500/5 dark:text-amber-200 dark:ring-amber-500/30">
+        <div className="flex items-center gap-3 rounded-full bg-amber-50/50 py-1 pr-3 pl-1.5 text-sm text-amber-900 ring-1 ring-amber-500/20 ring-inset dark:bg-amber-500/5 dark:text-amber-200 dark:ring-amber-500/30">
           <CheckIcon className="h-5 w-5 flex-none fill-amber-500 stroke-white dark:fill-amber-200/20 dark:stroke-amber-200" />
           {t('thanks')}
         </div>
@@ -92,12 +92,12 @@ export function Feedback() {
     <div className="relative h-8">
       <Transition show={!submitted}>
         <FeedbackForm
-          className="data-closed:opacity-0 data-leave:pointer-events-none duration-300"
+          className="duration-300 data-closed:opacity-0 data-leave:pointer-events-none"
           onSubmit={onSubmit}
         />
       </Transition>
       <Transition show={submitted}>
-        <FeedbackThanks className="data-closed:opacity-0 delay-150 duration-300" />
+        <FeedbackThanks className="delay-150 duration-300 data-closed:opacity-0" />
       </Transition>
     </div>
   )

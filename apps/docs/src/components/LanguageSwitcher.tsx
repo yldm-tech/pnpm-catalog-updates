@@ -29,7 +29,7 @@ export function LanguageSwitcher() {
       <select
         value={locale}
         onChange={(e) => onSelectChange(e.target.value as Locale)}
-        className="min-w-[110px] appearance-none rounded-md border border-zinc-300 bg-white px-4 py-2 text-left text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-600 dark:bg-zinc-800"
+        className="min-w-[110px] appearance-none rounded-md border border-zinc-300 bg-white px-4 py-2 text-left text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-800"
         aria-label={t('language')}
       >
         <option value="en">🇺🇸 {t('english')}</option>

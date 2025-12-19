@@ -25,7 +25,7 @@ export default async function HomePage({ params }: Props) {
 
       <p className="lead mt-4 text-xl text-zinc-600 dark:text-zinc-400">{t('description')}</p>
 
-      <div className="not-prose mb-16 mt-6 flex gap-3">
+      <div className="not-prose mt-6 mb-16 flex gap-3">
         <Button href="/quickstart" arrow="right">
           <>{tCommon('getStarted')}</>
         </Button>

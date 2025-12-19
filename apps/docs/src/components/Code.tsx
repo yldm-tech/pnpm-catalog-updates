@@ -69,10 +69,10 @@ function CopyButton({ code }: { code: string }) {
     <button
       type="button"
       className={clsx(
-        'group/button text-2xs absolute right-4 top-3.5 overflow-hidden rounded-full py-1 pl-2 pr-3 font-medium opacity-0 backdrop-blur-sm transition focus:opacity-100 group-hover:opacity-100',
+        'group/button text-2xs absolute top-3.5 right-4 overflow-hidden rounded-full py-1 pr-3 pl-2 font-medium opacity-0 backdrop-blur-sm transition group-hover:opacity-100 focus:opacity-100',
         copied
-          ? 'bg-amber-400/10 ring-1 ring-inset ring-amber-400/20'
-          : 'hover:bg-white/7.5 dark:bg-white/2.5 bg-white/5 dark:hover:bg-white/5'
+          ? 'bg-amber-400/10 ring-1 ring-amber-400/20 ring-inset'
+          : 'bg-white/5 hover:bg-white/7.5 dark:bg-white/2.5 dark:hover:bg-white/5'
       )}
       onClick={() => {
         window.navigator.clipboard.writeText(code).then(() => {
@@ -109,7 +109,7 @@ function CodePanelHeader({ tag, label }: { tag?: string; label?: string }) {
   }
 
   return (
-    <div className="border-b-white/7.5 bg-white/2.5 dark:bg-white/1 flex h-9 items-center gap-2 border-y border-t-transparent bg-zinc-900 px-4 dark:border-b-white/5">
+    <div className="flex h-9 items-center gap-2 border-y border-t-transparent border-b-white/7.5 bg-white/2.5 bg-zinc-900 px-4 dark:border-b-white/5 dark:bg-white/1">
       {tag && (
         <div className="dark flex">
           <Tag variant="small">{tag}</Tag>
@@ -176,7 +176,7 @@ function CodePanel({
   }
 
   return (
-    <div className="dark:bg-white/2.5 group">
+    <div className="group dark:bg-white/2.5">
       <CodePanelHeader tag={extractedTag} label={extractedLabel} />
       <div className="relative">
         <pre className="overflow-x-auto p-4 text-xs text-white">{children}</pre>
@@ -209,7 +209,7 @@ function CodeGroupHeader({
           {Children.map(children, (child, childIndex) => (
             <Tab
               className={clsx(
-                'data-selected:not-data-focus:outline-hidden border-b py-3 transition',
+                'border-b py-3 transition data-selected:not-data-focus:outline-hidden',
                 childIndex === selectedIndex
                   ? 'border-amber-500 text-amber-400'
                   : 'border-transparent text-zinc-400 hover:text-zinc-300'

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
+import { fileURLToPath } from 'url';
 import path from 'path';
-import url, { fileURLToPath } from 'url';
+import url from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

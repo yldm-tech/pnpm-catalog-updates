@@ -21,6 +21,8 @@ inspired by
 - **Catalog Focused**: Specialized for pnpm catalog dependency management
 - **Interactive Mode**: Choose which dependencies to update with an intuitive
   interface
+- **AI-Powered Analysis**: Intelligent update recommendations using Claude,
+  Gemini, or Codex CLI tools with automatic fallback to rule-based analysis
 - **Impact Analysis**: Understand which packages will be affected by catalog
   changes
 - **Safe Updates**: Dry-run mode and backup options for safe dependency updates
@@ -147,6 +149,52 @@ catalogs:
 ```
 
 **[Configuration Examples & Templates](https://pcu-cli.dev/en/examples)**
+
+## AI-Powered Analysis
+
+PCU supports AI-powered dependency analysis using popular AI CLI tools:
+
+| Provider | Priority | Detection    |
+| -------- | -------- | ------------ |
+| Claude   | 100      | `claude` CLI |
+| Gemini   | 80       | `gemini` CLI |
+| Codex    | 60       | `codex` CLI  |
+
+### How it works
+
+1. **Auto-detection**: PCU automatically detects installed AI CLI tools
+2. **Priority-based selection**: Uses the highest priority available provider
+3. **Intelligent caching**: Results are cached to avoid redundant API calls
+4. **Graceful fallback**: Falls back to rule-based analysis when no AI tools are
+   available
+
+### Analysis Types
+
+- **Impact Analysis**: Assess the impact of updates on your codebase
+- **Security Analysis**: Identify security implications of dependency changes
+- **Compatibility Analysis**: Check for breaking changes and compatibility
+  issues
+- **Recommendations**: Get smart suggestions for update strategies
+
+### Configuration
+
+```json
+// .pcurc.json
+{
+  "ai": {
+    "enabled": true,
+    "preferredProvider": "auto",
+    "cache": {
+      "enabled": true,
+      "ttl": 3600
+    },
+    "fallback": {
+      "enabled": true,
+      "useRuleEngine": true
+    }
+  }
+}
+```
 
 ## Contributing
 

@@ -1,6 +1,7 @@
 // Core domain and application exports for pnpm-catalog-updates
 
 // Application Services
+export { AIAnalysisService } from './application/services/aiAnalysisService';
 export { CatalogUpdateService } from './application/services/catalogUpdateService';
 export { WorkspaceService } from './application/services/workspaceService';
 
@@ -19,6 +20,12 @@ export type {
   WorkspaceStats,
   WorkspaceValidationReport,
 } from './application/services/workspaceService';
+
+export type {
+  AIAnalysisServiceOptions,
+  AnalysisRequestOptions,
+  MultiAnalysisResult,
+} from './application/services/aiAnalysisService';
 
 // Domain Entities
 export { Catalog } from './domain/entities/catalog';
@@ -42,9 +49,45 @@ export type {
   ProgressReporterOptions,
 } from './application/interfaces/progressReporter';
 
+// AI Domain Interfaces
+export type {
+  AIConfig,
+  AIProvider,
+  AIProviderConfig,
+  AIProviderInfo,
+  AnalysisContext,
+  AnalysisResult,
+  AnalysisType,
+  PackageUpdateInfo,
+  Recommendation,
+  RiskLevel,
+  WorkspaceInfo,
+} from './domain/interfaces/aiProvider';
+
 // Infrastructure
 export { Cache } from './infrastructure/cache/cache';
 export { NpmRegistryService } from './infrastructure/external-services/npmRegistryService';
 export { FileSystemService } from './infrastructure/file-system/fileSystemService';
 export { FileWorkspaceRepository } from './infrastructure/repositories/fileWorkspaceRepository';
 export { NpmrcParser } from './infrastructure/utils/npmrcParser';
+
+// AI Infrastructure
+export {
+  AIDetector,
+  AnalysisCache,
+  BaseAIProvider,
+  ClaudeProvider,
+  CodexProvider,
+  GeminiProvider,
+  RuleEngine,
+  analysisCache,
+} from './infrastructure/ai/index';
+
+export type {
+  AnalysisCacheOptions,
+  AnalysisCacheStats,
+  BaseProviderOptions,
+  ClaudeProviderOptions,
+  CodexProviderOptions,
+  GeminiProviderOptions,
+} from './infrastructure/ai/index';

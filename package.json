@@ -76,8 +76,8 @@
     "prettier-plugin-organize-imports": "catalog:",
     "prettier-plugin-tailwindcss": "catalog:",
     "rimraf": "^6.1.2",
-    "turbo": "catalog:",
     "tsx": "^4.21.0",
+    "turbo": "^2.6.3",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
@@ -93,7 +93,5 @@
   "volta": {
     "node": ">=22",
     "pnpm": ">=10"
-  },
-  "peerDependencies": {},
-  "optionalDependencies": {}
+  }
 }

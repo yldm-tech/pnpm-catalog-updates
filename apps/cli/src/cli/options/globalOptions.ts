@@ -34,6 +34,10 @@ export interface UpdateCliOptions extends CheckCliOptions {
 
 export interface AnalyzeCliOptions extends GlobalCliOptions {
   format?: 'table' | 'json' | 'yaml' | 'minimal';
+  ai?: boolean;
+  provider?: 'auto' | 'claude' | 'gemini' | 'codex';
+  analysisType?: 'impact' | 'security' | 'compatibility' | 'recommend';
+  skipCache?: boolean;
 }
 
 export interface WorkspaceCliOptions extends GlobalCliOptions {
@@ -112,6 +116,20 @@ export const analyzeOptions = [
     .choices(['table', 'json', 'yaml', 'minimal'])
     .default('table')
     .env('PCU_OUTPUT_FORMAT'),
+
+  new Option('--ai', 'enable AI-powered analysis').env('PCU_AI_ENABLED'),
+
+  new Option('--provider <name>', 'AI provider to use')
+    .choices(['auto', 'claude', 'gemini', 'codex'])
+    .default('auto')
+    .env('PCU_AI_PROVIDER'),
+
+  new Option('--analysis-type <type>', 'type of AI analysis')
+    .choices(['impact', 'security', 'compatibility', 'recommend'])
+    .default('impact')
+    .env('PCU_AI_ANALYSIS_TYPE'),
+
+  new Option('--skip-cache', 'skip AI analysis cache').env('PCU_AI_SKIP_CACHE'),
 ];
 
 /**
@@ -184,6 +202,20 @@ export const optionGroups = {
  * Utility functions for option handling
  */
 export class OptionUtils {
+  private static parseBoolean(value: unknown): boolean {
+    if (value === undefined || value === null) return false;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === '') return false;
+      if (['false', '0', 'no', 'off', 'n'].includes(normalized)) return false;
+      if (['true', '1', 'yes', 'on', 'y'].includes(normalized)) return true;
+      return true;
+    }
+    return Boolean(value);
+  }
+
   /**
    * Parse and validate global options
    */
@@ -195,11 +227,11 @@ export class OptionUtils {
     }
 
     if (options.verbose !== undefined) {
-      parsed.verbose = Boolean(options.verbose);
+      parsed.verbose = this.parseBoolean(options.verbose);
     }
 
     if (options.color !== undefined) {
-      parsed.color = Boolean(options.color);
+      parsed.color = this.parseBoolean(options.color);
     }
 
     if (options.registry) {
@@ -240,7 +272,7 @@ export class OptionUtils {
     }
 
     if (options.prerelease !== undefined) {
-      check.prerelease = Boolean(options.prerelease);
+      check.prerelease = this.parseBoolean(options.prerelease);
     }
 
     if (options.include) {
@@ -266,19 +298,19 @@ export class OptionUtils {
     const update: UpdateCliOptions = { ...check };
 
     if (options.interactive !== undefined) {
-      update.interactive = Boolean(options.interactive);
+      update.interactive = this.parseBoolean(options.interactive);
     }
 
     if (options.dryRun !== undefined) {
-      update.dryRun = Boolean(options.dryRun);
+      update.dryRun = this.parseBoolean(options.dryRun);
     }
 
     if (options.force !== undefined) {
-      update.force = Boolean(options.force);
+      update.force = this.parseBoolean(options.force);
     }
 
     if (options.createBackup !== undefined) {
-      update.createBackup = Boolean(options.createBackup);
+      update.createBackup = this.parseBoolean(options.createBackup);
     }
 
     return update;
@@ -295,6 +327,25 @@ export class OptionUtils {
       analyze.format = options.format as Exclude<AnalyzeCliOptions['format'], undefined>;
     }
 
+    if (options.ai !== undefined) {
+      analyze.ai = this.parseBoolean(options.ai);
+    }
+
+    if (options.provider && typeof options.provider === 'string') {
+      analyze.provider = options.provider as Exclude<AnalyzeCliOptions['provider'], undefined>;
+    }
+
+    if (options.analysisType && typeof options.analysisType === 'string') {
+      analyze.analysisType = options.analysisType as Exclude<
+        AnalyzeCliOptions['analysisType'],
+        undefined
+      >;
+    }
+
+    if (options.skipCache !== undefined) {
+      analyze.skipCache = this.parseBoolean(options.skipCache);
+    }
+
     return analyze;
   }
 
@@ -306,15 +357,15 @@ export class OptionUtils {
     const workspace: WorkspaceCliOptions = { ...global };
 
     if (options.validate !== undefined) {
-      workspace.validate = Boolean(options.validate);
+      workspace.validate = this.parseBoolean(options.validate);
     }
 
     if (options.stats !== undefined) {
-      workspace.stats = Boolean(options.stats);
+      workspace.stats = this.parseBoolean(options.stats);
     }
 
     if (options.info !== undefined) {
-      workspace.info = Boolean(options.info);
+      workspace.info = this.parseBoolean(options.info);
     }
 
     if (options.format && typeof options.format === 'string') {
@@ -353,13 +404,15 @@ export class OptionUtils {
 
     switch (command) {
       case 'update':
-        if (options.interactive && options.dryRun) {
+        if (this.parseBoolean(options.interactive) && this.parseBoolean(options.dryRun)) {
           errors.push('Cannot use --interactive with --dry-run');
         }
         break;
 
       case 'workspace':
-        const actionCount = [options.validate, options.stats, options.info].filter(Boolean).length;
+        const actionCount = [options.validate, options.stats, options.info].filter((v) =>
+          this.parseBoolean(v)
+        ).length;
         if (actionCount > 1) {
           errors.push('Cannot use multiple workspace actions simultaneously');
         }
@@ -371,7 +424,7 @@ export class OptionUtils {
     }
 
     // Global validations
-    if (options.verbose && options.silent) {
+    if (this.parseBoolean(options.verbose) && this.parseBoolean(options.silent)) {
       errors.push('Cannot use both --verbose and --silent');
     }
 

@@ -5,6 +5,7 @@
  * Supports table, JSON, YAML, and minimal output formats.
  */
 
+import type { AnalysisResult } from '@pcu/core';
 import {
   ImpactAnalysis,
   OutdatedReport,
@@ -737,22 +738,6 @@ export class OutputFormatter {
   }
 
   /**
-   * Get color for risk level
-   */
-  private getRiskColor(riskLevel: string): typeof chalk {
-    switch (riskLevel) {
-      case 'high':
-        return chalk.red;
-      case 'medium':
-        return chalk.yellow;
-      case 'low':
-        return chalk.green;
-      default:
-        return chalk.gray;
-    }
-  }
-
-  /**
    * Colorize version differences between current and latest
    */
   private colorizeVersionDiff(
@@ -831,5 +816,252 @@ export class OutputFormatter {
     }
 
     return { currentColored, latestColored };
+  }
+
+  /**
+   * Format AI analysis result
+   */
+  formatAIAnalysis(aiResult: AnalysisResult, basicAnalysis?: ImpactAnalysis): string {
+    switch (this.format) {
+      case 'json':
+        return JSON.stringify({ aiAnalysis: aiResult, basicAnalysis }, null, 2);
+      case 'yaml':
+        return YAML.stringify({ aiAnalysis: aiResult, basicAnalysis });
+      case 'minimal':
+        return this.formatAIAnalysisMinimal(aiResult);
+      case 'table':
+      default:
+        return this.formatAIAnalysisTable(aiResult, basicAnalysis);
+    }
+  }
+
+  /**
+   * Format AI analysis as table
+   */
+  private formatAIAnalysisTable(aiResult: AnalysisResult, basicAnalysis?: ImpactAnalysis): string {
+    const lines: string[] = [];
+
+    // Header with provider info
+    const providerColor = this.useColor ? chalk.cyan : (s: string) => s;
+    const headerColor = this.useColor ? chalk.bold.white : (s: string) => s;
+    const successColor = this.useColor ? chalk.green : (s: string) => s;
+    const warningColor = this.useColor ? chalk.yellow : (s: string) => s;
+    const errorColor = this.useColor ? chalk.red : (s: string) => s;
+    const infoColor = this.useColor ? chalk.blue : (s: string) => s;
+    const mutedColor = this.useColor ? chalk.gray : (s: string) => s;
+
+    lines.push('');
+    lines.push(headerColor('═══════════════════════════════════════════════════════════════'));
+    lines.push(headerColor('                     🤖 AI Analysis Report'));
+    lines.push(headerColor('═══════════════════════════════════════════════════════════════'));
+    lines.push('');
+
+    // Provider and analysis info
+    lines.push(`${infoColor('Provider:')}      ${providerColor(aiResult.provider)}`);
+    lines.push(`${infoColor('Analysis Type:')} ${aiResult.analysisType}`);
+    lines.push(`${infoColor('Confidence:')}    ${this.formatConfidence(aiResult.confidence)}`);
+    lines.push('');
+
+    // Summary
+    lines.push(headerColor('📋 Summary'));
+    lines.push(headerColor('───────────────────────────────────────────────────────────────'));
+    lines.push(aiResult.summary);
+    lines.push('');
+
+    // Recommendations table
+    if (aiResult.recommendations.length > 0) {
+      lines.push(headerColor('💡 Recommendations'));
+      lines.push(headerColor('───────────────────────────────────────────────────────────────'));
+
+      const table = new Table({
+        head: ['Package', 'Version Change', 'Action', 'Risk', 'Reason'],
+        style: { head: this.useColor ? ['cyan'] : [] },
+        colWidths: [20, 20, 10, 10, 35],
+        wordWrap: true,
+      });
+
+      for (const rec of aiResult.recommendations) {
+        const riskColor = this.getRiskColor(rec.riskLevel);
+        const actionColor = this.getActionColor(rec.action);
+
+        table.push([
+          rec.package,
+          `${rec.currentVersion} → ${rec.targetVersion}`,
+          actionColor(rec.action),
+          riskColor(rec.riskLevel),
+          rec.reason,
+        ]);
+      }
+
+      lines.push(table.toString());
+      lines.push('');
+    }
+
+    // Breaking changes
+    const allBreakingChanges = aiResult.recommendations
+      .filter((r) => r.breakingChanges && r.breakingChanges.length > 0)
+      .flatMap((r) => r.breakingChanges || []);
+
+    if (allBreakingChanges.length > 0) {
+      lines.push(errorColor('⚠️  Breaking Changes'));
+      lines.push(headerColor('───────────────────────────────────────────────────────────────'));
+      for (const change of allBreakingChanges) {
+        lines.push(`  ${warningColor('•')} ${change}`);
+      }
+      lines.push('');
+    }
+
+    // Security fixes
+    const allSecurityFixes = aiResult.recommendations
+      .filter((r) => r.securityFixes && r.securityFixes.length > 0)
+      .flatMap((r) => r.securityFixes || []);
+
+    if (allSecurityFixes.length > 0) {
+      lines.push(successColor('🔒 Security Fixes'));
+      lines.push(headerColor('───────────────────────────────────────────────────────────────'));
+      for (const fix of allSecurityFixes) {
+        lines.push(`  ${successColor('•')} ${fix}`);
+      }
+      lines.push('');
+    }
+
+    // Warnings
+    if (aiResult.warnings && aiResult.warnings.length > 0) {
+      lines.push(warningColor('⚡ Warnings'));
+      lines.push(headerColor('───────────────────────────────────────────────────────────────'));
+      for (const warning of aiResult.warnings) {
+        lines.push(`  ${warningColor('•')} ${warning}`);
+      }
+      lines.push('');
+    }
+
+    // Details
+    if (aiResult.details) {
+      lines.push(infoColor('📝 Details'));
+      lines.push(headerColor('───────────────────────────────────────────────────────────────'));
+      lines.push(aiResult.details);
+      lines.push('');
+    }
+
+    // Basic analysis info (if provided)
+    if (basicAnalysis) {
+      lines.push(mutedColor('📦 Affected Packages'));
+      lines.push(headerColor('───────────────────────────────────────────────────────────────'));
+      if (basicAnalysis.affectedPackages.length > 0) {
+        for (const pkg of basicAnalysis.affectedPackages.slice(0, 10)) {
+          // Handle both string and PackageImpact object types
+          const pkgName = typeof pkg === 'string' ? pkg : pkg.packageName;
+          const pkgType =
+            typeof pkg === 'object' && pkg.dependencyType ? ` (${pkg.dependencyType})` : '';
+          lines.push(`  ${mutedColor('•')} ${pkgName}${mutedColor(pkgType)}`);
+        }
+        if (basicAnalysis.affectedPackages.length > 10) {
+          lines.push(
+            `  ${mutedColor(`  ... and ${basicAnalysis.affectedPackages.length - 10} more`)}`
+          );
+        }
+      } else {
+        lines.push(`  ${mutedColor('No packages directly affected')}`);
+      }
+      lines.push('');
+    }
+
+    // Footer with metadata
+    lines.push(mutedColor('───────────────────────────────────────────────────────────────'));
+    const timestamp =
+      aiResult.timestamp instanceof Date
+        ? aiResult.timestamp.toISOString()
+        : String(aiResult.timestamp);
+    lines.push(mutedColor(`Generated at: ${timestamp}`));
+    if (aiResult.processingTimeMs) {
+      lines.push(mutedColor(`Processing time: ${aiResult.processingTimeMs}ms`));
+    }
+    if (aiResult.tokensUsed) {
+      lines.push(mutedColor(`Tokens used: ${aiResult.tokensUsed}`));
+    }
+    lines.push('');
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Format AI analysis as minimal output
+   */
+  private formatAIAnalysisMinimal(aiResult: AnalysisResult): string {
+    const lines: string[] = [];
+
+    lines.push(
+      `[${aiResult.provider}] ${aiResult.analysisType} (${Math.round(aiResult.confidence * 100)}% confidence)`
+    );
+    lines.push(aiResult.summary);
+
+    for (const rec of aiResult.recommendations) {
+      lines.push(
+        `${rec.action}: ${rec.package} ${rec.currentVersion} → ${rec.targetVersion} [${rec.riskLevel}]`
+      );
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Format confidence score with color
+   */
+  private formatConfidence(confidence: number): string {
+    const percentage = Math.round(confidence * 100);
+    const bar =
+      '█'.repeat(Math.floor(percentage / 10)) + '░'.repeat(10 - Math.floor(percentage / 10));
+
+    if (!this.useColor) {
+      return `${bar} ${percentage}%`;
+    }
+
+    if (confidence >= 0.8) {
+      return chalk.green(`${bar} ${percentage}%`);
+    } else if (confidence >= 0.5) {
+      return chalk.yellow(`${bar} ${percentage}%`);
+    } else {
+      return chalk.red(`${bar} ${percentage}%`);
+    }
+  }
+
+  /**
+   * Get color for risk level
+   */
+  private getRiskColor(riskLevel: string): typeof chalk {
+    if (!this.useColor) return chalk;
+
+    switch (riskLevel) {
+      case 'critical':
+        return chalk.red.bold;
+      case 'high':
+        return chalk.red;
+      case 'medium':
+        return chalk.yellow;
+      case 'low':
+        return chalk.green;
+      default:
+        return chalk.gray;
+    }
+  }
+
+  /**
+   * Get color for action
+   */
+  private getActionColor(action: string): typeof chalk {
+    if (!this.useColor) return chalk;
+
+    switch (action) {
+      case 'update':
+        return chalk.green;
+      case 'wait':
+        return chalk.yellow;
+      case 'skip':
+        return chalk.red;
+      case 'review':
+        return chalk.cyan;
+      default:
+        return chalk.white;
+    }
   }
 }

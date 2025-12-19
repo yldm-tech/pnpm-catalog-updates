@@ -36,6 +36,25 @@ export type AnalysisType =
   | 'recommend'; // Generate smart recommendations
 
 /**
+ * Security vulnerability information from OSV API
+ */
+export interface SecurityVulnerabilityData {
+  packageName: string;
+  version: string;
+  vulnerabilities: Array<{
+    id: string;
+    aliases: string[]; // CVE IDs
+    summary: string;
+    severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN';
+    cvssScore?: number;
+    fixedVersions: string[];
+  }>;
+  hasCriticalVulnerabilities: boolean;
+  hasHighVulnerabilities: boolean;
+  totalVulnerabilities: number;
+}
+
+/**
  * Options for analysis
  */
 export interface AnalysisOptions {
@@ -55,6 +74,8 @@ export interface AnalysisContext {
   analysisType: AnalysisType;
   options?: AnalysisOptions;
   additionalContext?: string;
+  /** Real-time security vulnerability data from OSV API */
+  securityData?: Map<string, SecurityVulnerabilityData>;
 }
 
 /**

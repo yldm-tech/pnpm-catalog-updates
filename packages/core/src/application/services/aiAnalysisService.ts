@@ -14,6 +14,7 @@ import type {
   AnalysisType,
   PackageUpdateInfo,
   Recommendation,
+  SecurityVulnerabilityData,
   WorkspaceInfo,
 } from '../../domain/interfaces/aiProvider.js';
 import { AIDetector } from '../../infrastructure/ai/aiDetector.js';
@@ -22,6 +23,7 @@ import { RuleEngine } from '../../infrastructure/ai/fallback/ruleEngine.js';
 import { ClaudeProvider } from '../../infrastructure/ai/providers/claudeProvider.js';
 import { CodexProvider } from '../../infrastructure/ai/providers/codexProvider.js';
 import { GeminiProvider } from '../../infrastructure/ai/providers/geminiProvider.js';
+import { SecurityAdvisoryService } from '../../infrastructure/external-services/securityAdvisoryService.js';
 
 /**
  * Service options
@@ -63,6 +65,7 @@ export class AIAnalysisService {
   private readonly cache: AnalysisCache;
   private readonly detector: AIDetector;
   private readonly ruleEngine: RuleEngine;
+  private readonly securityService: SecurityAdvisoryService;
   private readonly providers: Map<string, AIProvider> = new Map();
   private providersInitialized = false;
 
@@ -71,6 +74,7 @@ export class AIAnalysisService {
     this.cache = options.cache ?? analysisCache;
     this.detector = options.detector ?? new AIDetector();
     this.ruleEngine = new RuleEngine();
+    this.securityService = new SecurityAdvisoryService({ cacheMinutes: 30, timeout: 10000 });
   }
 
   /**
@@ -177,6 +181,9 @@ export class AIAnalysisService {
       return this.createDisabledResult(packages, options.analysisType ?? 'impact');
     }
 
+    // Fetch real-time security vulnerability data from OSV API
+    const securityData = await this.fetchSecurityData(packages);
+
     const context: AnalysisContext = {
       packages,
       workspaceInfo,
@@ -184,6 +191,7 @@ export class AIAnalysisService {
       options: {
         timeout: options.timeout,
       },
+      securityData,
     };
 
     // Check cache first
@@ -504,6 +512,49 @@ export class AIAnalysisService {
    */
   getCacheStats() {
     return this.cache.getStats();
+  }
+
+  /**
+   * Fetch real-time security vulnerability data for packages
+   */
+  private async fetchSecurityData(
+    packages: PackageUpdateInfo[]
+  ): Promise<Map<string, SecurityVulnerabilityData>> {
+    const securityData = new Map<string, SecurityVulnerabilityData>();
+
+    try {
+      // Query security data for target versions
+      const packagesToQuery = packages.map((pkg) => ({
+        name: pkg.name,
+        version: pkg.targetVersion,
+      }));
+
+      const reports = await this.securityService.queryMultiplePackages(packagesToQuery);
+
+      // Convert SecurityAdvisoryReport to SecurityVulnerabilityData
+      for (const [key, report] of reports) {
+        securityData.set(key, {
+          packageName: report.packageName,
+          version: report.version,
+          vulnerabilities: report.vulnerabilities.map((v) => ({
+            id: v.id,
+            aliases: v.aliases,
+            summary: v.summary,
+            severity: v.severity,
+            cvssScore: v.cvssScore,
+            fixedVersions: v.fixedVersions,
+          })),
+          hasCriticalVulnerabilities: report.hasCriticalVulnerabilities,
+          hasHighVulnerabilities: report.hasHighVulnerabilities,
+          totalVulnerabilities: report.totalVulnerabilities,
+        });
+      }
+    } catch (error) {
+      // Log error but don't fail the analysis - security data is supplementary
+      console.error('Failed to fetch security data:', (error as Error).message);
+    }
+
+    return securityData;
   }
 
   /**

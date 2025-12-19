@@ -5,7 +5,7 @@
  * Supports all analysis types with high-quality reasoning.
  */
 
-import { exec as execCallback } from 'node:child_process';
+import { exec as execCallback, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import type {
@@ -23,7 +23,6 @@ const exec = promisify(execCallback);
  */
 export interface ClaudeProviderOptions extends BaseProviderOptions {
   model?: string;
-  maxTokens?: number;
   dangerouslySkipPermissions?: boolean;
 }
 
@@ -36,7 +35,6 @@ export class ClaudeProvider extends BaseAIProvider {
   readonly capabilities: AnalysisType[] = ['impact', 'security', 'compatibility', 'recommend'];
 
   private readonly model: string;
-  private readonly maxTokens: number;
   private readonly dangerouslySkipPermissions: boolean;
   private cachedAvailability: boolean | null = null;
   private cachedInfo: AIProviderInfo | null = null;
@@ -44,7 +42,6 @@ export class ClaudeProvider extends BaseAIProvider {
   constructor(options: ClaudeProviderOptions = {}) {
     super(options);
     this.model = options.model ?? 'claude-sonnet-4-20250514';
-    this.maxTokens = options.maxTokens ?? 4096;
     this.dangerouslySkipPermissions = options.dangerouslySkipPermissions ?? true;
   }
 
@@ -64,10 +61,14 @@ export class ClaudeProvider extends BaseAIProvider {
     } catch {
       // Try alternative detection methods
       try {
-        // Check if it's an alias
-        const { stdout } = await exec('bash -i -c "type claude" 2>/dev/null', { timeout: 5000 });
-        this.cachedAvailability = stdout.includes('alias') || stdout.includes('function');
-        return this.cachedAvailability;
+        // Check if it's an alias (use non-interactive shell to avoid hanging)
+        const { stdout } = await exec('type claude 2>/dev/null', {
+          timeout: 3000,
+          shell: '/bin/bash',
+        });
+        const isAvailable = stdout.includes('alias') || stdout.includes('function');
+        this.cachedAvailability = isAvailable;
+        return isAvailable;
       } catch {
         this.cachedAvailability = false;
         return false;
@@ -130,22 +131,23 @@ export class ClaudeProvider extends BaseAIProvider {
     // Build the prompt
     const prompt = this.buildPrompt(context);
 
-    // Build the command with model and token configuration
-    const args: string[] = ['-p', prompt, '--output-format', 'text'];
+    // Build the command arguments (options first, then prompt as positional arg)
+    const args: string[] = [];
+
+    if (this.dangerouslySkipPermissions) {
+      args.push('--dangerously-skip-permissions');
+    }
 
     // Add model selection if specified
     if (this.model) {
       args.push('--model', this.model);
     }
 
-    // Add max tokens if supported (Claude CLI may use --max-tokens)
-    if (this.maxTokens) {
-      args.push('--max-tokens', String(this.maxTokens));
-    }
+    // Add output format and print mode
+    args.push('--output-format', 'text', '-p');
 
-    if (this.dangerouslySkipPermissions) {
-      args.unshift('--dangerously-skip-permissions');
-    }
+    // Prompt goes last as positional argument
+    args.push(prompt);
 
     // Execute Claude CLI
     try {
@@ -179,42 +181,21 @@ export class ClaudeProvider extends BaseAIProvider {
   }
 
   /**
-   * Execute Claude CLI command
+   * Execute Claude CLI command using spawn to avoid shell escaping issues
    */
   private async executeClaudeCommand(args: string[]): Promise<{ stdout: string; stderr: string }> {
-    // Escape arguments properly
-    const escapedArgs = args.map((arg) => {
-      // If the argument contains special characters, wrap in single quotes
-      if (arg.includes('"') || arg.includes("'") || arg.includes('\n') || arg.includes(' ')) {
-        // For -p flag, we need to handle the prompt specially
-        return `'${arg.replace(/'/g, "'\\''")}'`;
-      }
-      return arg;
-    });
-
-    const command = `claude ${escapedArgs.join(' ')}`;
-
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        const result = await exec(command, {
-          timeout: this.timeout,
-          maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-          env: {
-            ...process.env,
-            NO_COLOR: '1',
-            FORCE_COLOR: '0',
-          },
-        });
-
+        const result = await this.spawnClaudeProcess(args);
         return result;
       } catch (error) {
         lastError = error as Error;
 
         // Check if it's a timeout error
-        if ((error as any).killed || (error as Error).message.includes('TIMEOUT')) {
-          throw new Error(`Claude CLI timed out after ${this.timeout}ms`);
+        if ((error as Error).message.includes('timed out')) {
+          throw error;
         }
 
         // Retry on other errors
@@ -225,6 +206,61 @@ export class ClaudeProvider extends BaseAIProvider {
     }
 
     throw lastError ?? new Error('Claude CLI execution failed');
+  }
+
+  /**
+   * Spawn Claude process with proper argument handling
+   */
+  private spawnClaudeProcess(args: string[]): Promise<{ stdout: string; stderr: string }> {
+    return new Promise((resolve, reject) => {
+      const child = spawn('claude', args, {
+        env: {
+          ...process.env,
+          NO_COLOR: '1',
+          FORCE_COLOR: '0',
+        },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      // Close stdin immediately - Claude CLI waits for stdin to close before processing
+      child.stdin?.end();
+
+      let stdout = '';
+      let stderr = '';
+      let timedOut = false;
+
+      const timeoutId = setTimeout(() => {
+        timedOut = true;
+        child.kill('SIGTERM');
+        reject(new Error(`Claude CLI timed out after ${this.timeout}ms`));
+      }, this.timeout);
+
+      child.stdout?.on('data', (data: Buffer) => {
+        stdout += data.toString();
+      });
+
+      child.stderr?.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
+
+      child.on('close', (code) => {
+        clearTimeout(timeoutId);
+        if (timedOut) return;
+
+        if (code === 0) {
+          resolve({ stdout, stderr });
+        } else {
+          reject(new Error(`Claude CLI exited with code ${code}: ${stderr || stdout}`));
+        }
+      });
+
+      child.on('error', (error) => {
+        clearTimeout(timeoutId);
+        if (!timedOut) {
+          reject(error);
+        }
+      });
+    });
   }
 
   /**

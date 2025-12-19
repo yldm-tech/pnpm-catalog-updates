@@ -67,9 +67,16 @@ export type {
 // Infrastructure
 export { Cache } from './infrastructure/cache/cache';
 export { NpmRegistryService } from './infrastructure/external-services/npmRegistryService';
+export { SecurityAdvisoryService } from './infrastructure/external-services/securityAdvisoryService';
 export { FileSystemService } from './infrastructure/file-system/fileSystemService';
 export { FileWorkspaceRepository } from './infrastructure/repositories/fileWorkspaceRepository';
 export { NpmrcParser } from './infrastructure/utils/npmrcParser';
+
+// Security Advisory Types
+export type {
+  SecurityAdvisoryReport,
+  VulnerabilityInfo,
+} from './infrastructure/external-services/securityAdvisoryService';
 
 // AI Infrastructure
 export {

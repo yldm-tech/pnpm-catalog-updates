@@ -44,7 +44,7 @@ export abstract class BaseAIProvider implements AIProvider {
 
   constructor(options: BaseProviderOptions = {}) {
     this.config = options.config ?? { enabled: true };
-    this.timeout = options.timeout ?? 60000; // 60 seconds default
+    this.timeout = options.timeout ?? 3000000; // 300 seconds default
     this.maxRetries = options.maxRetries ?? 2;
   }
 
@@ -98,6 +98,52 @@ export abstract class BaseAIProvider implements AIProvider {
   }
 
   /**
+   * Format security vulnerability data for inclusion in prompt
+   */
+  protected formatSecurityData(context: AnalysisContext): string {
+    if (!context.securityData || context.securityData.size === 0) {
+      return '';
+    }
+
+    const lines: string[] = [];
+    lines.push('\n=== REAL-TIME SECURITY VULNERABILITY DATA (from OSV API) ===');
+    lines.push('IMPORTANT: This is live data from the Open Source Vulnerabilities database.');
+    lines.push('Use this information to accurately assess security risks.\n');
+
+    for (const pkg of context.packages) {
+      const key = `${pkg.name}@${pkg.targetVersion}`;
+      const securityInfo = context.securityData.get(key);
+
+      if (securityInfo && securityInfo.totalVulnerabilities > 0) {
+        lines.push(
+          `🚨 ${pkg.name}@${pkg.targetVersion}: ${securityInfo.totalVulnerabilities} VULNERABILITIES FOUND`
+        );
+
+        for (const vuln of securityInfo.vulnerabilities) {
+          const cveIds = vuln.aliases.filter((a) => a.startsWith('CVE-')).join(', ') || vuln.id;
+          const scoreStr = vuln.cvssScore ? ` (CVSS: ${vuln.cvssScore})` : '';
+          lines.push(`   - [${vuln.severity}]${scoreStr} ${cveIds}: ${vuln.summary}`);
+          if (vuln.fixedVersions.length > 0) {
+            lines.push(`     Fixed in: ${vuln.fixedVersions.join(', ')}`);
+          }
+        }
+
+        if (securityInfo.hasCriticalVulnerabilities) {
+          lines.push(`   ⛔ CRITICAL: DO NOT recommend updating to this version!`);
+        } else if (securityInfo.hasHighVulnerabilities) {
+          lines.push(`   ⚠️ HIGH RISK: Consider alternative versions.`);
+        }
+        lines.push('');
+      } else {
+        lines.push(`✅ ${pkg.name}@${pkg.targetVersion}: No known vulnerabilities`);
+      }
+    }
+
+    lines.push('=== END SECURITY DATA ===\n');
+    return lines.join('\n');
+  }
+
+  /**
    * Build the analysis prompt
    */
   protected buildPrompt(context: AnalysisContext): string {
@@ -110,6 +156,9 @@ export abstract class BaseAIProvider implements AIProvider {
       )
       .join('\n');
 
+    // Include security vulnerability data if available
+    const securityDataSection = this.formatSecurityData(context);
+
     const prompts: Record<AnalysisType, string> = {
       impact: `Analyze the impact of updating these packages in a pnpm workspace:
 
@@ -119,13 +168,18 @@ Catalogs: ${workspaceInfo.catalogCount}
 
 Updates to analyze:
 ${packageList}
-
+${securityDataSection}
 For each package, provide:
-1. Risk level (low/medium/high/critical)
+1. Risk level (low/medium/high/critical) - MUST be "critical" if there are CRITICAL vulnerabilities
 2. Potential breaking changes
-3. Recommended action (update/skip/review/defer)
+3. Recommended action (update/skip/review/defer) - MUST be "skip" for versions with CRITICAL vulnerabilities
 4. Reason for recommendation
 5. Estimated migration effort
+
+IMPORTANT: If security data shows CRITICAL vulnerabilities, you MUST:
+- Set riskLevel to "critical"
+- Set action to "skip"
+- Include the CVE IDs in the reason
 
 Respond in JSON format with this structure:
 {
@@ -139,6 +193,7 @@ Respond in JSON format with this structure:
       "reason": "explanation",
       "riskLevel": "low|medium|high|critical",
       "breakingChanges": ["change1", "change2"],
+      "securityFixes": ["CVE-xxxx-xxxxx"],
       "estimatedEffort": "low|medium|high"
     }
   ],
@@ -151,12 +206,15 @@ Workspace: ${workspaceInfo.name}
 
 Updates to analyze:
 ${packageList}
-
+${securityDataSection}
 For each package:
-1. Check if the update fixes known vulnerabilities
+1. Check if the update fixes known vulnerabilities (use the security data above)
 2. Assess if the new version introduces security risks
 3. Evaluate the package maintainer reputation
 4. Check for suspicious changes
+
+CRITICAL: Use the real-time security data provided above. If a version has CRITICAL vulnerabilities,
+you MUST recommend "skip" action with riskLevel "critical" and list all CVE IDs.
 
 Respond in JSON format with security-focused recommendations.`,
 
@@ -168,12 +226,13 @@ Catalogs: ${workspaceInfo.catalogCount}
 
 Updates to analyze:
 ${packageList}
-
+${securityDataSection}
 For each package:
 1. Check peer dependency compatibility
 2. Identify potential conflicts with other packages
 3. Assess API compatibility
 4. Check for deprecated features
+5. Consider security implications from the data above
 
 Respond in JSON format with compatibility-focused recommendations.`,
 
@@ -184,12 +243,18 @@ Context: pnpm workspace with catalog-based dependency management
 
 Updates available:
 ${packageList}
-
+${securityDataSection}
 Consider:
-1. Update priority based on security, features, and stability
-2. Grouping related packages for atomic updates
-3. Best practices for the specific package ecosystem
-4. Risk vs. benefit analysis
+1. SECURITY FIRST: Never recommend versions with CRITICAL vulnerabilities
+2. Update priority based on security, features, and stability
+3. Grouping related packages for atomic updates
+4. Best practices for the specific package ecosystem
+5. Risk vs. benefit analysis
+
+CRITICAL: If security data shows vulnerabilities:
+- CRITICAL severity → action: "skip", riskLevel: "critical"
+- HIGH severity → action: "review", riskLevel: "high"
+- Include CVE IDs in the reason
 
 Respond in JSON format with prioritized recommendations.`,
     };

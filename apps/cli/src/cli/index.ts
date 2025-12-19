@@ -11,7 +11,10 @@ import { dirname, join } from 'path';
 import { OutputFormat, OutputFormatter } from './formatters/outputFormatter.js';
 
 // Services and Dependencies
+import type { AnalysisType } from '@pcu/core';
 import {
+  AIAnalysisService,
+  AIDetector,
   CatalogUpdateService,
   FileSystemService,
   FileWorkspaceRepository,
@@ -55,6 +58,21 @@ function createServices(workspacePath?: string) {
     catalogUpdateService,
     workspaceService,
   };
+}
+
+function parseBooleanFlag(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === '') return false;
+    if (['false', '0', 'no', 'off', 'n'].includes(normalized)) return false;
+    if (['true', '1', 'yes', 'on', 'y'].includes(normalized)) return true;
+    // Commander env() 会把任意非空字符串塞进来；未知字符串按“启用”处理
+    return true;
+  }
+  return Boolean(value);
 }
 
 /**
@@ -217,6 +235,14 @@ export async function main(): Promise<void> {
     .argument('<package>', 'package name')
     .argument('[version]', 'new version (default: latest)')
     .option('-f, --format <type>', 'output format: table, json, yaml, minimal', 'table')
+    .option('--ai', 'enable AI-powered analysis')
+    .option('--provider <name>', 'AI provider: auto, claude, gemini, codex', 'auto')
+    .option(
+      '--analysis-type <type>',
+      'AI analysis type: impact, security, compatibility, recommend',
+      'impact'
+    )
+    .option('--skip-cache', 'skip AI analysis cache')
     .action(async (catalog, packageName, version, options, command) => {
       try {
         const globalOptions = command.parent.opts();
@@ -233,6 +259,7 @@ export async function main(): Promise<void> {
           targetVersion = (await tempRegistryService.getLatestVersion(packageName)).toString();
         }
 
+        // Get basic impact analysis first
         const analysis = await services.catalogUpdateService.analyzeImpact(
           catalog,
           packageName,
@@ -240,8 +267,67 @@ export async function main(): Promise<void> {
           globalOptions.workspace
         );
 
-        const formattedOutput = formatter.formatImpactAnalysis(analysis);
-        console.log(formattedOutput);
+        // If AI analysis is enabled, perform AI-powered analysis
+        if (parseBooleanFlag(options.ai)) {
+          console.log(chalk.blue('🤖 Running AI-powered analysis...'));
+
+          const aiService = new AIAnalysisService({
+            config: {
+              preferredProvider: options.provider === 'auto' ? 'auto' : options.provider,
+              cache: { enabled: !parseBooleanFlag(options.skipCache), ttl: 3600 },
+              fallback: { enabled: true, useRuleEngine: true },
+            },
+          });
+
+          // Get workspace info
+          const workspaceInfo = await services.workspaceService.getWorkspaceInfo(
+            globalOptions.workspace
+          );
+
+          // Build packages info for AI analysis
+          const packages = [
+            {
+              name: packageName,
+              currentVersion: analysis.currentVersion,
+              targetVersion: analysis.proposedVersion,
+              updateType: analysis.updateType,
+            },
+          ];
+
+          // Build workspace info for AI
+          const wsInfo = {
+            name: workspaceInfo.name,
+            path: workspaceInfo.path,
+            packageCount: workspaceInfo.packageCount,
+            catalogCount: workspaceInfo.catalogCount,
+          };
+
+          try {
+            const aiResult = await aiService.analyzeUpdates(packages, wsInfo, {
+              analysisType: options.analysisType as AnalysisType,
+              skipCache: parseBooleanFlag(options.skipCache),
+            });
+
+            // Format and display AI analysis result
+            const aiOutput = formatter.formatAIAnalysis(aiResult, analysis);
+            console.log(aiOutput);
+            // Ensure process exits after AI analysis to avoid hanging
+            process.exit(0);
+          } catch (aiError) {
+            console.warn(chalk.yellow('⚠️  AI analysis failed, showing basic analysis:'));
+            if (globalOptions.verbose) {
+              console.warn(chalk.gray(String(aiError)));
+            }
+            // Fall back to basic analysis
+            const formattedOutput = formatter.formatImpactAnalysis(analysis);
+            console.log(formattedOutput);
+            process.exit(0);
+          }
+        } else {
+          // Standard analysis without AI
+          const formattedOutput = formatter.formatImpactAnalysis(analysis);
+          console.log(formattedOutput);
+        }
       } catch (error) {
         console.error(chalk.red('❌ Error:'), error);
         process.exit(1);
@@ -428,6 +514,131 @@ export async function main(): Promise<void> {
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         });
+      } catch (error) {
+        console.error(chalk.red('❌ Error:'), error);
+        process.exit(1);
+      }
+    });
+
+  // AI command - check AI provider status and availability
+  program
+    .command('ai')
+    .description('check AI provider status and availability')
+    .option('--status', 'show status of all AI providers (default)')
+    .option('--test', 'test AI analysis with a sample request')
+    .option('--cache-stats', 'show AI analysis cache statistics')
+    .option('--clear-cache', 'clear AI analysis cache')
+    .action(async (options) => {
+      try {
+        const aiDetector = new AIDetector();
+
+        if (options.clearCache) {
+          // Import the cache singleton
+          const { analysisCache } = await import('@pcu/core');
+          analysisCache.clear();
+          console.log(chalk.green('✅ AI analysis cache cleared'));
+          process.exit(0);
+        }
+
+        if (options.cacheStats) {
+          const { analysisCache } = await import('@pcu/core');
+          const stats = analysisCache.getStats();
+          console.log(chalk.blue('📊 AI Analysis Cache Statistics'));
+          console.log(chalk.gray('─────────────────────────────────'));
+          console.log(`  Total entries: ${chalk.cyan(stats.totalEntries)}`);
+          console.log(`  Cache hits:    ${chalk.green(stats.hits)}`);
+          console.log(`  Cache misses:  ${chalk.yellow(stats.misses)}`);
+          console.log(`  Hit rate:      ${chalk.cyan((stats.hitRate * 100).toFixed(1) + '%')}`);
+          process.exit(0);
+        }
+
+        if (options.test) {
+          console.log(chalk.blue('🧪 Testing AI analysis...'));
+
+          const aiService = new AIAnalysisService({
+            config: {
+              fallback: { enabled: true, useRuleEngine: true },
+            },
+          });
+
+          const testPackages = [
+            {
+              name: 'lodash',
+              currentVersion: '4.17.20',
+              targetVersion: '4.17.21',
+              updateType: 'patch' as const,
+            },
+          ];
+
+          const testWorkspaceInfo = {
+            name: 'test-workspace',
+            path: process.cwd(),
+            packageCount: 1,
+            catalogCount: 1,
+          };
+
+          try {
+            const result = await aiService.analyzeUpdates(testPackages, testWorkspaceInfo, {
+              analysisType: 'impact',
+            });
+            console.log(chalk.green('✅ AI analysis test successful!'));
+            console.log(chalk.gray('─────────────────────────────────'));
+            console.log(`  Provider: ${chalk.cyan(result.provider)}`);
+            console.log(`  Confidence: ${chalk.cyan((result.confidence * 100).toFixed(0) + '%')}`);
+            console.log(`  Summary: ${result.summary}`);
+          } catch (error) {
+            console.log(chalk.yellow('⚠️  AI analysis test failed:'));
+            console.log(chalk.gray(String(error)));
+          }
+          process.exit(0);
+        }
+
+        // Default: show status
+        console.log(chalk.blue('🤖 AI Provider Status'));
+        console.log(chalk.gray('─────────────────────────────────'));
+
+        const summary = await aiDetector.getDetectionSummary();
+        console.log(summary);
+
+        const providers = await aiDetector.detectAvailableProviders();
+        console.log('');
+        console.log(chalk.blue('📋 Provider Details'));
+        console.log(chalk.gray('─────────────────────────────────'));
+
+        for (const provider of providers) {
+          const statusIcon = provider.available ? chalk.green('✓') : chalk.red('✗');
+          const statusText = provider.available
+            ? chalk.green('Available')
+            : chalk.gray('Not found');
+          const priorityText = chalk.gray(`(priority: ${provider.priority})`);
+
+          console.log(
+            `  ${statusIcon} ${chalk.cyan(provider.name)} - ${statusText} ${priorityText}`
+          );
+
+          if (provider.available && provider.path) {
+            console.log(chalk.gray(`      Path: ${provider.path}`));
+          }
+          if (provider.available && provider.version) {
+            console.log(chalk.gray(`      Version: ${provider.version}`));
+          }
+        }
+
+        const best = await aiDetector.getBestProvider();
+        if (best) {
+          console.log('');
+          console.log(chalk.green(`✨ Best available provider: ${best.name}`));
+        } else {
+          console.log('');
+          console.log(
+            chalk.yellow('⚠️  No AI providers available. Rule-based fallback will be used.')
+          );
+          console.log(
+            chalk.gray('   Install claude, gemini, or codex CLI for AI-powered analysis.')
+          );
+        }
+        // Ensure process exits after async operations complete
+        process.exit(0);
       } catch (error) {
         console.error(chalk.red('❌ Error:'), error);
         process.exit(1);

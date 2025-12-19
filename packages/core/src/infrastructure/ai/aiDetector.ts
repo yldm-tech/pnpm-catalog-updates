@@ -273,9 +273,11 @@ export class AIDetector {
    */
   private async detectByAlias(command: string): Promise<boolean> {
     try {
-      // Use interactive shell to access aliases
-      const { stdout } = await exec(`bash -i -c "type ${command}" 2>/dev/null`, {
-        timeout: 5000,
+      // Check using non-interactive shell to avoid hanging
+      // Note: This won't detect aliases defined in ~/.bashrc, but avoids process hanging
+      const { stdout } = await exec(`type ${command} 2>/dev/null`, {
+        timeout: 3000,
+        shell: '/bin/bash',
       });
       return stdout.includes('alias') || stdout.includes('function');
     } catch {

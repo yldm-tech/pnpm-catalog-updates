@@ -58,21 +58,23 @@ export class GeminiProvider extends BaseAIProvider {
 
     try {
       // Try to run gemini --version
-      await exec('gemini --version', { timeout: 10000 });
+      await exec('gemini --version', { timeout: 1500 });
       this.cachedAvailability = true;
       return true;
     } catch {
-      // Try alternative detection methods
       try {
-        // Check if it's an alias or in PATH
-        const { stdout } = await exec('bash -i -c "type gemini" 2>/dev/null', { timeout: 5000 });
-        this.cachedAvailability =
-          stdout.includes('alias') || stdout.includes('function') || stdout.includes('/');
-        return this.cachedAvailability;
+        // Fast PATH lookup (non-interactive, avoids hanging on shell rc files)
+        const { stdout } = await exec('command -v gemini 2>/dev/null', { timeout: 500 });
+        const isAvailable = stdout.trim().length > 0;
+        this.cachedAvailability = isAvailable;
+        return isAvailable;
       } catch {
         // Check for alternative command names
         try {
-          await exec('which gemini-cli', { timeout: 5000 });
+          const { stdout } = await exec('command -v gemini-cli 2>/dev/null', { timeout: 500 });
+          if (!stdout.trim()) {
+            throw new Error('gemini-cli not found');
+          }
           this.cachedAvailability = true;
           return true;
         } catch {
@@ -97,14 +99,14 @@ export class GeminiProvider extends BaseAIProvider {
 
     if (available) {
       try {
-        const { stdout } = await exec('gemini --version', { timeout: 10000 });
+        const { stdout } = await exec('gemini --version', { timeout: 1500 });
         version = stdout.trim();
       } catch {
         // Version not available
       }
 
       try {
-        const { stdout } = await exec('which gemini', { timeout: 5000 });
+        const { stdout } = await exec('command -v gemini', { timeout: 500 });
         path = stdout.trim();
       } catch {
         path = 'alias';

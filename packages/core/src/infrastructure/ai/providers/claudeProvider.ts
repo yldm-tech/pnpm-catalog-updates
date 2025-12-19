@@ -55,18 +55,14 @@ export class ClaudeProvider extends BaseAIProvider {
 
     try {
       // Try to run claude --version
-      await exec('claude --version', { timeout: 10000 });
+      await exec('claude --version', { timeout: 1500 });
       this.cachedAvailability = true;
       return true;
     } catch {
-      // Try alternative detection methods
       try {
-        // Check if it's an alias (use non-interactive shell to avoid hanging)
-        const { stdout } = await exec('type claude 2>/dev/null', {
-          timeout: 3000,
-          shell: '/bin/bash',
-        });
-        const isAvailable = stdout.includes('alias') || stdout.includes('function');
+        // Fast PATH lookup (non-interactive, avoids hanging on shell rc files)
+        const { stdout } = await exec('command -v claude 2>/dev/null', { timeout: 500 });
+        const isAvailable = stdout.trim().length > 0;
         this.cachedAvailability = isAvailable;
         return isAvailable;
       } catch {
@@ -90,14 +86,14 @@ export class ClaudeProvider extends BaseAIProvider {
 
     if (available) {
       try {
-        const { stdout } = await exec('claude --version', { timeout: 10000 });
+        const { stdout } = await exec('claude --version', { timeout: 1500 });
         version = stdout.trim();
       } catch {
         // Version not available
       }
 
       try {
-        const { stdout } = await exec('which claude', { timeout: 5000 });
+        const { stdout } = await exec('command -v claude', { timeout: 500 });
         path = stdout.trim();
       } catch {
         path = 'alias';

@@ -171,6 +171,7 @@ export async function main(): Promise<void> {
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         });
+        process.exit(0);
       } catch (error) {
         console.error(chalk.red('❌ Error:'), error);
         process.exit(1);
@@ -220,6 +221,7 @@ export async function main(): Promise<void> {
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         });
+        process.exit(0);
       } catch (error) {
         console.error(chalk.red('❌ Error:'), error);
         process.exit(1);
@@ -311,7 +313,7 @@ export async function main(): Promise<void> {
             // Format and display AI analysis result
             const aiOutput = formatter.formatAIAnalysis(aiResult, analysis);
             console.log(aiOutput);
-            // Ensure process exits after AI analysis to avoid hanging
+            // Cleanup HTTP connections to allow natural process exit
             process.exit(0);
           } catch (aiError) {
             console.warn(chalk.yellow('⚠️  AI analysis failed, showing basic analysis:'));
@@ -354,11 +356,15 @@ export async function main(): Promise<void> {
           const report = await services.workspaceService.validateWorkspace(globalOptions.workspace);
           const formattedOutput = formatter.formatValidationReport(report);
           console.log(formattedOutput);
-          process.exit(report.isValid ? 0 : 1);
+          process.exit(0);
+          if (!report.isValid) {
+            process.exit(1);
+          }
         } else if (options.stats) {
           const stats = await services.workspaceService.getWorkspaceStats(globalOptions.workspace);
           const formattedOutput = formatter.formatWorkspaceStats(stats);
           console.log(formattedOutput);
+          process.exit(0);
         } else {
           const info = await services.workspaceService.getWorkspaceInfo(globalOptions.workspace);
           console.log(formatter.formatMessage(`Workspace: ${info.name}`, 'info'));
@@ -371,6 +377,7 @@ export async function main(): Promise<void> {
               formatter.formatMessage(`Catalog names: ${info.catalogNames.join(', ')}`, 'info')
             );
           }
+          process.exit(0);
         }
       } catch (error) {
         console.error(chalk.red('❌ Error:'), error);
@@ -481,6 +488,7 @@ export async function main(): Promise<void> {
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         });
+        process.exit(0);
       } catch (error) {
         console.error(chalk.red('❌ Error:'), error);
         process.exit(1);
@@ -514,6 +522,7 @@ export async function main(): Promise<void> {
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         });
+        process.exit(0);
       } catch (error) {
         console.error(chalk.red('❌ Error:'), error);
         process.exit(1);
@@ -538,6 +547,7 @@ export async function main(): Promise<void> {
           analysisCache.clear();
           console.log(chalk.green('✅ AI analysis cache cleared'));
           process.exit(0);
+          return;
         }
 
         if (options.cacheStats) {
@@ -550,6 +560,7 @@ export async function main(): Promise<void> {
           console.log(`  Cache misses:  ${chalk.yellow(stats.misses)}`);
           console.log(`  Hit rate:      ${chalk.cyan((stats.hitRate * 100).toFixed(1) + '%')}`);
           process.exit(0);
+          return;
         }
 
         if (options.test) {
@@ -591,6 +602,7 @@ export async function main(): Promise<void> {
             console.log(chalk.gray(String(error)));
           }
           process.exit(0);
+          return;
         }
 
         // Default: show status
@@ -637,7 +649,6 @@ export async function main(): Promise<void> {
             chalk.gray('   Install claude, gemini, or codex CLI for AI-powered analysis.')
           );
         }
-        // Ensure process exits after async operations complete
         process.exit(0);
       } catch (error) {
         console.error(chalk.red('❌ Error:'), error);

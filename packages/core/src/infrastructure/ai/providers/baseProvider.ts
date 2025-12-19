@@ -133,6 +133,39 @@ export abstract class BaseAIProvider implements AIProvider {
         } else if (securityInfo.hasHighVulnerabilities) {
           lines.push(`   ⚠️ HIGH RISK: Consider alternative versions.`);
         }
+
+        // Include verified safe version recommendation if available
+        if (securityInfo.safeVersion) {
+          const sv = securityInfo.safeVersion;
+          const versionNote = sv.sameMajor
+            ? sv.sameMinor
+              ? '(same major and minor version)'
+              : '(same major version)'
+            : '(different major version - may require migration)';
+
+          // Show skipped versions and their vulnerabilities
+          if (sv.skippedVersions && sv.skippedVersions.length > 0) {
+            lines.push('');
+            lines.push(`   ❌ SKIPPED VERSIONS (still have vulnerabilities):`);
+            for (const skipped of sv.skippedVersions) {
+              lines.push(`      - ${pkg.name}@${skipped.version}:`);
+              for (const vuln of skipped.vulnerabilities) {
+                lines.push(`        • [${vuln.severity}] ${vuln.id}: ${vuln.summary}`);
+              }
+            }
+          }
+
+          lines.push('');
+          lines.push(`   ✅ VERIFIED SAFE VERSION: ${pkg.name}@${sv.version} ${versionNote}`);
+          lines.push(
+            `      This version has been verified to have NO critical or high severity vulnerabilities.`
+          );
+          lines.push(
+            `      (Checked ${sv.versionsChecked} version(s) to find this safe alternative)`
+          );
+          lines.push(`      RECOMMENDATION: Update to ${pkg.name}@${sv.version} instead.`);
+        }
+
         lines.push('');
       } else {
         lines.push(`✅ ${pkg.name}@${pkg.targetVersion}: No known vulnerabilities`);
@@ -176,10 +209,17 @@ For each package, provide:
 4. Reason for recommendation
 5. Estimated migration effort
 
-IMPORTANT: If security data shows CRITICAL vulnerabilities, you MUST:
-- Set riskLevel to "critical"
-- Set action to "skip"
-- Include the CVE IDs in the reason
+IMPORTANT RULES:
+1. If security data shows CRITICAL vulnerabilities, you MUST:
+   - Set riskLevel to "critical"
+   - Set action to "skip"
+   - Include the CVE IDs in the reason
+
+2. If NO security data is provided above OR security data shows "No known vulnerabilities":
+   - DO NOT invent or fabricate CVE IDs, GHSA IDs, or vulnerability information
+   - Set securityFixes to empty array []
+   - Base your analysis ONLY on breaking changes and compatibility, NOT security
+   - Be honest: say "No known security vulnerabilities" in the reason if applicable
 
 Respond in JSON format with this structure:
 {

@@ -22,6 +22,10 @@ catalog:
   vite: ^5.1.0
   webpack: ^5.90.0
   rollup: ^4.12.0
+  "@vitejs/plugin-react": ^4.2.0
+  "@rollup/plugin-node-resolve": ^15.2.0
+  "@rollup/plugin-typescript": ^11.1.0
+  tsx: ^4.7.0
 
   # Testing
   vitest: ^1.3.0

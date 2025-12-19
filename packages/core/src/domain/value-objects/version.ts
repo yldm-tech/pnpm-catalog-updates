@@ -151,7 +151,9 @@ export class Version {
    * Increment version by type
    */
   public increment(type: 'major' | 'minor' | 'patch', prerelease?: string): Version {
-    const incremented = semver.inc(this.value, type, prerelease);
+    const incremented = prerelease
+      ? semver.inc(this.value, type, prerelease)
+      : semver.inc(this.value, type);
     if (!incremented) {
       throw new Error(`Failed to increment version ${this.value} by ${type}`);
     }

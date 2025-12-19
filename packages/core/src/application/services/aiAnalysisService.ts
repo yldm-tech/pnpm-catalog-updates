@@ -32,6 +32,11 @@ export interface AIAnalysisServiceOptions {
   config?: Partial<AIConfig>;
   cache?: AnalysisCache;
   detector?: AIDetector;
+  /**
+   * Optional preconfigured provider instances.
+   * When provided, the service will not auto-initialize built-in providers.
+   */
+  providers?: AIProvider[];
 }
 
 /**
@@ -75,6 +80,13 @@ export class AIAnalysisService {
     this.detector = options.detector ?? new AIDetector();
     this.ruleEngine = new RuleEngine();
     this.securityService = new SecurityAdvisoryService({ cacheMinutes: 30, timeout: 10000 });
+
+    if (options.providers) {
+      for (const provider of options.providers) {
+        this.providers.set(provider.name, provider);
+      }
+      this.providersInitialized = true;
+    }
   }
 
   /**
@@ -98,6 +110,9 @@ export class AIAnalysisService {
       fallback: {
         enabled: userConfig?.fallback?.enabled ?? true,
         useRuleEngine: userConfig?.fallback?.useRuleEngine ?? true,
+      },
+      securityData: {
+        enabled: userConfig?.securityData?.enabled ?? true,
       },
     };
   }
@@ -181,9 +196,6 @@ export class AIAnalysisService {
       return this.createDisabledResult(packages, options.analysisType ?? 'impact');
     }
 
-    // Fetch real-time security vulnerability data from OSV API
-    const securityData = await this.fetchSecurityData(packages);
-
     const context: AnalysisContext = {
       packages,
       workspaceInfo,
@@ -191,7 +203,6 @@ export class AIAnalysisService {
       options: {
         timeout: options.timeout,
       },
-      securityData,
     };
 
     // Check cache first
@@ -225,15 +236,21 @@ export class AIAnalysisService {
     // Execute analysis
     let result: AnalysisResult;
     let providerUsed: string;
+    const shouldFetchSecurityData =
+      (this.config.securityData?.enabled ?? true) &&
+      (provider !== null || context.analysisType === 'security');
+    const contextWithSecurity: AnalysisContext = shouldFetchSecurityData
+      ? { ...context, securityData: await this.fetchSecurityData(packages) }
+      : context;
 
     if (provider) {
       try {
-        result = await provider.analyze(context);
+        result = await provider.analyze(contextWithSecurity);
         providerUsed = provider.name;
       } catch (error) {
         // Fallback on provider error
         if (this.config.fallback.enabled && this.config.fallback.useRuleEngine) {
-          result = this.ruleEngine.analyze(context);
+          result = this.ruleEngine.analyze(contextWithSecurity);
           providerUsed = 'rule-engine';
           result.warnings = [
             ...(result.warnings || []),
@@ -246,7 +263,7 @@ export class AIAnalysisService {
     } else {
       // No provider available, use fallback
       if (this.config.fallback.enabled && this.config.fallback.useRuleEngine) {
-        result = this.ruleEngine.analyze(context);
+        result = this.ruleEngine.analyze(contextWithSecurity);
         providerUsed = 'rule-engine';
       } else {
         result = this.createNoProviderResult(packages, context.analysisType);
@@ -533,6 +550,33 @@ export class AIAnalysisService {
 
       // Convert SecurityAdvisoryReport to SecurityVulnerabilityData
       for (const [key, report] of reports) {
+        // If version has critical/high vulnerabilities, find a safe version
+        let safeVersion:
+          | {
+              version: string;
+              sameMajor: boolean;
+              sameMinor: boolean;
+              versionsChecked: number;
+              skippedVersions?: Array<{
+                version: string;
+                vulnerabilities: Array<{
+                  id: string;
+                  severity: string;
+                  summary: string;
+                }>;
+              }>;
+            }
+          | undefined;
+        if (report.hasCriticalVulnerabilities || report.hasHighVulnerabilities) {
+          const foundSafeVersion = await this.securityService.findSafeVersion(
+            report.packageName,
+            report.version
+          );
+          if (foundSafeVersion) {
+            safeVersion = foundSafeVersion;
+          }
+        }
+
         securityData.set(key, {
           packageName: report.packageName,
           version: report.version,
@@ -547,6 +591,7 @@ export class AIAnalysisService {
           hasCriticalVulnerabilities: report.hasCriticalVulnerabilities,
           hasHighVulnerabilities: report.hasHighVulnerabilities,
           totalVulnerabilities: report.totalVulnerabilities,
+          safeVersion,
         });
       }
     } catch (error) {

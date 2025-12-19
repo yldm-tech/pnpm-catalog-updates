@@ -58,21 +58,23 @@ export class CodexProvider extends BaseAIProvider {
 
     try {
       // Try to run codex --version
-      await exec('codex --version', { timeout: 10000 });
+      await exec('codex --version', { timeout: 1500 });
       this.cachedAvailability = true;
       return true;
     } catch {
-      // Try alternative detection methods
       try {
-        // Check if it's an alias or in PATH
-        const { stdout } = await exec('bash -i -c "type codex" 2>/dev/null', { timeout: 5000 });
-        this.cachedAvailability =
-          stdout.includes('alias') || stdout.includes('function') || stdout.includes('/');
-        return this.cachedAvailability;
+        // Fast PATH lookup (non-interactive, avoids hanging on shell rc files)
+        const { stdout } = await exec('command -v codex 2>/dev/null', { timeout: 500 });
+        const isAvailable = stdout.trim().length > 0;
+        this.cachedAvailability = isAvailable;
+        return isAvailable;
       } catch {
         // Check for alternative command names (openai-codex, etc.)
         try {
-          await exec('which openai-codex', { timeout: 5000 });
+          const { stdout } = await exec('command -v openai-codex 2>/dev/null', { timeout: 500 });
+          if (!stdout.trim()) {
+            throw new Error('openai-codex not found');
+          }
           this.cachedAvailability = true;
           return true;
         } catch {
@@ -97,14 +99,14 @@ export class CodexProvider extends BaseAIProvider {
 
     if (available) {
       try {
-        const { stdout } = await exec('codex --version', { timeout: 10000 });
+        const { stdout } = await exec('codex --version', { timeout: 1500 });
         version = stdout.trim();
       } catch {
         // Version not available
       }
 
       try {
-        const { stdout } = await exec('which codex', { timeout: 5000 });
+        const { stdout } = await exec('command -v codex', { timeout: 500 });
         path = stdout.trim();
       } catch {
         path = 'alias';

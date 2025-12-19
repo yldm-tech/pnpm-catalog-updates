@@ -36,6 +36,30 @@ export type AnalysisType =
   | 'recommend'; // Generate smart recommendations
 
 /**
+ * Information about a skipped (unsafe) version
+ */
+export interface SkippedVersionInfo {
+  version: string;
+  vulnerabilities: Array<{
+    id: string;
+    severity: string;
+    summary: string;
+  }>;
+}
+
+/**
+ * Information about a verified safe version
+ */
+export interface SafeVersionInfo {
+  version: string;
+  sameMajor: boolean;
+  sameMinor: boolean;
+  versionsChecked: number;
+  /** Versions that were checked but found to have vulnerabilities */
+  skippedVersions?: SkippedVersionInfo[];
+}
+
+/**
  * Security vulnerability information from OSV API
  */
 export interface SecurityVulnerabilityData {
@@ -52,6 +76,8 @@ export interface SecurityVulnerabilityData {
   hasCriticalVulnerabilities: boolean;
   hasHighVulnerabilities: boolean;
   totalVulnerabilities: number;
+  /** Verified safe version with no critical/high vulnerabilities */
+  safeVersion?: SafeVersionInfo;
 }
 
 /**
@@ -193,5 +219,12 @@ export interface AIConfig {
   fallback: {
     enabled: boolean;
     useRuleEngine: boolean;
+  };
+  /**
+   * Real-time security vulnerability enrichment (OSV API).
+   * Can be disabled to avoid network calls in constrained environments.
+   */
+  securityData?: {
+    enabled?: boolean;
   };
 }

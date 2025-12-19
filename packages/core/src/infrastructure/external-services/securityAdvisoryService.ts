@@ -668,4 +668,184 @@ export class SecurityAdvisoryService {
   clearCache(): void {
     this.cache.clear();
   }
+
+  /**
+   * Find a safe version (without critical/high vulnerabilities) newer than the given version.
+   * This method checks versions in order from the given version upward until it finds one
+   * that has no critical or high severity vulnerabilities.
+   *
+   * @param packageName - The npm package name
+   * @param currentVersion - The version to start searching from
+   * @param maxVersionsToCheck - Maximum number of versions to check (default: 10)
+   * @returns Information about the safe version found, or undefined if none found
+   */
+  async findSafeVersion(
+    packageName: string,
+    currentVersion: string,
+    maxVersionsToCheck = 10
+  ): Promise<
+    | {
+        version: string;
+        sameMajor: boolean;
+        sameMinor: boolean;
+        versionsChecked: number;
+        skippedVersions: Array<{
+          version: string;
+          vulnerabilities: Array<{
+            id: string;
+            severity: string;
+            summary: string;
+          }>;
+        }>;
+      }
+    | undefined
+  > {
+    try {
+      // Fetch package versions from npm registry
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+      const response = await fetch(
+        `https://registry.npmjs.org/${encodeURIComponent(packageName)}`,
+        { signal: controller.signal }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        return undefined;
+      }
+
+      const data = (await response.json()) as {
+        versions: Record<string, unknown>;
+        time?: Record<string, string>;
+      };
+
+      // Get all versions and sort them semantically
+      const allVersions = Object.keys(data.versions);
+
+      // Parse current version for comparison
+      const currentParts = this.parseVersion(currentVersion);
+      if (!currentParts) {
+        return undefined;
+      }
+
+      // Filter to versions >= currentVersion and sort in ascending order
+      const candidateVersions = allVersions
+        .filter((v) => {
+          const parts = this.parseVersion(v);
+          if (!parts) return false;
+          // Only consider stable versions (no prereleases)
+          if (parts.prerelease) return false;
+          // Must be >= currentVersion
+          return this.compareVersions(parts, currentParts) > 0;
+        })
+        .sort((a, b) => {
+          const partsA = this.parseVersion(a);
+          const partsB = this.parseVersion(b);
+          if (!partsA || !partsB) return 0;
+          return this.compareVersions(partsA, partsB);
+        })
+        .slice(0, maxVersionsToCheck);
+
+      if (candidateVersions.length === 0) {
+        return undefined;
+      }
+
+      // Track skipped versions with their vulnerabilities
+      const skippedVersions: Array<{
+        version: string;
+        vulnerabilities: Array<{
+          id: string;
+          severity: string;
+          summary: string;
+        }>;
+      }> = [];
+
+      // Check each candidate version for vulnerabilities
+      let versionsChecked = 0;
+      for (const candidateVersion of candidateVersions) {
+        versionsChecked++;
+
+        // Query vulnerabilities for this version (including ecosystem packages)
+        const report = await this.queryVulnerabilities(packageName, candidateVersion);
+
+        // Collect all vulnerabilities (main package + ecosystem)
+        const allVulnerabilities: Array<{
+          id: string;
+          severity: string;
+          summary: string;
+        }> = report.vulnerabilities.map((v) => ({
+          id: v.id,
+          severity: v.severity,
+          summary: v.summary,
+        }));
+
+        // Check if this version is safe (no critical/high vulnerabilities)
+        const hasDangerousVulns =
+          report.hasCriticalVulnerabilities || report.hasHighVulnerabilities;
+
+        if (!hasDangerousVulns) {
+          // Found a safe version!
+          const candidateParts = this.parseVersion(candidateVersion);
+          if (!candidateParts) continue;
+
+          return {
+            version: candidateVersion,
+            sameMajor: candidateParts.major === currentParts.major,
+            sameMinor:
+              candidateParts.major === currentParts.major &&
+              candidateParts.minor === currentParts.minor,
+            versionsChecked,
+            skippedVersions,
+          };
+        } else {
+          // This version has vulnerabilities, add to skipped list
+          skippedVersions.push({
+            version: candidateVersion,
+            vulnerabilities: allVulnerabilities,
+          });
+        }
+      }
+
+      // No safe version found within the limit
+      return undefined;
+    } catch (error) {
+      console.error(
+        `Failed to find safe version for ${packageName}@${currentVersion}:`,
+        (error as Error).message
+      );
+      return undefined;
+    }
+  }
+
+  /**
+   * Parse a semver version string into parts
+   */
+  private parseVersion(
+    version: string
+  ): { major: number; minor: number; patch: number; prerelease?: string } | null {
+    const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
+    if (!match || !match[1] || !match[2] || !match[3]) return null;
+
+    return {
+      major: parseInt(match[1], 10),
+      minor: parseInt(match[2], 10),
+      patch: parseInt(match[3], 10),
+      prerelease: match[4],
+    };
+  }
+
+  /**
+   * Compare two parsed versions
+   * Returns: negative if a < b, 0 if a == b, positive if a > b
+   */
+  private compareVersions(
+    a: { major: number; minor: number; patch: number },
+    b: { major: number; minor: number; patch: number }
+  ): number {
+    if (a.major !== b.major) return a.major - b.major;
+    if (a.minor !== b.minor) return a.minor - b.minor;
+    return a.patch - b.patch;
+  }
 }

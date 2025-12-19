@@ -4,38 +4,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PackageUpdateInfo, WorkspaceInfo } from '../../../domain/interfaces/aiProvider.js';
-import { AIAnalysisService } from '../aiAnalysisService.js';
 
-// Mock all AI providers
-vi.mock('../../../infrastructure/ai/providers/claudeProvider.js', () => ({
-  ClaudeProvider: vi.fn().mockImplementation(() => ({
-    name: 'claude',
-    priority: 100,
-    capabilities: ['impact', 'security', 'compatibility', 'recommend'],
-    isAvailable: vi.fn().mockResolvedValue(false),
-  })),
-}));
-
-vi.mock('../../../infrastructure/ai/providers/geminiProvider.js', () => ({
-  GeminiProvider: vi.fn().mockImplementation(() => ({
-    name: 'gemini',
-    priority: 80,
-    capabilities: ['impact', 'security', 'compatibility', 'recommend'],
-    isAvailable: vi.fn().mockResolvedValue(false),
-  })),
-}));
-
-vi.mock('../../../infrastructure/ai/providers/codexProvider.js', () => ({
-  CodexProvider: vi.fn().mockImplementation(() => ({
-    name: 'codex',
-    priority: 60,
-    capabilities: ['impact', 'security', 'compatibility', 'recommend'],
-    isAvailable: vi.fn().mockResolvedValue(false),
-  })),
-}));
+const { AIAnalysisService } = await import('../aiAnalysisService.js');
 
 describe('AIAnalysisService', () => {
-  let service: AIAnalysisService;
+  let service: InstanceType<typeof AIAnalysisService>;
 
   const packages: PackageUpdateInfo[] = [
     {
@@ -61,7 +34,11 @@ describe('AIAnalysisService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new AIAnalysisService();
+    // Use injected providers to avoid calling real CLIs in test environments.
+    service = new AIAnalysisService({
+      config: { securityData: { enabled: false } },
+      providers: [],
+    });
   });
 
   afterEach(() => {

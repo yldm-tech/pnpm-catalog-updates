@@ -26,7 +26,7 @@
     "typescript": "catalog:",
     "vitest": "catalog:",
     "eslint": "catalog:",
-    "tsx": "^4.7.0"
+    "tsx": "catalog:"
   },
   "engines": {
     "node": ">=18.0.0"

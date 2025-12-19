@@ -95,76 +95,29 @@ jobs:
           echo "ℹ️ No changesets or version updates found"
           echo "📝 To publish a new version, create a changeset with: pnpm changeset"
 
-      - name: Get published version
+      - name: Get published version and changelog
         if: steps.publish.conclusion == 'success'
         id: version
         run: |
           VERSION=$(node -p "require('./apps/cli/package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create Enhanced GitHub Release
+          # Extract changelog for this version
+          CHANGELOG=$(awk "/^## ${VERSION}/,/^## [0-9]/" apps/cli/CHANGELOG.md | head -n -1)
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="See [CHANGELOG.md](https://github.com/houko/pnpm-catalog-updates/blob/main/apps/cli/CHANGELOG.md) for details."
+          fi
+
+          # Write to file for multiline support
+          echo "$CHANGELOG" > /tmp/changelog.md
+
+      - name: Create GitHub Release
         if: steps.publish.conclusion == 'success'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: pcu@${{ steps.version.outputs.version }}
-          release_name: v${{ steps.version.outputs.version }}
-          body: |
-            ## Installation
-
-            ```bash
-            npm install -g pcu@${{ steps.version.outputs.version }}
-            ```
-
-            ## Usage
-
-            ### Quick Commands
-
-            ```bash
-            # Check for updates
-            pcu -c
-
-            # Update interactively
-            pcu -i
-
-            # Update with dry run
-            pcu -u -d
-
-            # Get workspace info
-            pcu -s
-            ```
-
-            ### All Commands & Shortcuts
-
-            | Command | Shorthand | Description |
-            |---------|-----------|-------------|
-            | `pcu check` | `pcu -c` | Check for outdated catalog dependencies |
-            | `pcu update` | `pcu -u` | Update catalog dependencies |
-            | `pcu analyze` | `pcu -a` | Analyze impact of dependency updates |
-            | `pcu workspace` | `pcu -s` | Show workspace information and validation |
-            | `pcu help` | `pcu -h` | Display help information |
-
-            ### Common Examples
-
-            ```bash
-            # Interactive update with backup
-            pcu -i -b
-
-            # Update only minor versions
-            pcu -u --target minor
-
-            # Check specific catalog
-            pcu -c --catalog node18
-
-            # Analyze before updating
-            pcu -a default react
-
-            # Validate workspace
-            pcu -s --validate
-            ```
-
-            For complete documentation, visit: https://pcu-cli.dev
+          name: v${{ steps.version.outputs.version }}
+          body_path: /tmp/changelog.md
           draft: false
           prerelease: false
 

@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".changeset/**"
+      - "apps/cli/package.json"
   workflow_dispatch:
 
 concurrency:
@@ -20,9 +21,6 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write
-      pages: write
-      actions: write
-      checks: write
 
     steps:
       - name: Checkout
@@ -38,17 +36,15 @@ jobs:
 
       - name: Build
         run: |
-          # Build workspace packages first
           pnpm --filter @pcu/utils build
           pnpm --filter @pcu/core build
-          # Then build all packages
           pnpm build
 
       - name: Check for changesets or version updates
         id: check-changes
         run: |
           # Check for changeset files (for new changesets)
-          if [ -n "$(ls .changeset/*.md 2>/dev/null | head -1)" ]; then
+          if [ -n "$(ls .changeset/*.md 2>/dev/null | grep -v README.md | head -1)" ]; then
             echo "has-changesets=true" >> $GITHUB_OUTPUT
             echo "should-publish=false" >> $GITHUB_OUTPUT
           else
@@ -58,7 +54,7 @@ jobs:
             NPM_VERSION=$(npm view pcu@latest version 2>/dev/null || echo "0.0.0")
             echo "Local version: $LOCAL_VERSION"
             echo "NPM version: $NPM_VERSION"
-            
+
             if [ "$LOCAL_VERSION" != "$NPM_VERSION" ]; then
               echo "should-publish=true" >> $GITHUB_OUTPUT
               echo "Version mismatch detected - should publish"
@@ -108,7 +104,6 @@ jobs:
             CHANGELOG="See [CHANGELOG.md](https://github.com/houko/pnpm-catalog-updates/blob/main/apps/cli/CHANGELOG.md) for details."
           fi
 
-          # Write to file for multiline support
           echo "$CHANGELOG" > /tmp/changelog.md
 
       - name: Create GitHub Release
@@ -120,93 +115,3 @@ jobs:
           body_path: /tmp/changelog.md
           draft: false
           prerelease: false
-
-  deploy-docs:
-    name: Deploy Documentation
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Environment
-        uses: ./.github/actions/setup
-
-      - name: Build Dependencies
-        run: |
-          # Build workspace dependencies first
-          pnpm --filter @pcu/utils build
-          pnpm --filter @pcu/core build
-
-      - name: Configure Next.js for GitHub Pages
-        run: |
-          cd apps/docs
-          # Create a temporary config for GitHub Pages deployment
-          cat > next.config.temp.mjs << 'EOF'
-          import nextMDX from '@next/mdx'
-          import path from 'path'
-          import createNextIntlPlugin from 'next-intl/plugin'
-
-          import { recmaPlugins } from './src/mdx/recma.mjs'
-          import { rehypePlugins } from './src/mdx/rehype.mjs'
-          import { remarkPlugins } from './src/mdx/remark.mjs'
-          import withSearch from './src/mdx/search.mjs'
-
-          const withNextIntl = createNextIntlPlugin('./src/i18n.ts')
-
-          const withMDX = nextMDX({
-            options: {
-              remarkPlugins,
-              rehypePlugins,
-              recmaPlugins,
-            },
-          })
-
-          const isProd = process.env.NODE_ENV === 'production'
-          const useCustomDomain = process.env.USE_CUSTOM_DOMAIN === 'true'
-
-          /** @type {import('next').NextConfig} */
-          const nextConfig = {
-            output: 'export',
-            trailingSlash: true,
-            images: {
-              unoptimized: true,
-            },
-            basePath: isProd && !useCustomDomain ? '/pnpm-catalog-updates' : '',
-            assetPrefix: isProd && !useCustomDomain ? '/pnpm-catalog-updates/' : '',
-            pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
-            outputFileTracingIncludes: {
-              '/**/*': ['./src/app/**/*.mdx'],
-            },
-          }
-
-          export default withNextIntl(withSearch(withMDX(nextConfig)))
-          EOF
-          # Replace the config for build
-          mv next.config.temp.mjs next.config.mjs
-
-      - name: Build Documentation
-        run: |
-          cd apps/docs
-          # Build documentation using pnpm with custom domain
-          NODE_ENV=production USE_CUSTOM_DOMAIN=true pnpm build
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./apps/docs/out
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4

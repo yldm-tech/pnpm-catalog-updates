@@ -51,7 +51,34 @@ pcu -a
 pcu workspace
 # or
 pcu -s
+
+# AI-powered analysis (NEW!)
+pcu ai              # Check available AI providers
+pcu update --ai     # Update with AI recommendations
+pcu analyze react   # Analyze package with AI
 ```
+
+### AI Analysis
+
+PCU integrates with AI CLI tools (Gemini, Claude, Codex, Cursor) to provide:
+
+- **Impact Analysis**: Understand how updates affect your code
+- **Security Assessment**: AI-powered vulnerability analysis
+- **Breaking Change Detection**: Detect potential compatibility issues
+- **Update Recommendations**: Get intelligent suggestions for safe updates
+
+```bash
+# Check available AI providers
+pcu ai
+
+# Update with AI-powered analysis
+pcu update --ai --interactive
+
+# Analyze a specific package
+pcu analyze react 19.0.0
+```
+
+**[Complete AI Analysis Documentation](https://pcu-cli.dev/en/ai-analysis)**
 
 ![PCU Showcase](https://github.com/user-attachments/assets/f05a970e-c58c-44f1-b3f1-351ae30b4a35)
 

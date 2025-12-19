@@ -1,6 +1,6 @@
 {
   "name": "pcu",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "CLI application for pnpm-catalog-updates",
   "type": "module",
   "main": "./dist/index.js",

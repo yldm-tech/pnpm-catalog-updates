@@ -7,6 +7,7 @@
 
 import path from 'node:path'
 
+import { FileSystemError } from '@pcu/utils'
 import { Catalog } from '../../domain/entities/catalog.js'
 import { Package } from '../../domain/entities/package.js'
 import { Workspace } from '../../domain/entities/workspace.js'
@@ -56,7 +57,11 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
   async findById(_id: WorkspaceId): Promise<Workspace | null> {
     // For file-based implementation, we would need to maintain a mapping
     // of IDs to paths. For now, this is not implemented.
-    throw new Error('Finding workspace by ID is not implemented in file-based repository')
+    throw new FileSystemError(
+      'unknown',
+      'findById',
+      'Finding workspace by ID is not implemented in file-based repository'
+    )
   }
 
   /**
@@ -70,7 +75,12 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
       // Save packages (update their package.json files)
       await this.savePackages(workspace.getPackages())
     } catch (error) {
-      throw new Error(`Failed to save workspace: ${error}`)
+      throw new FileSystemError(
+        workspace.getPath().toString(),
+        'save',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -82,7 +92,12 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
       const workspaceData = await this.fileSystemService.readPnpmWorkspaceConfig(path)
       return WorkspaceConfig.fromWorkspaceData(workspaceData)
     } catch (error) {
-      throw new Error(`Failed to load workspace configuration from ${path.toString()}: ${error}`)
+      throw new FileSystemError(
+        path.toString(),
+        'loadConfig',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -94,7 +109,12 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
       const workspaceData = config.toPnpmWorkspaceData()
       await this.fileSystemService.writePnpmWorkspaceConfig(path, workspaceData)
     } catch (error) {
-      throw new Error(`Failed to save workspace configuration to ${path.toString()}: ${error}`)
+      throw new FileSystemError(
+        path.toString(),
+        'saveConfig',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -164,7 +184,12 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
 
       return PackageCollection.fromPackages(packages)
     } catch (error) {
-      throw new Error(`Failed to load packages: ${error}`)
+      throw new FileSystemError(
+        workspacePath.toString(),
+        'loadPackages',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -189,7 +214,12 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
 
       return CatalogCollection.fromCatalogs(catalogs)
     } catch (error) {
-      throw new Error(`Failed to load catalogs: ${error}`)
+      throw new FileSystemError(
+        'workspace',
+        'loadCatalogs',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 

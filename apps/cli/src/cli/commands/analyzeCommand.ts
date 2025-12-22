@@ -7,6 +7,7 @@
 
 import type { AnalysisType, CatalogUpdateService, WorkspaceService } from '@pcu/core'
 import { AIAnalysisService, NpmRegistryService } from '@pcu/core'
+import { logger } from '@pcu/utils'
 import chalk from 'chalk'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 
@@ -46,6 +47,10 @@ export class AnalyzeCommand {
         (await this.catalogUpdateService.findCatalogForPackage(packageName, options.workspace)) ??
         undefined
       if (!catalog) {
+        logger.error('Package not found in any catalog', undefined, {
+          packageName,
+          workspace: options.workspace,
+        })
         console.error(chalk.red(`❌ Package "${packageName}" not found in any catalog`))
         console.log(chalk.gray('Use --catalog <name> to specify the catalog manually'))
         throw new Error(`Package "${packageName}" not found in any catalog`)
@@ -114,6 +119,12 @@ export class AnalyzeCommand {
         console.log(aiOutput)
         return
       } catch (aiError) {
+        logger.warn('AI analysis failed', {
+          error: aiError instanceof Error ? aiError.message : String(aiError),
+          packageName,
+          targetVersion,
+          provider: options.provider,
+        })
         console.warn(chalk.yellow('⚠️  AI analysis failed, showing basic analysis:'))
         if (options.verbose) {
           console.warn(chalk.gray(String(aiError)))

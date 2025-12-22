@@ -5,6 +5,7 @@
  * Provides high-level operations for working with pnpm workspaces.
  */
 
+import { WorkspaceNotFoundError, WorkspaceValidationError } from '@pcu/utils'
 import type { Workspace } from '../../domain/entities/workspace.js'
 import type { WorkspaceRepository } from '../../domain/repositories/workspaceRepository.js'
 import { WorkspacePath } from '../../domain/value-objects/workspacePath.js'
@@ -68,11 +69,7 @@ export class WorkspaceService {
     const workspace = await this.workspaceRepository.discoverWorkspace(path)
 
     if (!workspace) {
-      throw new Error(
-        searchPath
-          ? `No pnpm workspace found at or above ${searchPath}`
-          : 'No pnpm workspace found in current directory or parent directories'
-      )
+      throw new WorkspaceNotFoundError(searchPath || process.cwd())
     }
 
     return workspace
@@ -139,7 +136,7 @@ export class WorkspaceService {
     // Load workspace for detailed validation
     const workspace = await this.workspaceRepository.findByPath(path)
     if (!workspace) {
-      throw new Error('Workspace validation failed - workspace not found')
+      throw new WorkspaceValidationError(path.toString(), ['Workspace not found at specified path'])
     }
 
     // Validate workspace consistency

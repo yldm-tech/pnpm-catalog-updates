@@ -7,6 +7,8 @@
  * @see https://osv.dev/
  */
 
+import { ExternalServiceError, NetworkError } from '@pcu/utils'
+
 export interface VulnerabilityInfo {
   id: string
   aliases: string[] // CVE IDs, GHSA IDs, etc.
@@ -70,11 +72,23 @@ export class SecurityAdvisoryService {
   private readonly cacheTimeout: number
   private readonly timeout: number
   private readonly checkEcosystem: boolean
+  private readonly maxEcosystemPackages: number
+  private readonly maxVersionsToCheck: number
 
-  constructor(options: { cacheMinutes?: number; timeout?: number; checkEcosystem?: boolean } = {}) {
+  constructor(
+    options: {
+      cacheMinutes?: number
+      timeout?: number
+      checkEcosystem?: boolean
+      maxEcosystemPackages?: number
+      maxVersionsToCheck?: number
+    } = {}
+  ) {
     this.cacheTimeout = (options.cacheMinutes ?? 30) * 60 * 1000 // Default 30 minutes
     this.timeout = options.timeout ?? 10000 // Default 10 seconds
     this.checkEcosystem = options.checkEcosystem ?? true // Default to checking ecosystem packages
+    this.maxEcosystemPackages = options.maxEcosystemPackages ?? 20 // Limit ecosystem packages to prevent excessive API calls
+    this.maxVersionsToCheck = options.maxVersionsToCheck ?? 10 // Default max versions to check for safe version
   }
 
   /**
@@ -291,10 +305,13 @@ export class SecurityAdvisoryService {
       if (this.checkEcosystem) {
         const ecosystemPackages = await this.discoverEcosystemPackages(packageName, version)
 
-        if (ecosystemPackages.length > 0) {
+        // Apply safety limit to prevent excessive API calls
+        const limitedEcosystemPackages = ecosystemPackages.slice(0, this.maxEcosystemPackages)
+
+        if (limitedEcosystemPackages.length > 0) {
           // Query ecosystem packages in parallel
           const ecosystemReports = await Promise.all(
-            ecosystemPackages.map(async (pkgName) => {
+            limitedEcosystemPackages.map(async (pkgName) => {
               try {
                 return await this.queryOSV(pkgName, version)
               } catch {
@@ -389,7 +406,11 @@ export class SecurityAdvisoryService {
       clearTimeout(timeoutId)
 
       if (!response.ok) {
-        throw new Error(`OSV API returned ${response.status}: ${response.statusText}`)
+        throw new ExternalServiceError(
+          'OSV',
+          'query',
+          `API returned ${response.status}: ${response.statusText}`
+        )
       }
 
       const data = (await response.json()) as OSVQueryResponse
@@ -398,7 +419,7 @@ export class SecurityAdvisoryService {
       clearTimeout(timeoutId)
 
       if ((error as Error).name === 'AbortError') {
-        throw new Error('OSV API request timed out')
+        throw new NetworkError('OSV', 'request timed out')
       }
       throw error
     }
@@ -674,13 +695,13 @@ export class SecurityAdvisoryService {
    *
    * @param packageName - The npm package name
    * @param currentVersion - The version to start searching from
-   * @param maxVersionsToCheck - Maximum number of versions to check (default: 10)
+   * @param maxVersionsToCheck - Maximum number of versions to check (defaults to instance config)
    * @returns Information about the safe version found, or undefined if none found
    */
   async findSafeVersion(
     packageName: string,
     currentVersion: string,
-    maxVersionsToCheck = 10
+    maxVersionsToCheck?: number
   ): Promise<
     | {
         version: string
@@ -728,6 +749,9 @@ export class SecurityAdvisoryService {
         return undefined
       }
 
+      // Use instance config as default, allow parameter override
+      const versionsLimit = maxVersionsToCheck ?? this.maxVersionsToCheck
+
       // Filter to versions >= currentVersion and sort in ascending order
       const candidateVersions = allVersions
         .filter((v) => {
@@ -744,7 +768,7 @@ export class SecurityAdvisoryService {
           if (!partsA || !partsB) return 0
           return this.compareVersions(partsA, partsB)
         })
-        .slice(0, maxVersionsToCheck)
+        .slice(0, versionsLimit)
 
       if (candidateVersions.length === 0) {
         return undefined

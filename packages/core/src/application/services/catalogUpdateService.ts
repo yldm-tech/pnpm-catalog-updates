@@ -8,9 +8,12 @@
 
 import {
   type AdvancedConfig,
+  CatalogNotFoundError,
   ConfigLoader,
   type PackageFilterConfig,
+  PackageNotFoundError,
   UserFriendlyErrorHandler,
+  WorkspaceNotFoundError,
 } from '@pcu/utils'
 import type { Catalog } from '../../domain/entities/catalog.js'
 import type { Workspace } from '../../domain/entities/workspace.js'
@@ -215,7 +218,7 @@ export class CatalogUpdateService {
     // Load workspace
     const workspace = await this.workspaceRepository.findByPath(workspacePath)
     if (!workspace) {
-      throw new Error(`No pnpm workspace found at ${workspacePath.toString()}`)
+      throw new WorkspaceNotFoundError(workspacePath.toString())
     }
 
     const catalogs = workspace.getCatalogs()
@@ -228,11 +231,10 @@ export class CatalogUpdateService {
       : catalogs.getAll()
 
     if (catalogsToCheck.length === 0) {
-      throw new Error(
-        options.catalogName
-          ? `Catalog "${options.catalogName}" not found`
-          : 'No catalogs found in workspace'
-      )
+      if (options.catalogName) {
+        throw new CatalogNotFoundError(options.catalogName, catalogs.getCatalogNames())
+      }
+      throw new CatalogNotFoundError('default', [])
     }
 
     // Calculate total packages across all catalogs
@@ -269,7 +271,10 @@ export class CatalogUpdateService {
     // Check each catalog for outdated dependencies
     for (const catalog of catalogsToCheck) {
       if (!catalog) {
-        throw new Error(`Catalog "${catalogsToCheck[0]?.getName() || 'unknown'}" not found`)
+        throw new CatalogNotFoundError(
+          catalogsToCheck[0]?.getName() || 'unknown',
+          catalogs.getCatalogNames()
+        )
       }
       const dependencies = catalog.getDependencies()
 
@@ -425,7 +430,7 @@ export class CatalogUpdateService {
     // Load workspace
     const workspace = await this.workspaceRepository.findByPath(workspacePath)
     if (!workspace) {
-      throw new Error(`Workspace not found at ${workspacePath.toString()}`)
+      throw new WorkspaceNotFoundError(workspacePath.toString())
     }
 
     const updatedDependencies: UpdatedDependency[] = []
@@ -615,17 +620,17 @@ export class CatalogUpdateService {
     // Load workspace
     const workspace = await this.workspaceRepository.findByPath(wsPath)
     if (!workspace) {
-      throw new Error(`No pnpm workspace found at ${wsPath.toString()}`)
+      throw new WorkspaceNotFoundError(wsPath.toString())
     }
 
     const catalog = workspace.getCatalogs().get(catalogName)
     if (!catalog) {
-      throw new Error(`Catalog "${catalogName}" not found`)
+      throw new CatalogNotFoundError(catalogName, workspace.getCatalogs().getCatalogNames())
     }
 
     const currentRange = catalog.getDependencyVersion(packageName)
     if (!currentRange) {
-      throw new Error(`Package "${packageName}" not found in catalog "${catalogName}"`)
+      throw new PackageNotFoundError(packageName, catalogName)
     }
 
     const currentVersion = currentRange.toString()

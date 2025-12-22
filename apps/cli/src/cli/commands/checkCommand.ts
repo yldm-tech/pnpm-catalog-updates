@@ -12,7 +12,7 @@ import type {
   OutdatedDependencyInfo,
   OutdatedReport,
 } from '@pcu/core'
-import { ConfigLoader } from '@pcu/utils'
+import { ConfigLoader, logger } from '@pcu/utils'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
 
@@ -93,6 +93,9 @@ export class CheckCommand {
       // and finding updates is not an error condition
       process.exit(0)
     } catch (error) {
+      logger.error('Check dependencies failed', error instanceof Error ? error : undefined, {
+        options,
+      })
       console.error(StyledText.iconError('Error checking dependencies:'))
       console.error(StyledText.error(String(error)))
 

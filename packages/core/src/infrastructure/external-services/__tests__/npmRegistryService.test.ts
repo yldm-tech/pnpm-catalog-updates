@@ -29,13 +29,57 @@ vi.mock('npm-registry-fetch', () => ({
   default: mocks.npmFetch,
 }))
 
-vi.mock('@pcu/utils', () => ({
-  UserFriendlyErrorHandler: {
-    handleRetryAttempt: mocks.handleRetryAttempt,
-    handleSecurityCheckFailure: mocks.handleSecurityCheckFailure,
-    handlePackageQueryFailure: mocks.handlePackageQueryFailure,
-  },
-}))
+// Override UserFriendlyErrorHandler with test mocks
+// Note: Other @pcu/utils exports are mocked globally in vitest.setup.ts
+vi.mock('@pcu/utils', () => {
+  // Recreate necessary error classes for this test
+  class InfrastructureError extends Error {
+    code: string
+    context: Record<string, unknown>
+    constructor(message: string, code: string, context: Record<string, unknown> = {}) {
+      super(message)
+      this.name = 'InfrastructureError'
+      this.code = code
+      this.context = context
+    }
+  }
+
+  class RegistryError extends InfrastructureError {
+    constructor(
+      packageName: string,
+      operation: string,
+      reason: string,
+      statusCode?: number,
+      cause?: Error
+    ) {
+      super(`Registry ${operation} failed for "${packageName}": ${reason}`, 'REGISTRY_ERROR', {
+        packageName,
+        operation,
+        reason,
+        statusCode,
+      })
+      this.name = 'RegistryError'
+      this.cause = cause
+    }
+  }
+
+  class InvalidVersionRangeError extends Error {
+    constructor(range: string, reason: string) {
+      super(`Invalid version range "${range}": ${reason}`)
+      this.name = 'InvalidVersionRangeError'
+    }
+  }
+
+  return {
+    RegistryError,
+    InvalidVersionRangeError,
+    UserFriendlyErrorHandler: {
+      handleRetryAttempt: mocks.handleRetryAttempt,
+      handleSecurityCheckFailure: mocks.handleSecurityCheckFailure,
+      handlePackageQueryFailure: mocks.handlePackageQueryFailure,
+    },
+  }
+})
 
 vi.mock('../../utils/npmrcParser.js', () => ({
   NpmrcParser: {
@@ -147,7 +191,7 @@ describe('NpmRegistryService', () => {
       mocks.packument.mockRejectedValue(new Error('Package not found'))
 
       await expect(service.getLatestVersion('nonexistent-package')).rejects.toThrow(
-        'Failed to get latest version for nonexistent-package'
+        'Registry getLatestVersion failed for "nonexistent-package"'
       )
     })
   })
@@ -176,7 +220,7 @@ describe('NpmRegistryService', () => {
       // Create a range that won't match versions 3.x
       await expect(
         service.getGreatestVersion('lodash', VersionRange.fromString('^4.0.0'))
-      ).rejects.toThrow('Failed to get greatest version for lodash')
+      ).rejects.toThrow('Invalid version range')
     })
   })
 

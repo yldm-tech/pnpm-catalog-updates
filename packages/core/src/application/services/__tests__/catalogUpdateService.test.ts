@@ -17,16 +17,119 @@ const mocks = vi.hoisted(() => ({
   handlePackageQueryFailure: vi.fn(),
 }))
 
-vi.mock('@pcu/utils', () => ({
-  ConfigLoader: {
-    loadConfig: mocks.loadConfig,
-    getPackageConfig: mocks.getPackageConfig,
-  },
-  UserFriendlyErrorHandler: {
-    handleSecurityCheckFailure: mocks.handleSecurityCheckFailure,
-    handlePackageQueryFailure: mocks.handlePackageQueryFailure,
-  },
-}))
+// Comprehensive mock for @pcu/utils to avoid ConfigManager initialization
+vi.mock('@pcu/utils', () => {
+  // Define error codes
+  const ErrorCode = {
+    UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+    CATALOG_NOT_FOUND: 'CATALOG_NOT_FOUND',
+    PACKAGE_NOT_FOUND: 'PACKAGE_NOT_FOUND',
+    INVALID_VERSION: 'INVALID_VERSION',
+    REGISTRY_ERROR: 'REGISTRY_ERROR',
+    WORKSPACE_NOT_FOUND: 'WORKSPACE_NOT_FOUND',
+  }
+
+  // Base error class
+  class BaseError extends Error {
+    code: string
+    context: Record<string, unknown>
+    cause?: Error
+    constructor(
+      message: string,
+      code: string,
+      context: Record<string, unknown> = {},
+      cause?: Error
+    ) {
+      super(message)
+      this.name = this.constructor.name
+      this.code = code
+      this.context = context
+      this.cause = cause
+    }
+  }
+
+  class DomainError extends BaseError {}
+
+  class CatalogNotFoundError extends DomainError {
+    constructor(catalogName: string, availableCatalogs?: string[], cause?: Error) {
+      super(
+        `Catalog "${catalogName}" not found${availableCatalogs?.length ? `. Available catalogs: ${availableCatalogs.join(', ')}` : ''}`,
+        ErrorCode.CATALOG_NOT_FOUND,
+        { catalogName, availableCatalogs },
+        cause
+      )
+    }
+  }
+
+  class PackageNotFoundError extends DomainError {
+    constructor(packageName: string, cause?: Error) {
+      super(
+        `Package "${packageName}" not found`,
+        ErrorCode.PACKAGE_NOT_FOUND,
+        { packageName },
+        cause
+      )
+    }
+  }
+
+  class InvalidVersionError extends DomainError {
+    constructor(version: string, reason: string, cause?: Error) {
+      super(
+        `Invalid version "${version}": ${reason}`,
+        ErrorCode.INVALID_VERSION,
+        { version, reason },
+        cause
+      )
+    }
+  }
+
+  class WorkspaceNotFoundError extends DomainError {
+    constructor(path: string, cause?: Error) {
+      super(`No pnpm workspace found at "${path}"`, ErrorCode.WORKSPACE_NOT_FOUND, { path }, cause)
+    }
+  }
+
+  return {
+    ErrorCode,
+    BaseError,
+    DomainError,
+    CatalogNotFoundError,
+    PackageNotFoundError,
+    InvalidVersionError,
+    WorkspaceNotFoundError,
+    ConfigLoader: {
+      loadConfig: mocks.loadConfig,
+      getPackageConfig: mocks.getPackageConfig,
+    },
+    UserFriendlyErrorHandler: {
+      handleSecurityCheckFailure: mocks.handleSecurityCheckFailure,
+      handlePackageQueryFailure: mocks.handlePackageQueryFailure,
+      handleRetryAttempt: vi.fn(),
+      formatError: vi.fn((e: Error) => e.message),
+    },
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      fatal: vi.fn(),
+      setLevel: vi.fn(),
+      child: vi.fn().mockReturnThis(),
+    },
+    createLogger: vi.fn(() => ({
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      fatal: vi.fn(),
+      setLevel: vi.fn(),
+      child: vi.fn().mockReturnThis(),
+    })),
+    getConfig: vi.fn(() => ({
+      getConfig: vi.fn(() => ({ logLevel: 'info' })),
+    })),
+  }
+})
 
 // Import types separately (static import for types is allowed)
 import type { CheckOptions, UpdateOptions } from '../catalogUpdateService.js'
@@ -85,6 +188,7 @@ describe('CatalogUpdateService', () => {
       getAll: vi.fn().mockReturnValue([mockCatalog]),
       has: vi.fn().mockReturnValue(true),
       size: vi.fn().mockReturnValue(1),
+      getCatalogNames: vi.fn().mockReturnValue(['default']),
     } as unknown as CatalogCollection
 
     // Create mock workspace
@@ -187,19 +291,20 @@ describe('CatalogUpdateService', () => {
       }
 
       await expect(service.checkOutdatedDependencies(options)).rejects.toThrow(
-        'Catalog "nonexistent" not found'
+        'Catalog "nonexistent" not found. Available catalogs: default'
       )
     })
 
     it('should throw error when no catalogs found', async () => {
       mockCatalogCollection.getAll = vi.fn().mockReturnValue([])
+      mockCatalogCollection.getCatalogNames = vi.fn().mockReturnValue([])
 
       const options: CheckOptions = {
         workspacePath: '/test/workspace',
       }
 
       await expect(service.checkOutdatedDependencies(options)).rejects.toThrow(
-        'No catalogs found in workspace'
+        'Catalog "default" not found'
       )
     })
   })

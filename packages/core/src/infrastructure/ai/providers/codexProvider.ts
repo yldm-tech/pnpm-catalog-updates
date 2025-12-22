@@ -5,9 +5,10 @@
  * Optimized for code analysis and technical recommendations.
  */
 
-import { exec as execCallback } from 'node:child_process'
+import { exec as execCallback, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 
+import { ExternalServiceError, logger, NetworkError } from '@pcu/utils'
 import type {
   AIProviderInfo,
   AnalysisContext,
@@ -134,7 +135,7 @@ export class CodexProvider extends BaseAIProvider {
 
     // Check availability first
     if (!(await this.isAvailable())) {
-      throw new Error('Codex CLI is not available')
+      throw new ExternalServiceError('Codex', 'analyze', 'Codex CLI is not available')
     }
 
     // Build the prompt
@@ -150,7 +151,11 @@ export class CodexProvider extends BaseAIProvider {
 
       return result
     } catch (error) {
-      // Return a degraded result on error
+      // Log the error for debugging and return a degraded result
+      logger.warn('Codex analysis failed, returning degraded result', {
+        error: (error as Error).message,
+        packages: context.packages.length,
+      })
       return {
         provider: this.name,
         analysisType: context.analysisType,
@@ -172,56 +177,21 @@ export class CodexProvider extends BaseAIProvider {
   }
 
   /**
-   * Execute Codex CLI command
+   * Execute Codex CLI command using spawn to avoid shell injection
    */
   private async executeCodexCommand(prompt: string): Promise<{ stdout: string; stderr: string }> {
-    // Escape the prompt for shell
-    const escapedPrompt = prompt.replace(/'/g, "'\\''")
-
-    // Build command with appropriate flags
-    // Codex CLI uses: codex "prompt" --approval-mode full-auto
-    const args: string[] = []
-
-    args.push(`'${escapedPrompt}'`)
-    args.push('--approval-mode', this.approvalMode)
-    args.push('--quiet')
-
-    // Add model selection
-    if (this.model) {
-      args.push('--model', this.model)
-    }
-
-    // Add max tokens configuration
-    if (this.maxTokens) {
-      args.push('--max-tokens', String(this.maxTokens))
-    }
-
-    const command = `codex ${args.join(' ')}`
-
     let lastError: Error | null = null
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        const result = await exec(command, {
-          timeout: this.timeout,
-          maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-          env: {
-            ...process.env,
-            NO_COLOR: '1',
-            FORCE_COLOR: '0',
-          },
-        })
-
+        const result = await this.spawnCodexProcess(prompt)
         return result
       } catch (error) {
         lastError = error as Error
 
         // Check if it's a timeout error
-        if (
-          (error as { killed?: boolean }).killed ||
-          (error as Error).message.includes('TIMEOUT')
-        ) {
-          throw new Error(`Codex CLI timed out after ${this.timeout}ms`)
+        if ((error as Error).message.includes('timed out')) {
+          throw error
         }
 
         // Retry on other errors
@@ -231,7 +201,84 @@ export class CodexProvider extends BaseAIProvider {
       }
     }
 
-    throw lastError ?? new Error('Codex CLI execution failed')
+    throw lastError ?? new ExternalServiceError('Codex', 'execute', 'Codex CLI execution failed')
+  }
+
+  /**
+   * Spawn Codex process with proper argument handling to prevent injection
+   */
+  private spawnCodexProcess(prompt: string): Promise<{ stdout: string; stderr: string }> {
+    // Build args array (no shell escaping needed with spawn)
+    const args: string[] = [prompt]
+
+    args.push('--approval-mode', this.approvalMode)
+    args.push('--quiet')
+
+    if (this.model) {
+      args.push('--model', this.model)
+    }
+
+    if (this.maxTokens) {
+      args.push('--max-tokens', String(this.maxTokens))
+    }
+
+    return new Promise((resolve, reject) => {
+      const child = spawn('codex', args, {
+        env: {
+          ...process.env,
+          NO_COLOR: '1',
+          FORCE_COLOR: '0',
+        },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+
+      // Close stdin immediately
+      child.stdin?.end()
+
+      let stdout = ''
+      let stderr = ''
+      let timedOut = false
+
+      const timeoutId = setTimeout(() => {
+        timedOut = true
+        child.kill('SIGTERM')
+        reject(new NetworkError('Codex CLI', `timed out after ${this.timeout}ms`))
+      }, this.timeout)
+
+      child.stdout?.on('data', (data: Buffer) => {
+        stdout += data.toString()
+      })
+
+      child.stderr?.on('data', (data: Buffer) => {
+        stderr += data.toString()
+      })
+
+      child.on('close', (code) => {
+        clearTimeout(timeoutId)
+        if (timedOut) return
+
+        if (code === 0) {
+          resolve({ stdout, stderr })
+        } else {
+          reject(new Error(`Codex CLI exited with code ${code}: ${stderr || stdout}`))
+        }
+      })
+
+      child.on('error', (error) => {
+        clearTimeout(timeoutId)
+        if (!timedOut) {
+          reject(error)
+        }
+      })
+    })
+  }
+
+  /**
+   * Clear cached availability and info data
+   */
+  clearCache(): void {
+    this.cachedAvailability = null
+    this.cachedInfo = null
   }
 
   /**

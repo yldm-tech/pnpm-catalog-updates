@@ -5,6 +5,7 @@
  * Handles version ranges, pre-release versions, and semantic version operations.
  */
 
+import { InvalidVersionError, InvalidVersionRangeError } from '@pcu/utils'
 import semver from 'semver'
 
 export class Version {
@@ -21,14 +22,14 @@ export class Version {
    */
   public static fromString(versionString: string): Version {
     if (!versionString || versionString.trim().length === 0) {
-      throw new Error('Version string cannot be empty')
+      throw new InvalidVersionError('', 'Version string cannot be empty')
     }
 
     const cleaned = versionString.trim()
     const parsedVersion = semver.parse(cleaned)
 
     if (!parsedVersion) {
-      throw new Error(`Invalid version string: ${versionString}`)
+      throw new InvalidVersionError(versionString, 'Invalid semver format')
     }
 
     return new Version(cleaned, parsedVersion)
@@ -155,7 +156,7 @@ export class Version {
       ? semver.inc(this.value, type, prerelease)
       : semver.inc(this.value, type)
     if (!incremented) {
-      throw new Error(`Failed to increment version ${this.value} by ${type}`)
+      throw new InvalidVersionError(this.value, `Failed to increment by ${type}`)
     }
     return Version.fromString(incremented)
   }
@@ -192,7 +193,7 @@ export class VersionRange {
    */
   public static fromString(rangeString: string): VersionRange {
     if (!rangeString || rangeString.trim().length === 0) {
-      throw new Error('Version range string cannot be empty')
+      throw new InvalidVersionRangeError('', 'Version range string cannot be empty')
     }
 
     const cleaned = rangeString.trim()
@@ -201,11 +202,11 @@ export class VersionRange {
     try {
       semver.validRange(cleaned)
     } catch (error) {
-      throw new Error(`Invalid version range: ${rangeString}`)
+      throw new InvalidVersionRangeError(rangeString, 'Invalid semver range format')
     }
 
     if (!semver.validRange(cleaned)) {
-      throw new Error(`Invalid version range: ${rangeString}`)
+      throw new InvalidVersionRangeError(rangeString, 'Invalid semver range format')
     }
 
     return new VersionRange(cleaned)

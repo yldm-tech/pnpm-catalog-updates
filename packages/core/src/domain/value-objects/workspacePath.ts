@@ -8,6 +8,8 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { WorkspaceValidationError } from '@pcu/utils'
+
 export class WorkspacePath {
   private readonly value: string
 
@@ -20,7 +22,7 @@ export class WorkspacePath {
    */
   public static fromString(pathString: string): WorkspacePath {
     if (!pathString || pathString.trim().length === 0) {
-      throw new Error('WorkspacePath cannot be empty')
+      throw new WorkspaceValidationError('WorkspacePath', ['WorkspacePath cannot be empty'])
     }
 
     // Normalize the path

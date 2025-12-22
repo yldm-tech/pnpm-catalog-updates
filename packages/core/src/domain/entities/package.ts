@@ -5,6 +5,7 @@
  * Handles package.json structure and catalog dependency references.
  */
 
+import { CatalogNotFoundError } from '@pcu/utils'
 import type { WorkspacePath } from '../value-objects/workspacePath.js'
 
 export type PackageId = string
@@ -121,8 +122,12 @@ export class Package {
     )
 
     if (!reference) {
-      throw new Error(
-        `Package "${this.name}" does not reference "${packageName}" from catalog "${catalogName}"`
+      throw new CatalogNotFoundError(
+        `${catalogName}:${packageName}`,
+        [],
+        new Error(
+          `Package "${this.name}" does not reference "${packageName}" from catalog "${catalogName}"`
+        )
       )
     }
 

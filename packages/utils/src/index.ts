@@ -9,6 +9,7 @@ export type { AdvancedConfig } from './config/packageFilterConfig'
 export * from './config/packageFilterConfig'
 
 // Error Handling
+export * from './error-handling/errors'
 export * from './error-handling/errorTracker'
 export * from './error-handling/index'
 export * from './error-handling/userFriendlyErrorHandler'

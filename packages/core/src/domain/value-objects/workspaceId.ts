@@ -5,6 +5,8 @@
  * This is an immutable value object that ensures workspace identity.
  */
 
+import { WorkspaceValidationError } from '@pcu/utils'
+
 export class WorkspaceId {
   private readonly value: string
 
@@ -17,19 +19,19 @@ export class WorkspaceId {
    */
   public static fromString(value: string): WorkspaceId {
     if (!value || value.trim().length === 0) {
-      throw new Error('WorkspaceId cannot be empty')
+      throw new WorkspaceValidationError('WorkspaceId', ['WorkspaceId cannot be empty'])
     }
 
     if (value.length > 255) {
-      throw new Error('WorkspaceId cannot exceed 255 characters')
+      throw new WorkspaceValidationError(value, ['WorkspaceId cannot exceed 255 characters'])
     }
 
     // Validate format - alphanumeric, hyphens, underscores only
     const validPattern = /^[a-zA-Z0-9_-]+$/
     if (!validPattern.test(value.trim())) {
-      throw new Error(
-        'WorkspaceId can only contain alphanumeric characters, hyphens, and underscores'
-      )
+      throw new WorkspaceValidationError(value, [
+        'WorkspaceId can only contain alphanumeric characters, hyphens, and underscores',
+      ])
     }
 
     return new WorkspaceId(value.trim())

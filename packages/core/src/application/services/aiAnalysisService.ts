@@ -5,6 +5,7 @@
  * Handles provider selection, caching, fallback strategies, and result aggregation.
  */
 
+import { AIAnalysisError, logger } from '@pcu/utils'
 import type {
   AIConfig,
   AIProvider,
@@ -248,7 +249,12 @@ export class AIAnalysisService {
         result = await provider.analyze(contextWithSecurity)
         providerUsed = provider.name
       } catch (error) {
-        // Fallback on provider error
+        // Log the error and fallback to rule engine
+        logger.warn('AI provider analysis failed, falling back to rule engine', {
+          provider: provider.name,
+          error: (error as Error).message,
+          packages: packages.length,
+        })
         if (this.config.fallback.enabled && this.config.fallback.useRuleEngine) {
           result = this.ruleEngine.analyze(contextWithSecurity)
           providerUsed = 'rule-engine'
@@ -371,7 +377,7 @@ export class AIAnalysisService {
    */
   private mergeResults(results: AnalysisResult[]): AnalysisResult {
     if (results.length === 0) {
-      throw new Error('No results to merge')
+      throw new AIAnalysisError('merge', 'No results to merge')
     }
 
     if (results.length === 1) {
@@ -592,7 +598,10 @@ export class AIAnalysisService {
       }
     } catch (error) {
       // Log error but don't fail the analysis - security data is supplementary
-      console.error('Failed to fetch security data:', (error as Error).message)
+      logger.warn('Failed to fetch security data, continuing without it', {
+        error: (error as Error).message,
+        packages: packages.length,
+      })
     }
 
     return securityData

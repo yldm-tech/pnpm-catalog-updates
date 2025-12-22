@@ -5,6 +5,7 @@
  * A catalog contains a collection of dependencies with their version ranges.
  */
 
+import { InvalidVersionRangeError } from '@pcu/utils'
 import { VersionRange } from '../value-objects/version.js'
 
 export type CatalogId = string
@@ -44,9 +45,7 @@ export class Catalog {
       try {
         dependencyMap.set(packageName, VersionRange.fromString(versionRange))
       } catch (error) {
-        throw new Error(
-          `Invalid version range for package "${packageName}" in catalog "${name}": ${versionRange}`
-        )
+        throw new InvalidVersionRangeError(versionRange)
       }
     }
 
@@ -110,7 +109,7 @@ export class Catalog {
       const parsedRange = VersionRange.fromString(versionRange)
       this.dependencies.set(packageName, parsedRange)
     } catch (error) {
-      throw new Error(`Invalid version range for package "${packageName}": ${versionRange}`)
+      throw new InvalidVersionRangeError(versionRange)
     }
   }
 

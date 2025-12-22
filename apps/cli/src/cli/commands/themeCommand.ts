@@ -4,6 +4,7 @@
  * CLI command to configure color themes.
  */
 
+import { logger } from '@pcu/utils'
 import { InteractivePrompts } from '../interactive/interactivePrompts.js'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
 
@@ -30,6 +31,10 @@ export class ThemeCommand {
     if (options.set) {
       const themes = ThemeManager.listThemes()
       if (!themes.includes(options.set)) {
+        logger.error('Invalid theme specified', undefined, {
+          theme: options.set,
+          availableThemes: themes,
+        })
         console.error(StyledText.iconError(`Invalid theme: ${options.set}`))
         console.log(StyledText.muted(`Available themes: ${themes.join(', ')}`))
         throw new Error(`Invalid theme: ${options.set}`)

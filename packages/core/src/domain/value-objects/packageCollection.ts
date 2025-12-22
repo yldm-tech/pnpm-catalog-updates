@@ -5,6 +5,7 @@
  * Provides operations for managing and querying multiple packages.
  */
 
+import { PackageNotFoundError } from '@pcu/utils'
 import type { Package, PackageName } from '../entities/package.js'
 
 export class PackageCollection {
@@ -106,7 +107,7 @@ export class PackageCollection {
    */
   public update(pkg: Package): PackageCollection {
     if (!this.has(pkg.getName())) {
-      throw new Error(`Package "${pkg.getName()}" not found in collection`)
+      throw new PackageNotFoundError(pkg.getName())
     }
 
     const newPackages = new Map(this.packages)

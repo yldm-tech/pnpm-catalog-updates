@@ -7,6 +7,7 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { ConfigurationError } from '../error-handling/index.js'
 import {
   CONFIG_FILE_NAMES,
   DEFAULT_PACKAGE_FILTER_CONFIG,
@@ -69,10 +70,10 @@ export class ConfigLoader {
     if (configPath.endsWith('.js')) {
       // For JavaScript config files, we would need dynamic import
       // For now, let's focus on JSON support
-      throw new Error('JavaScript config files are not yet supported')
+      throw new ConfigurationError(configPath, 'JavaScript config files are not yet supported')
     }
 
-    throw new Error(`Unsupported config file format: ${configPath}`)
+    throw new ConfigurationError(configPath, 'unsupported config file format')
   }
 
   /**

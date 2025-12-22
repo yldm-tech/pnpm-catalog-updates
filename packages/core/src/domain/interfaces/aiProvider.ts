@@ -191,6 +191,12 @@ export interface AIProvider {
    * Perform analysis on the given context
    */
   analyze(context: AnalysisContext): Promise<AnalysisResult>
+
+  /**
+   * Clear cached availability and info data.
+   * Call this when you need to re-check provider availability.
+   */
+  clearCache(): void
 }
 
 /**

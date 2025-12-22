@@ -7,7 +7,7 @@
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { PackageFilterConfig } from '@pcu/utils'
+import { logger, type PackageFilterConfig } from '@pcu/utils'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
 
 export interface InitCommandOptions {
@@ -117,6 +117,7 @@ export class InitCommand {
 
       process.exit(0)
     } catch (error) {
+      logger.error('Init command failed', error instanceof Error ? error : undefined, { options })
       console.error(StyledText.iconError('Error initializing configuration:'))
       console.error(StyledText.error(String(error)))
 
@@ -333,9 +334,7 @@ catalogs:
     lines.push('')
     lines.push(StyledText.muted('5. Learn more about PNPM workspace and PCU:'))
     lines.push(StyledText.muted('   https://pnpm.io/workspaces'))
-    lines.push(
-      StyledText.muted('   https://github.com/your-repo/pnpm-catalog-updates#configuration')
-    )
+    lines.push(StyledText.muted('   https://github.com/houko/pnpm-catalog-updates#configuration'))
 
     console.log(lines.join('\n'))
   }

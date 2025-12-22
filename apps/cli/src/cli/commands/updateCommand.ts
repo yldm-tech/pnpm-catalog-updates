@@ -16,7 +16,7 @@ import {
   type UpdateTarget,
   WorkspaceService,
 } from '@pcu/core'
-import { ConfigLoader } from '@pcu/utils'
+import { ConfigLoader, logger } from '@pcu/utils'
 import chalk from 'chalk'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { ProgressBar } from '../formatters/progressBar.js'
@@ -204,6 +204,11 @@ export class UpdateCommand {
             console.log(chalk.yellow('Use --force to override AI recommendations.\n'))
           }
         } catch (aiError) {
+          logger.warn('AI batch analysis failed', {
+            error: aiError instanceof Error ? aiError.message : String(aiError),
+            packageCount: finalPlan.updates.length,
+            provider: options.provider,
+          })
           console.warn(
             chalk.yellow('\n⚠️  AI batch analysis failed, continuing without AI insights:')
           )
@@ -245,6 +250,7 @@ export class UpdateCommand {
 
       console.log(StyledText.iconComplete('Update process completed!'))
     } catch (error) {
+      logger.error('Update command failed', error instanceof Error ? error : undefined, { options })
       if (progressBar) {
         progressBar.fail('Operation failed')
       }

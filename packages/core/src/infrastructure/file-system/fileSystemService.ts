@@ -7,6 +7,7 @@
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { FileSystemError } from '@pcu/utils'
 import { glob } from 'glob'
 import YAML from 'yaml'
 import type { PackageJsonData } from '../../domain/entities/package.js'
@@ -45,7 +46,12 @@ export class FileSystemService {
     try {
       return await fs.readFile(filePath, 'utf-8')
     } catch (error) {
-      throw new Error(`Failed to read file ${filePath}: ${error}`)
+      throw new FileSystemError(
+        filePath,
+        'read',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -58,7 +64,12 @@ export class FileSystemService {
       await fs.mkdir(path.dirname(filePath), { recursive: true })
       await fs.writeFile(filePath, content, 'utf-8')
     } catch (error) {
-      throw new Error(`Failed to write file ${filePath}: ${error}`)
+      throw new FileSystemError(
+        filePath,
+        'write',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -70,7 +81,12 @@ export class FileSystemService {
       const content = await this.readTextFile(filePath)
       return JSON.parse(content) as T
     } catch (error) {
-      throw new Error(`Failed to read JSON file ${filePath}: ${error}`)
+      throw new FileSystemError(
+        filePath,
+        'readJSON',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -82,7 +98,12 @@ export class FileSystemService {
       const content = JSON.stringify(data, null, indent)
       await this.writeTextFile(filePath, content)
     } catch (error) {
-      throw new Error(`Failed to write JSON file ${filePath}: ${error}`)
+      throw new FileSystemError(
+        filePath,
+        'writeJSON',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -94,7 +115,12 @@ export class FileSystemService {
       const content = await this.readTextFile(filePath)
       return YAML.parse(content) as T
     } catch (error) {
-      throw new Error(`Failed to read YAML file ${filePath}: ${error}`)
+      throw new FileSystemError(
+        filePath,
+        'readYAML',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -108,7 +134,12 @@ export class FileSystemService {
       })
       await this.writeTextFile(filePath, content)
     } catch (error) {
-      throw new Error(`Failed to write YAML file ${filePath}: ${error}`)
+      throw new FileSystemError(
+        filePath,
+        'writeYAML',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -595,7 +626,7 @@ export class FileSystemService {
     const configPath = workspacePath.getPnpmWorkspaceConfigPath().toString()
 
     if (!(await this.exists(configPath))) {
-      throw new Error(`pnpm-workspace.yaml not found at ${configPath}`)
+      throw new FileSystemError(configPath, 'read', 'pnpm-workspace.yaml not found')
     }
 
     return await this.readYamlFile<PnpmWorkspaceData>(configPath)
@@ -619,7 +650,7 @@ export class FileSystemService {
     const packageJsonPath = packagePath.getPackageJsonPath().toString()
 
     if (!(await this.exists(packageJsonPath))) {
-      throw new Error(`package.json not found at ${packageJsonPath}`)
+      throw new FileSystemError(packageJsonPath, 'read', 'package.json not found')
     }
 
     return await this.readJsonFile<PackageJsonData>(packageJsonPath)
@@ -715,7 +746,12 @@ export class FileSystemService {
       const stat = await fs.stat(filePath)
       return stat.mtime
     } catch (error) {
-      throw new Error(`Failed to get modification time for ${filePath}: ${error}`)
+      throw new FileSystemError(
+        filePath,
+        'stat',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -730,7 +766,12 @@ export class FileSystemService {
       await fs.copyFile(filePath, backupPath)
       return backupPath
     } catch (error) {
-      throw new Error(`Failed to create backup of ${filePath}: ${error}`)
+      throw new FileSystemError(
+        filePath,
+        'backup',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -741,7 +782,12 @@ export class FileSystemService {
     try {
       await fs.copyFile(backupPath, originalPath)
     } catch (error) {
-      throw new Error(`Failed to restore ${originalPath} from backup: ${error}`)
+      throw new FileSystemError(
+        originalPath,
+        'restore',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -752,7 +798,12 @@ export class FileSystemService {
     try {
       await fs.unlink(filePath)
     } catch (error) {
-      throw new Error(`Failed to remove file ${filePath}: ${error}`)
+      throw new FileSystemError(
+        filePath,
+        'delete',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -764,7 +815,12 @@ export class FileSystemService {
       const items = await fs.readdir(dirPath, { withFileTypes: true })
       return items.filter((item) => item.isFile()).map((item) => path.join(dirPath, item.name))
     } catch (error) {
-      throw new Error(`Failed to list files in ${dirPath}: ${error}`)
+      throw new FileSystemError(
+        dirPath,
+        'listFiles',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -776,7 +832,12 @@ export class FileSystemService {
       const items = await fs.readdir(dirPath, { withFileTypes: true })
       return items.filter((item) => item.isDirectory()).map((item) => path.join(dirPath, item.name))
     } catch (error) {
-      throw new Error(`Failed to list directories in ${dirPath}: ${error}`)
+      throw new FileSystemError(
+        dirPath,
+        'listDirs',
+        `${error}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 }

@@ -5,6 +5,7 @@
  * Provides operations for managing and querying multiple catalogs.
  */
 
+import { CatalogNotFoundError } from '@pcu/utils'
 import type { Catalog, CatalogName } from '../entities/catalog.js'
 
 export class CatalogCollection {
@@ -106,7 +107,7 @@ export class CatalogCollection {
    */
   public update(catalog: Catalog): CatalogCollection {
     if (!this.has(catalog.getName())) {
-      throw new Error(`Catalog "${catalog.getName()}" not found in collection`)
+      throw new CatalogNotFoundError(catalog.getName(), this.getCatalogNames())
     }
 
     const newCatalogs = new Map(this.catalogs)

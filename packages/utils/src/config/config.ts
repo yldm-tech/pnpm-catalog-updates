@@ -11,6 +11,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { ConfigurationError } from '../error-handling/index.js'
 
 export interface PcuConfig {
   // Registry settings
@@ -357,18 +358,18 @@ export class ConfigManager {
 
     // Validate that keys don't include prototype pollution attempts
     if (keys.some((key) => key === '__proto__' || key === 'constructor' || key === 'prototype')) {
-      throw new Error('Invalid key path: prototype pollution attempt detected')
+      throw new ConfigurationError(path, 'prototype pollution attempt detected in key path')
     }
 
     if (lastKey === '__proto__' || lastKey === 'constructor' || lastKey === 'prototype') {
-      throw new Error('Invalid key: prototype pollution attempt detected')
+      throw new ConfigurationError(lastKey, 'prototype pollution attempt detected')
     }
 
     const objRecord = obj as Record<string, unknown>
     const target = keys.reduce((current: Record<string, unknown>, key) => {
       // Additional validation for each key in the path
       if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
-        throw new Error(`Invalid key in path: ${key}`)
+        throw new ConfigurationError(key, 'prototype pollution attempt detected in path')
       }
 
       if (!(key in current)) {

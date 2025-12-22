@@ -7,6 +7,7 @@
 
 import { spawnSync } from 'node:child_process'
 import * as path from 'node:path'
+import { logger } from '@pcu/utils'
 import * as fs from 'fs-extra'
 import type { OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { ProgressBar } from '../formatters/progressBar.js'
@@ -162,6 +163,7 @@ export class SecurityCommand {
       const exitCode = report.summary.critical > 0 ? 1 : 0
       process.exit(exitCode)
     } catch (error) {
+      logger.error('Security scan failed', error instanceof Error ? error : undefined, { options })
       if (progressBar) {
         progressBar.fail('Security analysis failed')
       }
@@ -308,9 +310,11 @@ export class SecurityCommand {
     } catch (error) {
       const err = error as NodeJS.ErrnoException
       if (err.code === 'ENOENT') {
+        logger.debug('Snyk not found', { code: err.code })
         console.warn(StyledText.iconWarning('Snyk not found. Install with: npm install -g snyk'))
         return []
       }
+      logger.error('Snyk scan failed', err, { workspacePath })
       throw new Error(`Snyk scan failed: ${err.message}`)
     }
   }
@@ -557,6 +561,7 @@ export class SecurityCommand {
       }
     } catch (error) {
       const err = error as Error
+      logger.error('Failed to apply security fixes', err, { workspacePath, options })
       console.error(StyledText.iconError('Failed to apply security fixes:'))
       console.error(StyledText.error(err.message))
     }

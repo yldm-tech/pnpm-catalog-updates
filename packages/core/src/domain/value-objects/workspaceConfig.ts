@@ -5,6 +5,7 @@
  * Includes catalog mode, package patterns, and other workspace-specific settings.
  */
 
+import { CatalogNotFoundError } from '@pcu/utils'
 import { CatalogMode } from '../entities/catalog.js'
 
 export class WorkspaceConfig {
@@ -153,7 +154,7 @@ export class WorkspaceConfig {
   ): WorkspaceConfig {
     const catalogDef = this.catalogs.get(catalogName)
     if (!catalogDef) {
-      throw new Error(`Catalog "${catalogName}" not found`)
+      throw new CatalogNotFoundError(catalogName, this.getCatalogNames())
     }
 
     // Create updated catalog definition

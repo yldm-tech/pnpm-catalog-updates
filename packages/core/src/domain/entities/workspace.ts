@@ -5,6 +5,7 @@
  * This is a core domain entity that encapsulates workspace business logic.
  */
 
+import { CatalogNotFoundError } from '@pcu/utils'
 import type { CatalogCollection } from '../value-objects/catalogCollection.js'
 import type { PackageCollection } from '../value-objects/packageCollection.js'
 import type { WorkspaceConfig } from '../value-objects/workspaceConfig.js'
@@ -136,7 +137,7 @@ export class Workspace {
   ): void {
     const catalog = this.catalogs.get(catalogName)
     if (!catalog) {
-      throw new Error(`Catalog "${catalogName}" not found`)
+      throw new CatalogNotFoundError(catalogName, this.catalogs.getCatalogNames())
     }
 
     // Update the catalog in the collection

@@ -8,6 +8,7 @@
 import { exec as execCallback, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 
+import { ExternalServiceError, logger, NetworkError } from '@pcu/utils'
 import type {
   AIProviderInfo,
   AnalysisContext,
@@ -121,7 +122,7 @@ export class ClaudeProvider extends BaseAIProvider {
 
     // Check availability first
     if (!(await this.isAvailable())) {
-      throw new Error('Claude CLI is not available')
+      throw new ExternalServiceError('Claude', 'analyze', 'Claude CLI is not available')
     }
 
     // Build the prompt
@@ -155,7 +156,11 @@ export class ClaudeProvider extends BaseAIProvider {
 
       return result
     } catch (error) {
-      // Return a degraded result on error
+      // Log the error for debugging and return a degraded result
+      logger.warn('Claude analysis failed, returning degraded result', {
+        error: (error as Error).message,
+        packages: context.packages.length,
+      })
       return {
         provider: this.name,
         analysisType: context.analysisType,
@@ -201,7 +206,7 @@ export class ClaudeProvider extends BaseAIProvider {
       }
     }
 
-    throw lastError ?? new Error('Claude CLI execution failed')
+    throw lastError ?? new ExternalServiceError('Claude', 'execute', 'Claude CLI execution failed')
   }
 
   /**
@@ -228,7 +233,7 @@ export class ClaudeProvider extends BaseAIProvider {
       const timeoutId = setTimeout(() => {
         timedOut = true
         child.kill('SIGTERM')
-        reject(new Error(`Claude CLI timed out after ${this.timeout}ms`))
+        reject(new NetworkError('Claude CLI', `timed out after ${this.timeout}ms`))
       }, this.timeout)
 
       child.stdout?.on('data', (data: Buffer) => {
@@ -257,6 +262,14 @@ export class ClaudeProvider extends BaseAIProvider {
         }
       })
     })
+  }
+
+  /**
+   * Clear cached availability and info data
+   */
+  clearCache(): void {
+    this.cachedAvailability = null
+    this.cachedInfo = null
   }
 
   /**

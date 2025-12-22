@@ -19,7 +19,7 @@ import {
   WorkspaceService,
 } from '@pcu/core'
 // CLI Commands
-import { ConfigLoader, VersionChecker } from '@pcu/utils'
+import { ConfigLoader, logger, VersionChecker } from '@pcu/utils'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import { AiCommand } from './commands/aiCommand.js'
@@ -96,6 +96,9 @@ async function checkForUpdates(
       }
     } catch (error) {
       // Silently fail version check to not interrupt CLI usage (only show warning in verbose mode)
+      logger.debug('Version check failed', {
+        error: error instanceof Error ? error.message : error,
+      })
       if (process.argv.includes('-v') || process.argv.includes('--verbose')) {
         console.warn(chalk.yellow('⚠️  Could not check for updates:'), error)
       }
@@ -145,6 +148,9 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         })
         process.exit(0)
       } catch (error) {
+        logger.error('Check command failed', error instanceof Error ? error : undefined, {
+          command: 'check',
+        })
         console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
       }
@@ -208,6 +214,9 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         })
         process.exit(0)
       } catch (error) {
+        logger.error('Update command failed', error instanceof Error ? error : undefined, {
+          command: 'update',
+        })
         console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
       }
@@ -251,6 +260,9 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         })
         process.exit(0)
       } catch (error) {
+        logger.error('Analyze command failed', error instanceof Error ? error : undefined, {
+          command: 'analyze',
+        })
         console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
       }
@@ -279,6 +291,9 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         })
         process.exit(exitCode)
       } catch (error) {
+        logger.error('Workspace command failed', error instanceof Error ? error : undefined, {
+          command: 'workspace',
+        })
         console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
       }
@@ -302,6 +317,9 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         })
         process.exit(0)
       } catch (error) {
+        logger.error('Theme command failed', error instanceof Error ? error : undefined, {
+          command: 'theme',
+        })
         console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
       }
@@ -340,6 +358,9 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         })
         process.exit(0)
       } catch (error) {
+        logger.error('Security command failed', error instanceof Error ? error : undefined, {
+          command: 'security',
+        })
         console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
       }
@@ -374,6 +395,9 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         })
         process.exit(0)
       } catch (error) {
+        logger.error('Init command failed', error instanceof Error ? error : undefined, {
+          command: 'init',
+        })
         console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
       }
@@ -398,6 +422,9 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         })
         process.exit(0)
       } catch (error) {
+        logger.error('AI command failed', error instanceof Error ? error : undefined, {
+          command: 'ai',
+        })
         console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
       }
@@ -510,6 +537,9 @@ async function handleVersionFlag(
       }
     } catch (error) {
       // Silently fail update check for version command
+      logger.debug('Version flag update check failed', {
+        error: error instanceof Error ? error.message : error,
+      })
       if (args.includes('-v') || args.includes('--verbose')) {
         console.warn(chalk.yellow('⚠️  Could not check for updates:'), error)
       }
@@ -580,6 +610,7 @@ export async function main(): Promise<void> {
   try {
     await program.parseAsync(args)
   } catch (error) {
+    logger.error('CLI parse error', error instanceof Error ? error : undefined, { args })
     console.error(chalk.red('❌ Unexpected error:'), error)
     if (error instanceof Error && error.stack) {
       console.error(chalk.gray(error.stack))
@@ -591,6 +622,7 @@ export async function main(): Promise<void> {
 // Run the CLI if this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
+    logger.error('Fatal CLI error', error instanceof Error ? error : undefined)
     console.error(chalk.red('❌ Fatal error:'), error)
     process.exit(1)
   })

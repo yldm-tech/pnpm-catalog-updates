@@ -5,7 +5,12 @@
  * Handles API calls, caching, and version resolution.
  */
 
-import { type AdvancedConfig, UserFriendlyErrorHandler } from '@pcu/utils'
+import {
+  type AdvancedConfig,
+  InvalidVersionRangeError,
+  RegistryError,
+  UserFriendlyErrorHandler,
+} from '@pcu/utils'
 import npmRegistryFetch from 'npm-registry-fetch'
 import pacote from 'pacote'
 import semver from 'semver'
@@ -194,7 +199,16 @@ export class NpmRegistryService {
         lastError = error as Error
 
         if (attempt === this.retries) {
-          throw new Error(`${context} failed after ${this.retries} attempts: ${lastError.message}`)
+          const pkgName = context.includes('for ')
+            ? context.split('for ')[1] || 'unknown'
+            : 'unknown'
+          throw new RegistryError(
+            pkgName,
+            'retry',
+            `${context} failed after ${this.retries} attempts: ${lastError.message}`,
+            undefined,
+            lastError
+          )
         }
 
         // Exponential backoff: wait 1s, 2s, 4s, etc.
@@ -210,7 +224,13 @@ export class NpmRegistryService {
       }
     }
 
-    throw lastError!
+    throw new RegistryError(
+      'unknown',
+      'retry',
+      `Operation failed: ${lastError!.message}`,
+      undefined,
+      lastError!
+    )
   }
 
   /**
@@ -342,7 +362,13 @@ export class NpmRegistryService {
       const versionInfo = await this.getPackageVersions(packageName)
       return Version.fromString(versionInfo.latestVersion)
     } catch (error) {
-      throw new Error(`Failed to get latest version for ${packageName}: ${error}`)
+      throw new RegistryError(
+        packageName,
+        'getLatestVersion',
+        `Failed to get latest version: ${error}`,
+        undefined,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -368,16 +394,25 @@ export class NpmRegistryService {
       })
 
       if (satisfyingVersions.length === 0) {
-        throw new Error(`No versions satisfy range ${range.toString()}`)
+        throw new InvalidVersionRangeError(range.toString())
       }
 
       // Return the first (greatest) version
       if (!satisfyingVersions[0]) {
-        throw new Error(`No satisfying versions found for ${packageName}`)
+        throw new RegistryError(packageName, 'getGreatestVersion', 'No satisfying versions found')
       }
       return Version.fromString(satisfyingVersions[0])
     } catch (error) {
-      throw new Error(`Failed to get greatest version for ${packageName}: ${error}`)
+      if (error instanceof RegistryError || error instanceof InvalidVersionRangeError) {
+        throw error
+      }
+      throw new RegistryError(
+        packageName,
+        'getGreatestVersion',
+        `Failed to get greatest version: ${error}`,
+        undefined,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 
@@ -399,7 +434,13 @@ export class NpmRegistryService {
 
       return versionsWithTime.map((item) => Version.fromString(item.version))
     } catch (error) {
-      throw new Error(`Failed to get newest versions for ${packageName}: ${error}`)
+      throw new RegistryError(
+        packageName,
+        'getNewestVersions',
+        `Failed to get newest versions: ${error}`,
+        undefined,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 

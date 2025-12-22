@@ -8,6 +8,7 @@
 import { exec as execCallback } from 'node:child_process'
 import { promisify } from 'node:util'
 
+import { logger } from '@pcu/utils'
 import type {
   AIProvider,
   AIProviderConfig,
@@ -88,6 +89,11 @@ export abstract class BaseAIProvider implements AIProvider {
    * Perform analysis
    */
   abstract analyze(context: AnalysisContext): Promise<AnalysisResult>
+
+  /**
+   * Clear cached availability and info data
+   */
+  abstract clearCache(): void
 
   /**
    * Execute a CLI command with timeout and retry
@@ -369,6 +375,12 @@ Respond in JSON format with prioritized recommendations.`,
         processingTimeMs: Date.now() - startTime,
       }
     } catch (error) {
+      // Log the parsing error for debugging
+      logger.warn('Failed to parse AI response, using fallback result', {
+        provider: this.name,
+        error: (error as Error).message,
+        responseLength: response.length,
+      })
       return this.createFallbackResult(context, response)
     }
   }

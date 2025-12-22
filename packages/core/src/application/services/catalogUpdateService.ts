@@ -6,7 +6,14 @@
  * high-level use cases for checking and updating catalog dependencies.
  */
 
-import { type AdvancedConfig, ConfigLoader, UserFriendlyErrorHandler } from '@pcu/utils'
+import {
+  type AdvancedConfig,
+  ConfigLoader,
+  type PackageFilterConfig,
+  UserFriendlyErrorHandler,
+} from '@pcu/utils'
+import type { Catalog } from '../../domain/entities/catalog.js'
+import type { Workspace } from '../../domain/entities/workspace.js'
 import type { WorkspaceRepository } from '../../domain/repositories/workspaceRepository.js'
 import { Version, type VersionRange } from '../../domain/value-objects/version.js'
 import { WorkspacePath } from '../../domain/value-objects/workspacePath.js'
@@ -230,7 +237,7 @@ export class CatalogUpdateService {
 
     // Calculate total packages across all catalogs
     let totalPackages = 0
-    const allPackagesToCheck: Array<[string, any, any]> = []
+    const allPackagesToCheck: Array<[string, VersionRange, Catalog]> = []
 
     for (const catalog of catalogsToCheck) {
       if (!catalog) continue
@@ -685,10 +692,10 @@ export class CatalogUpdateService {
    * Process packages in parallel with concurrency control and progress tracking
    */
   private async processPackagesInParallel(
-    packagesToCheck: Array<[string, any]>,
-    catalog: any,
-    workspace: any,
-    config: any,
+    packagesToCheck: Array<[string, VersionRange]>,
+    catalog: Catalog,
+    workspace: Workspace,
+    config: PackageFilterConfig,
     options: CheckOptions,
     progressReporter: ProgressReporter | null,
     startingCompleted: number = 0,
@@ -752,10 +759,10 @@ export class CatalogUpdateService {
    */
   private async processPackageCheck(
     packageName: string,
-    currentRange: any,
-    catalog: any,
-    workspace: any,
-    config: any,
+    currentRange: VersionRange,
+    catalog: Catalog,
+    workspace: Workspace,
+    config: PackageFilterConfig,
     options: CheckOptions
   ): Promise<OutdatedDependencyInfo | null> {
     // Get package-specific configuration
@@ -1111,7 +1118,7 @@ export class CatalogUpdateService {
    */
   private async createSyncVersionUpdates(
     syncVersions: string[],
-    workspace: any,
+    workspace: Workspace,
     existingUpdates: PlannedUpdate[]
   ): Promise<PlannedUpdate[]> {
     const syncUpdates: PlannedUpdate[] = []
@@ -1120,7 +1127,7 @@ export class CatalogUpdateService {
 
     for (const packageName of syncVersions) {
       // Check if this package exists in multiple catalogs
-      const catalogsWithPackage = allCatalogs.filter((catalog: any) =>
+      const catalogsWithPackage = allCatalogs.filter((catalog: Catalog | undefined) =>
         catalog?.getDependencyVersion(packageName)
       )
 

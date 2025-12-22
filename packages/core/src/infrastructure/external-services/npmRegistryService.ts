@@ -49,8 +49,90 @@ export interface SecurityReport {
   hasVulnerabilities: boolean
 }
 
+/**
+ * NPM packument response structure (subset we use)
+ */
+interface NpmPackument {
+  name: string
+  'dist-tags': Record<string, string>
+  versions: Record<string, NpmVersionManifest>
+  time?: Record<string, string>
+  description?: string
+  homepage?: string
+  repository?: { type?: string; url?: string; directory?: string }
+  license?: string
+  author?: string | { name: string; email?: string }
+  maintainers?: Array<{ name: string; email?: string }>
+  keywords?: string[]
+}
+
+/**
+ * NPM version manifest structure
+ */
+interface NpmVersionManifest {
+  name: string
+  version: string
+  author?: string | { name: string; email?: string }
+  [key: string]: unknown
+}
+
+/**
+ * NPM audit advisory structure
+ */
+interface NpmAuditAdvisory {
+  id: number
+  title: string
+  severity: 'low' | 'moderate' | 'high' | 'critical'
+  overview: string
+  url: string
+  vulnerable_versions: string
+  patched_versions?: string
+  recommendation?: string
+}
+
+/**
+ * NPM audit response structure
+ */
+interface NpmAuditResponse {
+  advisories?: Record<string, NpmAuditAdvisory>
+}
+
+/**
+ * NPM download stats response
+ */
+interface NpmDownloadStats {
+  downloads?: number
+  package?: string
+  start?: string
+  end?: string
+}
+
+/**
+ * Cache entry structure
+ */
+interface CacheEntry<T> {
+  data: T
+  timestamp: number
+}
+
+/**
+ * Author type used in package manifests
+ */
+type PackageAuthor = string | { name: string; email?: string } | undefined
+
+/**
+ * Package versions cache structure
+ */
+interface PackageVersionsData {
+  name: string
+  versions: string[]
+  latestVersion: string
+  tags: Record<string, string>
+  time?: Record<string, string>
+}
+
 export class NpmRegistryService {
-  private readonly cache: Map<string, { data: any; timestamp: number }> = new Map()
+  private readonly cache: Map<string, CacheEntry<unknown>> = new Map()
 
   // Differentiated cache timeouts for different data types
   private readonly versionCacheTimeout: number
@@ -141,7 +223,7 @@ export class NpmRegistryService {
   /**
    * Get auth configuration for a registry
    */
-  private getAuthConfig(registryUrl: string): Record<string, any> {
+  private getAuthConfig(registryUrl: string): Record<string, string> {
     const authToken = NpmrcParser.getAuthToken(registryUrl, this.npmrcConfig)
     if (authToken) {
       return {
@@ -155,19 +237,13 @@ export class NpmRegistryService {
   /**
    * Get lightweight package version information (optimized for performance)
    */
-  async getPackageVersions(packageName: string): Promise<{
-    name: string
-    versions: string[]
-    latestVersion: string
-    tags: Record<string, string>
-    time?: Record<string, string>
-  }> {
+  async getPackageVersions(packageName: string): Promise<PackageVersionsData> {
     const registryUrl = this.getRegistryForPackage(packageName)
     const cacheKey = `package-versions:${registryUrl}:${packageName}`
 
     // Check cache first if caching is enabled
     if (this.cachingEnabled) {
-      const cached = this.getFromCache(cacheKey)
+      const cached = this.getFromCache<PackageVersionsData>(cacheKey)
       if (cached) {
         return cached
       }
@@ -185,13 +261,14 @@ export class NpmRegistryService {
 
       const versions = Object.keys(packument.versions || {}).sort(semver.rcompare)
       const latestVersion = packument['dist-tags']?.latest || versions[0] || ''
+      const npmPackument = packument as NpmPackument
 
       return {
         name: packument.name,
         versions,
         latestVersion,
         tags: packument['dist-tags'] || {},
-        time: (packument as any).time || {}, // Still include time for newest versions feature
+        time: npmPackument.time || {}, // Still include time for newest versions feature
       }
     }, `Fetching package versions for ${packageName}`)
 
@@ -213,7 +290,7 @@ export class NpmRegistryService {
 
     // Check cache first if caching is enabled
     if (this.cachingEnabled) {
-      const cached = this.getFromCache(cacheKey)
+      const cached = this.getFromCache<PackageInfo>(cacheKey)
       if (cached) {
         return cached
       }
@@ -232,15 +309,16 @@ export class NpmRegistryService {
         ...authConfig,
       })
 
+      const npmPackument = packument as NpmPackument
       return {
         name: versionInfo.name,
-        description: (packument as any).description || undefined,
-        homepage: (packument as any).homepage || undefined,
-        repository: (packument as any).repository || undefined,
-        license: (packument as any).license || undefined,
-        author: (packument as any).author || undefined,
-        maintainers: (packument as any).maintainers || undefined,
-        keywords: (packument as any).keywords || undefined,
+        description: npmPackument.description,
+        homepage: npmPackument.homepage,
+        repository: npmPackument.repository,
+        license: npmPackument.license,
+        author: npmPackument.author,
+        maintainers: npmPackument.maintainers,
+        keywords: npmPackument.keywords,
         versions: versionInfo.versions,
         latestVersion: versionInfo.latestVersion,
         tags: versionInfo.tags,
@@ -336,7 +414,7 @@ export class NpmRegistryService {
     const cacheKey = `security:${registryUrl}:${packageName}@${version}`
 
     // Check cache first
-    const cached = this.getFromCache(cacheKey)
+    const cached = this.getFromCache<SecurityReport>(cacheKey)
     if (cached) {
       return cached
     }
@@ -362,12 +440,12 @@ export class NpmRegistryService {
         ...authConfig,
       })
 
-      const auditResult = await response.json()
+      const auditResult = (await response.json()) as NpmAuditResponse
       const vulnerabilities: SecurityVulnerability[] = []
 
       // Parse audit results
       if (auditResult.advisories) {
-        for (const advisory of Object.values(auditResult.advisories) as any[]) {
+        for (const advisory of Object.values(auditResult.advisories)) {
           vulnerabilities.push({
             id: advisory.id.toString(),
             title: advisory.title,
@@ -475,8 +553,10 @@ export class NpmRegistryService {
       })
 
       // Compare authors/maintainers
-      const fromAuthor = this.normalizeAuthor((fromVersionData as any).author)
-      const toAuthor = this.normalizeAuthor((toVersionData as any).author)
+      const fromManifest = fromVersionData as unknown as NpmVersionManifest
+      const toManifest = toVersionData as unknown as NpmVersionManifest
+      const fromAuthor = this.normalizeAuthor(fromManifest.author)
+      const toAuthor = this.normalizeAuthor(toManifest.author)
 
       return fromAuthor !== toAuthor
     } catch (error) {
@@ -500,8 +580,8 @@ export class NpmRegistryService {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      const data = (await response.json()) as any
-      return data.downloads || 0
+      const data = (await response.json()) as NpmDownloadStats
+      return data.downloads ?? 0
     } catch (error) {
       // Log for debugging, don't show to user as this is not critical
       UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error, {
@@ -581,7 +661,7 @@ export class NpmRegistryService {
   /**
    * Get item from cache if not expired
    */
-  private getFromCache(key: string): any | null {
+  private getFromCache<T>(key: string): T | null {
     const cached = this.cache.get(key)
     if (!cached) {
       return null
@@ -595,7 +675,7 @@ export class NpmRegistryService {
       return null
     }
 
-    return cached.data
+    return cached.data as T
   }
 
   /**
@@ -617,7 +697,7 @@ export class NpmRegistryService {
   /**
    * Set item in cache
    */
-  private setCache(key: string, data: any): void {
+  private setCache<T>(key: string, data: T): void {
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -638,7 +718,7 @@ export class NpmRegistryService {
   /**
    * Normalize author for comparison
    */
-  private normalizeAuthor(author: any): string {
+  private normalizeAuthor(author: PackageAuthor): string {
     if (typeof author === 'string') {
       return author.toLowerCase().trim()
     }

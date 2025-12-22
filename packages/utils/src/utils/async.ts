@@ -19,7 +19,7 @@ export async function retry<T>(
     baseDelay?: number
     maxDelay?: number
     backoffFactor?: number
-    shouldRetry?: (error: any) => boolean
+    shouldRetry?: (error: unknown) => boolean
   } = {}
 ): Promise<T> {
   const {
@@ -30,7 +30,7 @@ export async function retry<T>(
     shouldRetry = () => true,
   } = options
 
-  let lastError: any
+  let lastError: unknown
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -94,12 +94,15 @@ export async function timeout<T>(promise: Promise<T>, ms: number, message?: stri
 /**
  * Debounce async function
  */
-export function debounce<T extends (...args: any[]) => Promise<any>>(fn: T, ms: number): T {
+export function debounce<TArgs extends unknown[], TReturn>(
+  fn: (...args: TArgs) => Promise<TReturn>,
+  ms: number
+): (...args: TArgs) => Promise<TReturn> {
   let timeoutId: NodeJS.Timeout
-  let latestResolve: ((value: any) => void) | undefined
-  let latestReject: ((reason: any) => void) | undefined
+  let latestResolve: ((value: TReturn) => void) | undefined
+  let latestReject: ((reason: unknown) => void) | undefined
 
-  return ((...args: any[]) => {
+  return (...args: TArgs): Promise<TReturn> => {
     return new Promise((resolve, reject) => {
       latestResolve = resolve
       latestReject = reject
@@ -114,17 +117,20 @@ export function debounce<T extends (...args: any[]) => Promise<any>>(fn: T, ms: 
         }
       }, ms)
     })
-  }) as T
+  }
 }
 
 /**
  * Throttle async function
  */
-export function throttle<T extends (...args: any[]) => Promise<any>>(fn: T, ms: number): T {
+export function throttle<TArgs extends unknown[], TReturn>(
+  fn: (...args: TArgs) => Promise<TReturn>,
+  ms: number
+): (...args: TArgs) => Promise<TReturn> {
   let inThrottle = false
-  let lastResult: any
+  let lastResult: TReturn | undefined
 
-  return (async (...args: any[]) => {
+  return async (...args: TArgs): Promise<TReturn> => {
     if (!inThrottle) {
       inThrottle = true
       lastResult = await fn(...args)
@@ -132,8 +138,8 @@ export function throttle<T extends (...args: any[]) => Promise<any>>(fn: T, ms: 
         inThrottle = false
       }, ms)
     }
-    return lastResult
-  }) as T
+    return lastResult as TReturn
+  }
 }
 
 /**
@@ -167,13 +173,13 @@ export function cancelable<T>(promise: Promise<T>): { promise: Promise<T>; cance
 /**
  * Execute async function with circuit breaker pattern
  */
-export class CircuitBreaker<T extends (...args: any[]) => Promise<any>> {
+export class CircuitBreaker<TArgs extends unknown[], TReturn> {
   private failures = 0
   private lastFailureTime = 0
   private state: 'closed' | 'open' | 'half-open' = 'closed'
 
   constructor(
-    private fn: T,
+    private fn: (...args: TArgs) => Promise<TReturn>,
     private options: {
       failureThreshold?: number
       recoveryTimeout?: number
@@ -185,7 +191,7 @@ export class CircuitBreaker<T extends (...args: any[]) => Promise<any>> {
     this.options = { failureThreshold, recoveryTimeout, monitoringPeriod }
   }
 
-  async execute(...args: Parameters<T>): Promise<ReturnType<T>> {
+  async execute(...args: TArgs): Promise<TReturn> {
     if (this.state === 'open') {
       if (Date.now() - this.lastFailureTime > this.options.recoveryTimeout!) {
         this.state = 'half-open'
@@ -232,8 +238,8 @@ export class CircuitBreaker<T extends (...args: any[]) => Promise<any>> {
 /**
  * Async queue with concurrency control
  */
-export class AsyncQueue<T = any> {
-  private queue: Array<() => Promise<T>> = []
+export class AsyncQueue {
+  private queue: Array<() => Promise<unknown>> = []
   private running = 0
 
   constructor(private concurrency: number = 1) {}
@@ -243,8 +249,8 @@ export class AsyncQueue<T = any> {
       this.queue.push(async () => {
         try {
           const result = await fn()
-          resolve(result as any)
-          return result as any
+          resolve(result)
+          return result
         } catch (error) {
           reject(error)
           throw error

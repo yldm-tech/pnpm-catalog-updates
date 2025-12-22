@@ -25,13 +25,40 @@ export interface ValidatedOptions {
   timeout?: number
 }
 
+/**
+ * Raw command options input (unvalidated)
+ */
+interface RawCommandOptions {
+  workspace?: unknown
+  catalog?: unknown
+  format?: unknown
+  target?: unknown
+  interactive?: unknown
+  dryRun?: unknown
+  force?: unknown
+  prerelease?: unknown
+  include?: unknown
+  exclude?: unknown
+  createBackup?: unknown
+  verbose?: unknown
+  silent?: unknown
+  color?: unknown
+  noColor?: unknown
+  registry?: unknown
+  timeout?: unknown
+  validate?: unknown
+  stats?: unknown
+  info?: unknown
+  [key: string]: unknown
+}
+
 export class CommandValidator {
   private config = getConfig().getConfig()
 
   /**
    * Validate check command options
    */
-  validateCheckOptions(options: any): ValidationResult {
+  validateCheckOptions(options: RawCommandOptions): ValidationResult {
     const errors: string[] = []
     const warnings: string[] = []
 
@@ -64,7 +91,7 @@ export class CommandValidator {
   /**
    * Validate update command options
    */
-  validateUpdateOptions(options: any): ValidationResult {
+  validateUpdateOptions(options: RawCommandOptions): ValidationResult {
     const errors: string[] = []
     const warnings: string[] = []
 
@@ -90,8 +117,10 @@ export class CommandValidator {
 
     // Validate include/exclude patterns
     if (options.include && options.exclude) {
-      const overlapping = options.include.some((inc: string) =>
-        options.exclude.some((exc: string) => inc === exc)
+      const includeArray = Array.isArray(options.include) ? options.include : []
+      const excludeArray = Array.isArray(options.exclude) ? options.exclude : []
+      const overlapping = includeArray.some((inc: unknown) =>
+        excludeArray.some((exc: unknown) => inc === exc)
       )
       if (overlapping) {
         warnings.push('Some patterns appear in both include and exclude lists')
@@ -149,7 +178,7 @@ export class CommandValidator {
   /**
    * Validate workspace command options
    */
-  validateWorkspaceOptions(options: any): ValidationResult {
+  validateWorkspaceOptions(options: RawCommandOptions): ValidationResult {
     const errors: string[] = []
     const warnings: string[] = []
 
@@ -174,7 +203,7 @@ export class CommandValidator {
   /**
    * Validate global options
    */
-  validateGlobalOptions(options: any): ValidationResult {
+  validateGlobalOptions(options: RawCommandOptions): ValidationResult {
     const errors: string[] = []
     const warnings: string[] = []
 
@@ -220,7 +249,7 @@ export class CommandValidator {
         return { isValid: false, errors, warnings }
       }
 
-      let config: any
+      let config: Record<string, unknown>
 
       if (configPath.endsWith('.js')) {
         // JavaScript config file
@@ -282,7 +311,7 @@ export class CommandValidator {
   /**
    * Sanitize and normalize options
    */
-  sanitizeOptions(options: any): ValidatedOptions {
+  sanitizeOptions(options: RawCommandOptions): ValidatedOptions {
     const sanitized: ValidatedOptions = {}
 
     // String options
@@ -328,12 +357,12 @@ export class CommandValidator {
     // Array options
     if (options.include) {
       sanitized.include = Array.isArray(options.include)
-        ? options.include.map((p: any) => String(p).trim()).filter(Boolean)
+        ? options.include.map((p: unknown) => String(p).trim()).filter(Boolean)
         : [String(options.include).trim()].filter(Boolean)
     }
     if (options.exclude) {
       sanitized.exclude = Array.isArray(options.exclude)
-        ? options.exclude.map((p: any) => String(p).trim()).filter(Boolean)
+        ? options.exclude.map((p: unknown) => String(p).trim()).filter(Boolean)
         : [String(options.exclude).trim()].filter(Boolean)
     }
 
@@ -343,7 +372,7 @@ export class CommandValidator {
   /**
    * Get validation suggestions based on common mistakes
    */
-  getSuggestions(command: string, options: any): string[] {
+  getSuggestions(command: string, options: RawCommandOptions): string[] {
     const suggestions: string[] = []
 
     switch (command) {

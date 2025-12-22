@@ -19,6 +19,18 @@ export interface InitCommandOptions {
   full?: boolean
 }
 
+/**
+ * Workspace package.json structure
+ */
+interface WorkspacePackageJson {
+  name: string
+  version: string
+  private: boolean
+  description: string
+  scripts: Record<string, string>
+  devDependencies: Record<string, string>
+}
+
 export class InitCommand {
   /**
    * Execute the init command
@@ -162,7 +174,7 @@ export class InitCommand {
   /**
    * Generate workspace package.json
    */
-  private generateWorkspacePackageJson(): any {
+  private generateWorkspacePackageJson(): WorkspacePackageJson {
     return {
       name: 'my-workspace',
       version: '1.0.0',

@@ -13,25 +13,24 @@ import { fileURLToPath } from 'node:url'
 // Services and Dependencies
 import type { AnalysisType } from '@pcu/core'
 import {
-  AIAnalysisService,
-  AIDetector,
   CatalogUpdateService,
   FileSystemService,
   FileWorkspaceRepository,
-  NpmRegistryService,
   WorkspaceService,
 } from '@pcu/core'
 // CLI Commands
 import { ConfigLoader, VersionChecker } from '@pcu/utils'
 import chalk from 'chalk'
 import { Command } from 'commander'
+import { AiCommand } from './commands/aiCommand.js'
+import { AnalyzeCommand } from './commands/analyzeCommand.js'
 import { CheckCommand } from './commands/checkCommand.js'
 import { InitCommand } from './commands/initCommand.js'
 import { SecurityCommand } from './commands/securityCommand.js'
+import { ThemeCommand } from './commands/themeCommand.js'
 import { UpdateCommand } from './commands/updateCommand.js'
+import { WorkspaceCommand } from './commands/workspaceCommand.js'
 import { type OutputFormat, OutputFormatter } from './formatters/outputFormatter.js'
-import { InteractivePrompts } from './interactive/interactivePrompts.js'
-import { StyledText, ThemeManager } from './themes/colorTheme.js'
 
 // Get package.json for version info
 const __filename = fileURLToPath(import.meta.url)
@@ -68,31 +67,18 @@ function parseBooleanFlag(value: unknown): boolean {
     if (normalized === '') return false
     if (['false', '0', 'no', 'off', 'n'].includes(normalized)) return false
     if (['true', '1', 'yes', 'on', 'y'].includes(normalized)) return true
-    // Commander env() 会把任意非空字符串塞进来；未知字符串按“启用”处理
+    // Commander env() 会把任意非空字符串塞进来；未知字符串按"启用"处理
     return true
   }
   return Boolean(value)
 }
 
 /**
- * Main CLI function
+ * Check for version updates at startup
  */
-export async function main(): Promise<void> {
-  const program = new Command()
-
-  // Parse arguments first to get workspace path
-  let workspacePath: string | undefined
-
-  // Extract workspace path from arguments for service creation
-  const workspaceIndex = process.argv.findIndex((arg) => arg === '-w' || arg === '--workspace')
-  if (workspaceIndex !== -1 && workspaceIndex + 1 < process.argv.length) {
-    workspacePath = process.argv[workspaceIndex + 1]
-  }
-
-  // Load configuration to check if version updates are enabled
-  const config = ConfigLoader.loadConfig(workspacePath || process.cwd())
-
-  // Check for version updates (skip in CI environments or if disabled)
+async function checkForUpdates(
+  config: ReturnType<typeof ConfigLoader.loadConfig>
+): Promise<boolean> {
   if (VersionChecker.shouldCheckForUpdates() && config.advanced?.checkForUpdates !== false) {
     try {
       const versionResult = await VersionChecker.checkVersion(packageJson.version, {
@@ -105,7 +91,7 @@ export async function main(): Promise<void> {
         if (didUpdate) {
           // Exit after successful update to allow user to restart with new version
           console.log(chalk.blue('Please run your command again to use the updated version.'))
-          process.exit(0)
+          return true
         }
       }
     } catch (error) {
@@ -115,26 +101,13 @@ export async function main(): Promise<void> {
       }
     }
   }
+  return false
+}
 
-  // Create services with workspace path for configuration loading
-  const services = createServices(workspacePath)
-
-  // Configure the main command
-  program
-    .name('pcu')
-    .description('A CLI tool to check and update pnpm workspace catalog dependencies')
-    .option('--version', 'show version information')
-    .option('-v, --verbose', 'enable verbose logging')
-    .option('-w, --workspace <path>', 'workspace directory path')
-    .option('--no-color', 'disable colored output')
-    .option('-u, --update', 'shorthand for update command')
-    .option('-c, --check', 'shorthand for check command')
-    .option('-a, --analyze', 'shorthand for analyze command')
-    .option('-s, --workspace-info', 'shorthand for workspace command')
-    .option('-t, --theme', 'shorthand for theme command')
-    .option('--security-audit', 'shorthand for security command')
-    .option('--security-fix', 'shorthand for security --fix-vulns command')
-
+/**
+ * Register all CLI commands
+ */
+function registerCommands(program: Command, services: ReturnType<typeof createServices>): void {
   // Check command
   program
     .command('check')
@@ -260,104 +233,23 @@ export async function main(): Promise<void> {
     .action(async (packageName, version, options, command) => {
       try {
         const globalOptions = command.parent.opts()
-        const formatter = new OutputFormatter(
-          options.format as OutputFormat,
-          !globalOptions.noColor
+        const analyzeCommand = new AnalyzeCommand(
+          services.catalogUpdateService,
+          services.workspaceService
         )
 
-        // Auto-detect catalog if not specified
-        let catalog = options.catalog
-        if (!catalog) {
-          console.log(chalk.gray(`🔍 Auto-detecting catalog for ${packageName}...`))
-          catalog = await services.catalogUpdateService.findCatalogForPackage(
-            packageName,
-            globalOptions.workspace
-          )
-          if (!catalog) {
-            console.error(chalk.red(`❌ Package "${packageName}" not found in any catalog`))
-            console.log(chalk.gray('Use --catalog <name> to specify the catalog manually'))
-            process.exit(1)
-          }
-          console.log(chalk.gray(`   Found in catalog: ${catalog}`))
-        }
-
-        // Get latest version if not specified
-        let targetVersion = version
-        if (!targetVersion) {
-          const tempRegistryService = new NpmRegistryService()
-          targetVersion = (await tempRegistryService.getLatestVersion(packageName)).toString()
-        }
-
-        // Get basic impact analysis first
-        const analysis = await services.catalogUpdateService.analyzeImpact(
-          catalog,
-          packageName,
-          targetVersion,
-          globalOptions.workspace
-        )
-
-        // AI analysis is enabled by default (use --no-ai to disable)
-        const aiEnabled = options.ai !== false
-
-        if (aiEnabled) {
-          console.log(chalk.blue('🤖 Running AI-powered analysis...'))
-
-          const aiService = new AIAnalysisService({
-            config: {
-              preferredProvider: options.provider === 'auto' ? 'auto' : options.provider,
-              cache: { enabled: !parseBooleanFlag(options.skipCache), ttl: 3600 },
-              fallback: { enabled: true, useRuleEngine: true },
-            },
-          })
-
-          // Get workspace info
-          const workspaceInfo = await services.workspaceService.getWorkspaceInfo(
-            globalOptions.workspace
-          )
-
-          // Build packages info for AI analysis
-          const packages = [
-            {
-              name: packageName,
-              currentVersion: analysis.currentVersion,
-              targetVersion: analysis.proposedVersion,
-              updateType: analysis.updateType,
-            },
-          ]
-
-          // Build workspace info for AI
-          const wsInfo = {
-            name: workspaceInfo.name,
-            path: workspaceInfo.path,
-            packageCount: workspaceInfo.packageCount,
-            catalogCount: workspaceInfo.catalogCount,
-          }
-
-          try {
-            const aiResult = await aiService.analyzeUpdates(packages, wsInfo, {
-              analysisType: options.analysisType as AnalysisType,
-              skipCache: parseBooleanFlag(options.skipCache),
-            })
-
-            // Format and display AI analysis result
-            const aiOutput = formatter.formatAIAnalysis(aiResult, analysis)
-            console.log(aiOutput)
-            process.exit(0)
-          } catch (aiError) {
-            console.warn(chalk.yellow('⚠️  AI analysis failed, showing basic analysis:'))
-            if (globalOptions.verbose) {
-              console.warn(chalk.gray(String(aiError)))
-            }
-            // Fall back to basic analysis
-            const formattedOutput = formatter.formatImpactAnalysis(analysis)
-            console.log(formattedOutput)
-            process.exit(0)
-          }
-        } else {
-          // Standard analysis without AI
-          const formattedOutput = formatter.formatImpactAnalysis(analysis)
-          console.log(formattedOutput)
-        }
+        await analyzeCommand.execute(packageName, version, {
+          workspace: globalOptions.workspace,
+          catalog: options.catalog,
+          format: options.format,
+          ai: options.ai,
+          provider: options.provider,
+          analysisType: options.analysisType as AnalysisType,
+          skipCache: parseBooleanFlag(options.skipCache),
+          verbose: globalOptions.verbose,
+          color: !globalOptions.noColor,
+        })
+        process.exit(0)
       } catch (error) {
         console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
@@ -375,38 +267,17 @@ export async function main(): Promise<void> {
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
-        const formatter = new OutputFormatter(
-          options.format as OutputFormat,
-          !globalOptions.noColor
-        )
+        const workspaceCommand = new WorkspaceCommand(services.workspaceService)
 
-        if (options.validate) {
-          const report = await services.workspaceService.validateWorkspace(globalOptions.workspace)
-          const formattedOutput = formatter.formatValidationReport(report)
-          console.log(formattedOutput)
-          process.exit(0)
-          if (!report.isValid) {
-            process.exit(1)
-          }
-        } else if (options.stats) {
-          const stats = await services.workspaceService.getWorkspaceStats(globalOptions.workspace)
-          const formattedOutput = formatter.formatWorkspaceStats(stats)
-          console.log(formattedOutput)
-          process.exit(0)
-        } else {
-          const info = await services.workspaceService.getWorkspaceInfo(globalOptions.workspace)
-          console.log(formatter.formatMessage(`Workspace: ${info.name}`, 'info'))
-          console.log(formatter.formatMessage(`Path: ${info.path}`, 'info'))
-          console.log(formatter.formatMessage(`Packages: ${info.packageCount}`, 'info'))
-          console.log(formatter.formatMessage(`Catalogs: ${info.catalogCount}`, 'info'))
-
-          if (info.catalogNames.length > 0) {
-            console.log(
-              formatter.formatMessage(`Catalog names: ${info.catalogNames.join(', ')}`, 'info')
-            )
-          }
-          process.exit(0)
-        }
+        const exitCode = await workspaceCommand.execute({
+          workspace: globalOptions.workspace,
+          validate: options.validate,
+          stats: options.stats,
+          format: options.format,
+          verbose: globalOptions.verbose,
+          color: !globalOptions.noColor,
+        })
+        process.exit(exitCode)
       } catch (error) {
         console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
@@ -421,65 +292,17 @@ export async function main(): Promise<void> {
     .option('-s, --set <theme>', 'set theme: default, modern, minimal, neon')
     .option('-l, --list', 'list available themes')
     .option('-i, --interactive', 'interactive theme selection')
-    .action(async (options, _command) => {
+    .action(async (options) => {
       try {
-        if (options.list) {
-          const themes = ThemeManager.listThemes()
-          console.log(StyledText.iconInfo('Available themes:'))
-          themes.forEach((theme) => {
-            console.log(`  • ${theme}`)
-          })
-          return
-        }
-
-        if (options.set) {
-          const themes = ThemeManager.listThemes()
-          if (!themes.includes(options.set)) {
-            console.error(StyledText.iconError(`Invalid theme: ${options.set}`))
-            console.log(StyledText.muted(`Available themes: ${themes.join(', ')}`))
-            process.exit(1)
-          }
-
-          ThemeManager.setTheme(options.set)
-          console.log(StyledText.iconSuccess(`Theme set to: ${options.set}`))
-
-          // Show a preview
-          console.log('\nTheme preview:')
-          const theme = ThemeManager.getTheme()
-          console.log(`  ${theme.success('✓ Success message')}`)
-          console.log(`  ${theme.warning('⚠ Warning message')}`)
-          console.log(`  ${theme.error('✗ Error message')}`)
-          console.log(`  ${theme.info('ℹ Info message')}`)
-          console.log(
-            `  ${theme.major('Major update')} | ${theme.minor('Minor update')} | ${theme.patch('Patch update')}`
-          )
-          return
-        }
-
-        if (options.interactive) {
-          const interactivePrompts = new InteractivePrompts()
-          const config = await interactivePrompts.configurationWizard()
-
-          if (config.theme) {
-            ThemeManager.setTheme(config.theme)
-            console.log(StyledText.iconSuccess(`Theme configured: ${config.theme}`))
-          }
-          return
-        }
-
-        // Default: show current theme and list
-        const currentTheme = ThemeManager.getTheme()
-        console.log(StyledText.iconInfo('Current theme settings:'))
-        console.log(`  Theme: ${currentTheme ? 'custom' : 'default'}`)
-        console.log('\nAvailable themes:')
-        ThemeManager.listThemes().forEach((theme) => {
-          console.log(`  • ${theme}`)
+        const themeCommand = new ThemeCommand()
+        await themeCommand.execute({
+          set: options.set,
+          list: options.list,
+          interactive: options.interactive,
         })
-        console.log(
-          StyledText.muted('\nUse --set <theme> to change theme or --interactive for guided setup')
-        )
+        process.exit(0)
       } catch (error) {
-        console.error(StyledText.iconError('Error configuring theme:'), error)
+        console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
       }
     })
@@ -502,7 +325,6 @@ export async function main(): Promise<void> {
           options.format as OutputFormat,
           !globalOptions.noColor
         )
-
         const securityCommand = new SecurityCommand(formatter)
 
         await securityCommand.execute({
@@ -557,7 +379,7 @@ export async function main(): Promise<void> {
       }
     })
 
-  // AI command - check AI provider status and availability
+  // AI command
   program
     .command('ai')
     .description('check AI provider status and availability')
@@ -567,106 +389,13 @@ export async function main(): Promise<void> {
     .option('--clear-cache', 'clear AI analysis cache')
     .action(async (options) => {
       try {
-        const aiDetector = new AIDetector()
-
-        if (options.clearCache) {
-          // Import the cache singleton
-          const { analysisCache } = await import('@pcu/core')
-          analysisCache.clear()
-          console.log(chalk.green('✅ AI analysis cache cleared'))
-          process.exit(0)
-          return
-        }
-
-        if (options.cacheStats) {
-          const { analysisCache } = await import('@pcu/core')
-          const stats = analysisCache.getStats()
-          console.log(chalk.blue('📊 AI Analysis Cache Statistics'))
-          console.log(chalk.gray('─────────────────────────────────'))
-          console.log(`  Total entries: ${chalk.cyan(stats.totalEntries)}`)
-          console.log(`  Cache hits:    ${chalk.green(stats.hits)}`)
-          console.log(`  Cache misses:  ${chalk.yellow(stats.misses)}`)
-          console.log(`  Hit rate:      ${chalk.cyan(`${(stats.hitRate * 100).toFixed(1)}%`)}`)
-          process.exit(0)
-          return
-        }
-
-        if (options.test) {
-          console.log(chalk.blue('🧪 Testing AI analysis...'))
-
-          const aiService = new AIAnalysisService({
-            config: {
-              fallback: { enabled: true, useRuleEngine: true },
-            },
-          })
-
-          const testPackages = [
-            {
-              name: 'lodash',
-              currentVersion: '4.17.20',
-              targetVersion: '4.17.21',
-              updateType: 'patch' as const,
-            },
-          ]
-
-          const testWorkspaceInfo = {
-            name: 'test-workspace',
-            path: process.cwd(),
-            packageCount: 1,
-            catalogCount: 1,
-          }
-
-          try {
-            const result = await aiService.analyzeUpdates(testPackages, testWorkspaceInfo, {
-              analysisType: 'impact',
-            })
-            console.log(chalk.green('✅ AI analysis test successful!'))
-            console.log(chalk.gray('─────────────────────────────────'))
-            console.log(`  Provider: ${chalk.cyan(result.provider)}`)
-            console.log(`  Confidence: ${chalk.cyan(`${(result.confidence * 100).toFixed(0)}%`)}`)
-            console.log(`  Summary: ${result.summary}`)
-          } catch (error) {
-            console.log(chalk.yellow('⚠️  AI analysis test failed:'))
-            console.log(chalk.gray(String(error)))
-          }
-          process.exit(0)
-          return
-        }
-
-        // Default: show status
-        console.log(chalk.blue('🤖 AI Provider Status'))
-        console.log(chalk.gray('─────────────────────────────────'))
-
-        const summary = await aiDetector.getDetectionSummary()
-        console.log(summary)
-
-        const providers = await aiDetector.detectAvailableProviders()
-        console.log('')
-        console.log(chalk.blue('📋 Provider Details'))
-        console.log(chalk.gray('─────────────────────────────────'))
-
-        for (const provider of providers) {
-          const statusIcon = provider.available ? chalk.green('✓') : chalk.red('✗')
-          const statusText = provider.available ? chalk.green('Available') : chalk.gray('Not found')
-          const priorityText = chalk.gray(`(priority: ${provider.priority})`)
-
-          console.log(
-            `  ${statusIcon} ${chalk.cyan(provider.name)} - ${statusText} ${priorityText}`
-          )
-
-          if (provider.available && provider.path) {
-            console.log(chalk.gray(`      Path: ${provider.path}`))
-          }
-          if (provider.available && provider.version) {
-            console.log(chalk.gray(`      Version: ${provider.version}`))
-          }
-        }
-
-        const best = await aiDetector.getBestProvider()
-        if (best) {
-          console.log('')
-          console.log(chalk.green(`✨ Best available provider: ${best.name}`))
-        }
+        const aiCommand = new AiCommand()
+        await aiCommand.execute({
+          status: options.status,
+          test: options.test,
+          cacheStats: options.cacheStats,
+          clearCache: options.clearCache,
+        })
         process.exit(0)
       } catch (error) {
         console.error(chalk.red('❌ Error:'), error)
@@ -674,7 +403,7 @@ export async function main(): Promise<void> {
       }
     })
 
-  // Add help command
+  // Help command
   program
     .command('help')
     .alias('h')
@@ -692,16 +421,18 @@ export async function main(): Promise<void> {
         program.help()
       }
     })
+}
 
-  // Let commander handle help and version normally
-  // program.exitOverride() removed to fix help/version output
+/**
+ * Handle shorthand options by rewriting arguments
+ */
+function handleShorthandArgs(args: string[]): string[] {
+  const rewrittenArgs = [...args]
 
-  // Handle shorthand options and single-letter commands by rewriting arguments
-  const args = [...process.argv]
   // Map single-letter command 'i' -> init (changed from interactive mode)
   if (
-    args.includes('i') &&
-    !args.some(
+    rewrittenArgs.includes('i') &&
+    !rewrittenArgs.some(
       (a) =>
         a === 'init' ||
         a === 'update' ||
@@ -711,40 +442,131 @@ export async function main(): Promise<void> {
         a === '--interactive'
     )
   ) {
-    const index = args.indexOf('i')
-    args.splice(index, 1, 'init')
+    const index = rewrittenArgs.indexOf('i')
+    rewrittenArgs.splice(index, 1, 'init')
   }
 
-  if (args.includes('-u') || args.includes('--update')) {
-    const index = args.findIndex((arg) => arg === '-u' || arg === '--update')
-    args.splice(index, 1, 'update')
+  if (rewrittenArgs.includes('-u') || rewrittenArgs.includes('--update')) {
+    const index = rewrittenArgs.findIndex((arg) => arg === '-u' || arg === '--update')
+    rewrittenArgs.splice(index, 1, 'update')
   } else if (
-    (args.includes('-i') || args.includes('--interactive')) &&
-    !args.some((a) => a === 'update' || a === '-u' || a === '--update')
+    (rewrittenArgs.includes('-i') || rewrittenArgs.includes('--interactive')) &&
+    !rewrittenArgs.some((a) => a === 'update' || a === '-u' || a === '--update')
   ) {
     // Map standalone -i to `update -i`
-    const index = args.findIndex((arg) => arg === '-i' || arg === '--interactive')
-    // Replace the flag position with 'update' and keep the flag after it
-    args.splice(index, 1, 'update', '-i')
-  } else if (args.includes('-c') || args.includes('--check')) {
-    const index = args.findIndex((arg) => arg === '-c' || arg === '--check')
-    args.splice(index, 1, 'check')
-  } else if (args.includes('-a') || args.includes('--analyze')) {
-    const index = args.findIndex((arg) => arg === '-a' || arg === '--analyze')
-    args.splice(index, 1, 'analyze')
-  } else if (args.includes('-s') || args.includes('--workspace-info')) {
-    const index = args.findIndex((arg) => arg === '-s' || arg === '--workspace-info')
-    args.splice(index, 1, 'workspace')
-  } else if (args.includes('-t') || args.includes('--theme')) {
-    const index = args.findIndex((arg) => arg === '-t' || arg === '--theme')
-    args.splice(index, 1, 'theme')
-  } else if (args.includes('--security-audit')) {
-    const index = args.indexOf('--security-audit')
-    args.splice(index, 1, 'security')
-  } else if (args.includes('--security-fix')) {
-    const index = args.indexOf('--security-fix')
-    args.splice(index, 1, 'security', '--fix-vulns')
+    const index = rewrittenArgs.findIndex((arg) => arg === '-i' || arg === '--interactive')
+    rewrittenArgs.splice(index, 1, 'update', '-i')
+  } else if (rewrittenArgs.includes('-c') || rewrittenArgs.includes('--check')) {
+    const index = rewrittenArgs.findIndex((arg) => arg === '-c' || arg === '--check')
+    rewrittenArgs.splice(index, 1, 'check')
+  } else if (rewrittenArgs.includes('-a') || rewrittenArgs.includes('--analyze')) {
+    const index = rewrittenArgs.findIndex((arg) => arg === '-a' || arg === '--analyze')
+    rewrittenArgs.splice(index, 1, 'analyze')
+  } else if (rewrittenArgs.includes('-s') || rewrittenArgs.includes('--workspace-info')) {
+    const index = rewrittenArgs.findIndex((arg) => arg === '-s' || arg === '--workspace-info')
+    rewrittenArgs.splice(index, 1, 'workspace')
+  } else if (rewrittenArgs.includes('-t') || rewrittenArgs.includes('--theme')) {
+    const index = rewrittenArgs.findIndex((arg) => arg === '-t' || arg === '--theme')
+    rewrittenArgs.splice(index, 1, 'theme')
+  } else if (rewrittenArgs.includes('--security-audit')) {
+    const index = rewrittenArgs.indexOf('--security-audit')
+    rewrittenArgs.splice(index, 1, 'security')
+  } else if (rewrittenArgs.includes('--security-fix')) {
+    const index = rewrittenArgs.indexOf('--security-fix')
+    rewrittenArgs.splice(index, 1, 'security', '--fix-vulns')
   }
+
+  return rewrittenArgs
+}
+
+/**
+ * Handle custom --version with update checking
+ */
+async function handleVersionFlag(
+  args: string[],
+  config: ReturnType<typeof ConfigLoader.loadConfig>
+): Promise<void> {
+  if (!args.includes('--version')) return
+
+  console.log(packageJson.version)
+
+  // Check for updates if not in CI and enabled in config
+  if (VersionChecker.shouldCheckForUpdates() && config.advanced?.checkForUpdates !== false) {
+    try {
+      console.log(chalk.gray('Checking for updates...'))
+      const versionResult = await VersionChecker.checkVersion(packageJson.version, {
+        skipPrompt: false,
+        timeout: 5000, // Longer timeout for explicit version check
+      })
+
+      if (versionResult.shouldPrompt) {
+        const didUpdate = await VersionChecker.promptAndUpdate(versionResult)
+        if (didUpdate) {
+          console.log(chalk.blue('Please run your command again to use the updated version.'))
+          process.exit(0)
+        }
+      } else if (versionResult.isLatest) {
+        console.log(chalk.green('You are using the latest version!'))
+      }
+    } catch (error) {
+      // Silently fail update check for version command
+      if (args.includes('-v') || args.includes('--verbose')) {
+        console.warn(chalk.yellow('⚠️  Could not check for updates:'), error)
+      }
+    }
+  }
+
+  process.exit(0)
+}
+
+/**
+ * Main CLI function
+ */
+export async function main(): Promise<void> {
+  const program = new Command()
+
+  // Parse arguments first to get workspace path
+  let workspacePath: string | undefined
+
+  // Extract workspace path from arguments for service creation
+  const workspaceIndex = process.argv.findIndex((arg) => arg === '-w' || arg === '--workspace')
+  if (workspaceIndex !== -1 && workspaceIndex + 1 < process.argv.length) {
+    workspacePath = process.argv[workspaceIndex + 1]
+  }
+
+  // Load configuration to check if version updates are enabled
+  const config = ConfigLoader.loadConfig(workspacePath || process.cwd())
+
+  // Check for version updates (skip in CI environments or if disabled)
+  const didUpdate = await checkForUpdates(config)
+  if (didUpdate) {
+    process.exit(0)
+  }
+
+  // Create services with workspace path for configuration loading
+  const services = createServices(workspacePath)
+
+  // Configure the main command
+  program
+    .name('pcu')
+    .description('A CLI tool to check and update pnpm workspace catalog dependencies')
+    .option('--version', 'show version information')
+    .option('-v, --verbose', 'enable verbose logging')
+    .option('-w, --workspace <path>', 'workspace directory path')
+    .option('--no-color', 'disable colored output')
+    .option('-u, --update', 'shorthand for update command')
+    .option('-c, --check', 'shorthand for check command')
+    .option('-a, --analyze', 'shorthand for analyze command')
+    .option('-s, --workspace-info', 'shorthand for workspace command')
+    .option('-t, --theme', 'shorthand for theme command')
+    .option('--security-audit', 'shorthand for security command')
+    .option('--security-fix', 'shorthand for security --fix-vulns command')
+
+  // Register all commands
+  registerCommands(program, services)
+
+  // Handle shorthand options and single-letter commands by rewriting arguments
+  const args = handleShorthandArgs([...process.argv])
 
   // Show help if no arguments provided
   if (args.length <= 2) {
@@ -752,37 +574,7 @@ export async function main(): Promise<void> {
   }
 
   // Handle custom --version with update checking
-  if (args.includes('--version')) {
-    console.log(packageJson.version)
-
-    // Check for updates if not in CI and enabled in config
-    if (VersionChecker.shouldCheckForUpdates() && config.advanced?.checkForUpdates !== false) {
-      try {
-        console.log(chalk.gray('Checking for updates...'))
-        const versionResult = await VersionChecker.checkVersion(packageJson.version, {
-          skipPrompt: false,
-          timeout: 5000, // Longer timeout for explicit version check
-        })
-
-        if (versionResult.shouldPrompt) {
-          const didUpdate = await VersionChecker.promptAndUpdate(versionResult)
-          if (didUpdate) {
-            console.log(chalk.blue('Please run your command again to use the updated version.'))
-            process.exit(0)
-          }
-        } else if (versionResult.isLatest) {
-          console.log(chalk.green('You are using the latest version!'))
-        }
-      } catch (error) {
-        // Silently fail update check for version command
-        if (args.includes('-v') || args.includes('--verbose')) {
-          console.warn(chalk.yellow('⚠️  Could not check for updates:'), error)
-        }
-      }
-    }
-
-    process.exit(0)
-  }
+  await handleVersionFlag(args, config)
 
   // Parse command line arguments
   try {

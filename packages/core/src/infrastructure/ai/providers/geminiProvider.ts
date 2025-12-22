@@ -218,7 +218,10 @@ export class GeminiProvider extends BaseAIProvider {
         lastError = error as Error
 
         // Check if it's a timeout error
-        if ((error as any).killed || (error as Error).message.includes('TIMEOUT')) {
+        if (
+          (error as { killed?: boolean }).killed ||
+          (error as Error).message.includes('TIMEOUT')
+        ) {
           throw new Error(`Gemini CLI timed out after ${this.timeout}ms`)
         }
 

@@ -65,6 +65,54 @@ export interface SecurityRecommendation {
   impact: string
 }
 
+/**
+ * npm audit response vulnerability entry
+ */
+interface NpmAuditVulnerability {
+  name: string
+  severity: 'low' | 'moderate' | 'high' | 'critical'
+  title?: string
+  url?: string
+  range: string
+  fixAvailable: boolean | string
+  via?: Array<{ source?: string; name?: string }>
+  cwe?: string[]
+  cve?: string[]
+}
+
+/**
+ * npm audit response structure
+ */
+interface NpmAuditData {
+  vulnerabilities?: Record<string, NpmAuditVulnerability>
+}
+
+/**
+ * Snyk vulnerability entry
+ */
+interface SnykVulnerability {
+  id: string
+  packageName: string
+  severity: 'low' | 'moderate' | 'high' | 'critical'
+  title: string
+  url?: string
+  version?: string
+  semver?: { vulnerable?: string[] }
+  upgradePath?: string[]
+  fixedIn?: string[]
+  from?: string[]
+  identifiers?: { CWE?: string[]; CVE?: string[] }
+  cwe?: string[]
+  cve?: string[]
+}
+
+/**
+ * Snyk response structure
+ */
+interface SnykData {
+  vulnerabilities?: SnykVulnerability[]
+}
+
 export class SecurityCommand {
   constructor(private readonly outputFormatter: OutputFormatter) {}
 
@@ -257,28 +305,27 @@ export class SecurityCommand {
 
       const snykData = JSON.parse(result.stdout)
       return this.parseSnykResults(snykData)
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException
+      if (err.code === 'ENOENT') {
         console.warn(StyledText.iconWarning('Snyk not found. Install with: npm install -g snyk'))
         return []
       }
-      throw new Error(`Snyk scan failed: ${error.message}`)
+      throw new Error(`Snyk scan failed: ${err.message}`)
     }
   }
 
   /**
    * Parse npm audit results
    */
-  private parseNpmAuditResults(auditData: any): Vulnerability[] {
+  private parseNpmAuditResults(auditData: NpmAuditData): Vulnerability[] {
     const vulnerabilities: Vulnerability[] = []
 
     if (!auditData.vulnerabilities) {
       return vulnerabilities
     }
 
-    for (const [id, vuln] of Object.entries(auditData.vulnerabilities)) {
-      const vulnerability = vuln as any
-
+    for (const [id, vulnerability] of Object.entries(auditData.vulnerabilities)) {
       vulnerabilities.push({
         id: id,
         package: vulnerability.name,
@@ -287,8 +334,9 @@ export class SecurityCommand {
         url: vulnerability.url || `https://npmjs.com/advisories/${id}`,
         range: vulnerability.range,
         fixAvailable: vulnerability.fixAvailable,
-        fixVersion: vulnerability.fixAvailable === true ? vulnerability.fixAvailable : undefined,
-        paths: vulnerability.via?.map((v: any) => v.source || v.name) || [vulnerability.name],
+        fixVersion:
+          vulnerability.fixAvailable === true ? String(vulnerability.fixAvailable) : undefined,
+        paths: vulnerability.via?.map((v) => v.source || v.name || '') || [vulnerability.name],
         cwe: vulnerability.cwe,
         cve: vulnerability.cve,
       })
@@ -300,7 +348,7 @@ export class SecurityCommand {
   /**
    * Parse snyk results
    */
-  private parseSnykResults(snykData: any): Vulnerability[] {
+  private parseSnykResults(snykData: SnykData): Vulnerability[] {
     const vulnerabilities: Vulnerability[] = []
 
     if (!snykData.vulnerabilities) {
@@ -313,9 +361,9 @@ export class SecurityCommand {
         package: vuln.packageName,
         severity: vuln.severity,
         title: vuln.title,
-        url: vuln.url,
-        range: vuln.semver?.vulnerable?.join(' || ') || vuln.version,
-        fixAvailable: vuln.fixedIn?.length > 0,
+        url: vuln.url || '',
+        range: vuln.semver?.vulnerable?.join(' || ') || vuln.version || '',
+        fixAvailable: (vuln.fixedIn?.length ?? 0) > 0,
         fixVersion: vuln.fixedIn?.[0],
         paths: vuln.from || [vuln.packageName],
         cwe: vuln.identifiers?.CWE || [],
@@ -507,9 +555,10 @@ export class SecurityCommand {
           )
         )
       }
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as Error
       console.error(StyledText.iconError('Failed to apply security fixes:'))
-      console.error(StyledText.error(error.message))
+      console.error(StyledText.error(err.message))
     }
   }
 

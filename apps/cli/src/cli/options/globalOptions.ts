@@ -7,6 +7,36 @@
 
 import { Option } from 'commander'
 
+/**
+ * Raw CLI options input from commander (unvalidated)
+ */
+interface RawCliOptions {
+  workspace?: unknown
+  verbose?: unknown
+  color?: unknown
+  registry?: unknown
+  timeout?: unknown
+  config?: unknown
+  catalog?: unknown
+  format?: unknown
+  target?: unknown
+  prerelease?: unknown
+  include?: unknown
+  exclude?: unknown
+  interactive?: unknown
+  dryRun?: unknown
+  force?: unknown
+  createBackup?: unknown
+  ai?: unknown
+  provider?: unknown
+  analysisType?: unknown
+  skipCache?: unknown
+  validate?: unknown
+  stats?: unknown
+  info?: unknown
+  silent?: unknown
+}
+
 export interface GlobalCliOptions {
   workspace?: string
   verbose?: boolean
@@ -219,7 +249,7 @@ export class OptionUtils {
   /**
    * Parse and validate global options
    */
-  static parseGlobalOptions(options: any): GlobalCliOptions {
+  static parseGlobalOptions(options: RawCliOptions): GlobalCliOptions {
     const parsed: GlobalCliOptions = {}
 
     if (options.workspace) {
@@ -255,7 +285,7 @@ export class OptionUtils {
   /**
    * Parse check command options
    */
-  static parseCheckOptions(options: any): CheckCliOptions {
+  static parseCheckOptions(options: RawCliOptions): CheckCliOptions {
     const global = OptionUtils.parseGlobalOptions(options)
     const check: CheckCliOptions = { ...global }
 
@@ -277,13 +307,13 @@ export class OptionUtils {
 
     if (options.include) {
       check.include = Array.isArray(options.include)
-        ? options.include.map((p: any) => String(p).trim()).filter(Boolean)
+        ? options.include.map((p: unknown) => String(p).trim()).filter(Boolean)
         : [String(options.include).trim()].filter(Boolean)
     }
 
     if (options.exclude) {
       check.exclude = Array.isArray(options.exclude)
-        ? options.exclude.map((p: any) => String(p).trim()).filter(Boolean)
+        ? options.exclude.map((p: unknown) => String(p).trim()).filter(Boolean)
         : [String(options.exclude).trim()].filter(Boolean)
     }
 
@@ -293,7 +323,7 @@ export class OptionUtils {
   /**
    * Parse update command options
    */
-  static parseUpdateOptions(options: any): UpdateCliOptions {
+  static parseUpdateOptions(options: RawCliOptions): UpdateCliOptions {
     const check = OptionUtils.parseCheckOptions(options)
     const update: UpdateCliOptions = { ...check }
 
@@ -319,7 +349,7 @@ export class OptionUtils {
   /**
    * Parse analyze command options
    */
-  static parseAnalyzeOptions(options: any): AnalyzeCliOptions {
+  static parseAnalyzeOptions(options: RawCliOptions): AnalyzeCliOptions {
     const global = OptionUtils.parseGlobalOptions(options)
     const analyze: AnalyzeCliOptions = { ...global }
 
@@ -352,7 +382,7 @@ export class OptionUtils {
   /**
    * Parse workspace command options
    */
-  static parseWorkspaceOptions(options: any): WorkspaceCliOptions {
+  static parseWorkspaceOptions(options: RawCliOptions): WorkspaceCliOptions {
     const global = OptionUtils.parseGlobalOptions(options)
     const workspace: WorkspaceCliOptions = { ...global }
 
@@ -399,7 +429,7 @@ export class OptionUtils {
   /**
    * Validate option combinations
    */
-  static validateOptionCombinations(command: string, options: any): string[] {
+  static validateOptionCombinations(command: string, options: RawCliOptions): string[] {
     const errors: string[] = []
 
     switch (command) {

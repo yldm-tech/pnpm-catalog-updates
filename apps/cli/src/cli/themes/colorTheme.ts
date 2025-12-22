@@ -326,18 +326,27 @@ export class StyledText {
 }
 
 /**
+ * Chalk-like color function type
+ */
+type ColorFunction = {
+  (text: string): string
+  bold: (text: string) => string
+  dim: (text: string) => string
+}
+
+/**
  * Table styling utilities
  */
 export class TableStyles {
-  static createHeaderStyle(color: any) {
+  static createHeaderStyle(color: ColorFunction) {
     return (text: string) => color.bold(text)
   }
 
-  static createBorderStyle(color: any) {
+  static createBorderStyle(color: ColorFunction) {
     return (text: string) => color.dim(text)
   }
 
-  static createCellStyle(color: any) {
+  static createCellStyle(color: (text: string) => string) {
     return (text: string) => color(text)
   }
 }

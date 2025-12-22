@@ -345,7 +345,7 @@ export interface PackageJsonData {
   devDependencies?: Record<string, string>
   peerDependencies?: Record<string, string>
   optionalDependencies?: Record<string, string>
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**

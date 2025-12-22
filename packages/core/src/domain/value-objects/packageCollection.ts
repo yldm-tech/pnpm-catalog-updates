@@ -198,9 +198,13 @@ export class PackageCollection {
   public findPackagesWithDependency(dependencyName: string): Package[] {
     return this.getAll().filter((pkg) => {
       const deps = pkg.getDependencies()
-      return ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'].some(
-        (depType) => deps.getDependenciesByType(depType as any).has(dependencyName)
-      )
+      const depTypes = [
+        'dependencies',
+        'devDependencies',
+        'peerDependencies',
+        'optionalDependencies',
+      ] as const
+      return depTypes.some((depType) => deps.getDependenciesByType(depType).has(dependencyName))
     })
   }
 

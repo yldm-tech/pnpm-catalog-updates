@@ -15,8 +15,10 @@ export { AIAnalysisService } from './application/services/aiAnalysisService'
 
 // Application Service Types
 export type {
+  CatalogUpdateInfo,
   CheckOptions,
   ImpactAnalysis,
+  OutdatedDependencyInfo,
   OutdatedReport,
   UpdateOptions,
   UpdatePlan,

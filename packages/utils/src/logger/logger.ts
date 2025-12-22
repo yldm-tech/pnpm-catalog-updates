@@ -16,7 +16,7 @@ export interface LogEntry {
   level: LogLevel
   message: string
   context?: string
-  data?: any
+  data?: unknown
   error?: Error
 }
 
@@ -50,7 +50,7 @@ export class Logger {
       file: options.file || config.logging.file,
       console: options.console !== undefined ? options.console : !config.output.silent,
       json: options.json || false,
-    } as any
+    }
   }
 
   /**
@@ -77,35 +77,38 @@ export class Logger {
   /**
    * Log error message
    */
-  error(message: string, error?: Error, data?: any): void {
-    this.log('error', message, { ...(error && { error }), ...(data && { data }) })
+  error(message: string, error?: Error, data?: unknown): void {
+    const extra: { error?: Error; data?: unknown } = {}
+    if (error) extra.error = error
+    if (data !== undefined) extra.data = data
+    this.log('error', message, extra)
   }
 
   /**
    * Log warning message
    */
-  warn(message: string, data?: any): void {
+  warn(message: string, data?: unknown): void {
     this.log('warn', message, { data })
   }
 
   /**
    * Log info message
    */
-  info(message: string, data?: any): void {
+  info(message: string, data?: unknown): void {
     this.log('info', message, { data })
   }
 
   /**
    * Log debug message
    */
-  debug(message: string, data?: any): void {
+  debug(message: string, data?: unknown): void {
     this.log('debug', message, { data })
   }
 
   /**
    * Log with specific level
    */
-  log(level: LogLevel, message: string, extra: { error?: Error; data?: any } = {}): void {
+  log(level: LogLevel, message: string, extra: { error?: Error; data?: unknown } = {}): void {
     if (!this.shouldLog(level)) {
       return
     }

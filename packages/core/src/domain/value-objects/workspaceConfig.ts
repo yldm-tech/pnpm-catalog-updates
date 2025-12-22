@@ -398,7 +398,7 @@ export interface PnpmWorkspaceData {
   catalogMode?: CatalogMode
   shamefullyHoist?: boolean
   linkWorkspacePackages?: boolean | 'deep'
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**

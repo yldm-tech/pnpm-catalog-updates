@@ -8,7 +8,7 @@
 export interface CliContext {
   command: string
   args: string[]
-  options: Record<string, any>
+  options: Record<string, unknown>
   workingDirectory: string
   startTime: Date
   user?: string
@@ -47,16 +47,16 @@ export interface CliProgressReporter {
 export interface PromptOptions {
   type: 'input' | 'confirm' | 'select' | 'multiselect' | 'password'
   message: string
-  default?: any
+  default?: unknown
   choices?: Array<{
     title: string
-    value: any
+    value: unknown
     description?: string
     disabled?: boolean
   }>
-  validate?: (value: any) => boolean | string
-  format?: (value: any) => string
-  initial?: any
+  validate?: (value: unknown) => boolean | string
+  format?: (value: unknown) => string
+  initial?: unknown
   hint?: string
 }
 
@@ -68,8 +68,8 @@ export interface TableColumn {
   field: string
   width?: number
   align?: 'left' | 'center' | 'right'
-  format?: (value: any) => string
-  color?: (value: any) => string
+  format?: (value: unknown) => string
+  color?: (value: unknown) => string
 }
 
 /**
@@ -77,7 +77,7 @@ export interface TableColumn {
  */
 export interface TableOptions {
   columns: TableColumn[]
-  data: Record<string, any>[]
+  data: Record<string, unknown>[]
   title?: string
   border?: boolean
   compact?: boolean
@@ -122,7 +122,7 @@ export interface CliError extends Error {
   args?: string[]
   suggestions?: string[]
   helpUrl?: string
-  context?: Record<string, any>
+  context?: Record<string, unknown>
 }
 
 /**
@@ -156,7 +156,7 @@ export interface CommandDefinition {
 export interface OptionDefinition {
   flags: string
   description: string
-  default?: any
+  default?: unknown
   choices?: string[]
   required?: boolean
   multiple?: boolean

@@ -31,6 +31,32 @@ export interface BaseProviderOptions {
 }
 
 /**
+ * Raw recommendation from AI response (before normalization)
+ */
+interface RawAIRecommendation {
+  package?: string
+  name?: string
+  currentVersion?: string
+  targetVersion?: string
+  action?: string
+  reason?: string
+  riskLevel?: string
+  breakingChanges?: string[]
+  securityFixes?: string[]
+  estimatedEffort?: string
+}
+
+/**
+ * Parsed AI response structure
+ */
+interface ParsedAIResponse {
+  summary?: string
+  recommendations?: RawAIRecommendation[]
+  details?: string
+  warnings?: string[]
+}
+
+/**
  * Abstract base class for AI providers
  */
 export abstract class BaseAIProvider implements AIProvider {
@@ -315,19 +341,21 @@ Respond in JSON format with prioritized recommendations.`,
         return this.createFallbackResult(context, response)
       }
 
-      const parsed = JSON.parse(jsonMatch[0])
+      const parsed = JSON.parse(jsonMatch[0]) as ParsedAIResponse
 
-      const recommendations: Recommendation[] = (parsed.recommendations || []).map((rec: any) => ({
-        package: rec.package || rec.name,
-        currentVersion: rec.currentVersion || '',
-        targetVersion: rec.targetVersion || '',
-        action: this.normalizeAction(rec.action),
-        reason: rec.reason || '',
-        riskLevel: this.normalizeRiskLevel(rec.riskLevel),
-        breakingChanges: rec.breakingChanges || [],
-        securityFixes: rec.securityFixes || [],
-        estimatedEffort: rec.estimatedEffort || 'medium',
-      }))
+      const recommendations: Recommendation[] = (parsed.recommendations || []).map(
+        (rec: RawAIRecommendation) => ({
+          package: rec.package || rec.name || '',
+          currentVersion: rec.currentVersion || '',
+          targetVersion: rec.targetVersion || '',
+          action: this.normalizeAction(rec.action),
+          reason: rec.reason || '',
+          riskLevel: this.normalizeRiskLevel(rec.riskLevel),
+          breakingChanges: rec.breakingChanges || [],
+          securityFixes: rec.securityFixes || [],
+          estimatedEffort: this.normalizeEffort(rec.estimatedEffort),
+        })
+      )
 
       return {
         provider: this.name,
@@ -371,9 +399,9 @@ Respond in JSON format with prioritized recommendations.`,
   /**
    * Normalize action string
    */
-  private normalizeAction(action: string): Recommendation['action'] {
+  private normalizeAction(action: string | undefined): Recommendation['action'] {
     const normalized = action?.toLowerCase()
-    if (['update', 'skip', 'review', 'defer'].includes(normalized)) {
+    if (normalized && ['update', 'skip', 'review', 'defer'].includes(normalized)) {
       return normalized as Recommendation['action']
     }
     return 'review'
@@ -382,10 +410,21 @@ Respond in JSON format with prioritized recommendations.`,
   /**
    * Normalize risk level string
    */
-  private normalizeRiskLevel(level: string): RiskLevel {
+  private normalizeRiskLevel(level: string | undefined): RiskLevel {
     const normalized = level?.toLowerCase()
-    if (['low', 'medium', 'high', 'critical'].includes(normalized)) {
+    if (normalized && ['low', 'medium', 'high', 'critical'].includes(normalized)) {
       return normalized as RiskLevel
+    }
+    return 'medium'
+  }
+
+  /**
+   * Normalize estimated effort string
+   */
+  private normalizeEffort(effort: string | undefined): 'low' | 'medium' | 'high' {
+    const normalized = effort?.toLowerCase()
+    if (normalized && ['low', 'medium', 'high'].includes(normalized)) {
+      return normalized as 'low' | 'medium' | 'high'
     }
     return 'medium'
   }

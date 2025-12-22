@@ -90,7 +90,7 @@ export interface FileInfo {
 /**
  * Network response information
  */
-export interface NetworkResponse<T = any> {
+export interface NetworkResponse<T = unknown> {
   status: number
   statusText: string
   data: T
@@ -124,7 +124,7 @@ export interface LogContext {
   sessionId?: string
   correlationId?: string
   tags?: string[]
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 /**
@@ -135,7 +135,7 @@ export interface FeatureFlag {
   enabled: boolean
   description?: string
   rolloutPercentage?: number
-  conditions?: Record<string, any>
+  conditions?: Record<string, unknown>
 }
 
 /**
@@ -199,7 +199,7 @@ export interface PaginatedResponse<T> {
  */
 export interface SearchParams {
   query: string
-  filters?: Record<string, any>
+  filters?: Record<string, unknown>
   sort?: {
     field: string
     direction: 'asc' | 'desc'
@@ -210,7 +210,7 @@ export interface SearchParams {
 /**
  * Diff information
  */
-export interface Diff<T = any> {
+export interface Diff<T = unknown> {
   added: T[]
   removed: T[]
   modified: Array<{
@@ -247,8 +247,8 @@ export interface EventInfo {
   type: string
   timestamp: Date
   source: string
-  data: any
-  metadata?: Record<string, any>
+  data: unknown
+  metadata?: Record<string, unknown>
 }
 
 /**
@@ -282,7 +282,7 @@ export interface RetryConfig {
   baseDelay: number
   maxDelay: number
   backoffFactor: number
-  shouldRetry?: (error: any) => boolean
+  shouldRetry?: (error: unknown) => boolean
 }
 
 /**
@@ -303,5 +303,5 @@ export interface LockInfo {
   acquired: Date
   expires: Date
   renewable: boolean
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }

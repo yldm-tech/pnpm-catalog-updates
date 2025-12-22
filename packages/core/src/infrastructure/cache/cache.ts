@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from '
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-export interface CacheEntry<T = any> {
+export interface CacheEntry<T = unknown> {
   key: string
   value: T
   timestamp: number
@@ -35,7 +35,7 @@ export interface CacheStats {
   misses: number
 }
 
-export class Cache<T = any> {
+export class Cache<T = unknown> {
   private entries = new Map<string, CacheEntry<T>>()
   private stats = {
     hits: 0,
@@ -377,9 +377,51 @@ export class Cache<T = any> {
 }
 
 /**
+ * Package info structure cached by RegistryCache
+ */
+export interface CachedPackageInfo {
+  name: string
+  description?: string
+  homepage?: string
+  repository?: { type?: string; url?: string; directory?: string }
+  license?: string
+  author?: string | { name: string; email?: string }
+  maintainers?: Array<{ name: string; email?: string }>
+  keywords?: string[]
+  versions: string[]
+  latestVersion: string
+  tags: Record<string, string>
+  time?: Record<string, string>
+}
+
+/**
+ * Security report structure cached by RegistryCache
+ */
+export interface CachedSecurityReport {
+  package: string
+  version: string
+  vulnerabilities: Array<{
+    id: string
+    title: string
+    severity: 'low' | 'moderate' | 'high' | 'critical'
+    description: string
+    reference: string
+    vulnerable_versions: string
+    patched_versions?: string
+    recommendation?: string
+  }>
+  hasVulnerabilities: boolean
+}
+
+/**
+ * Union type for all registry cache values
+ */
+type RegistryCacheValue = CachedPackageInfo | CachedSecurityReport | string[]
+
+/**
  * Registry-specific cache for NPM API responses
  */
-export class RegistryCache extends Cache<any> {
+export class RegistryCache extends Cache<RegistryCacheValue> {
   constructor(options: CacheOptions = {}) {
     super('registry', {
       ttl: 3600000, // 1 hour
@@ -393,15 +435,15 @@ export class RegistryCache extends Cache<any> {
   /**
    * Cache package info
    */
-  setPackageInfo(packageName: string, info: any, ttl?: number): void {
+  setPackageInfo(packageName: string, info: CachedPackageInfo, ttl?: number): void {
     this.set(`package:${packageName}`, info, ttl)
   }
 
   /**
    * Get cached package info
    */
-  getPackageInfo(packageName: string): any | undefined {
-    return this.get(`package:${packageName}`)
+  getPackageInfo(packageName: string): CachedPackageInfo | undefined {
+    return this.get(`package:${packageName}`) as CachedPackageInfo | undefined
   }
 
   /**
@@ -415,28 +457,61 @@ export class RegistryCache extends Cache<any> {
    * Get cached versions
    */
   getVersions(packageName: string): string[] | undefined {
-    return this.get(`versions:${packageName}`)
+    return this.get(`versions:${packageName}`) as string[] | undefined
   }
 
   /**
    * Cache security report
    */
-  setSecurityReport(packageName: string, version: string, report: any, ttl?: number): void {
+  setSecurityReport(
+    packageName: string,
+    version: string,
+    report: CachedSecurityReport,
+    ttl?: number
+  ): void {
     this.set(`security:${packageName}:${version}`, report, ttl)
   }
 
   /**
    * Get cached security report
    */
-  getSecurityReport(packageName: string, version: string): any | undefined {
-    return this.get(`security:${packageName}:${version}`)
+  getSecurityReport(packageName: string, version: string): CachedSecurityReport | undefined {
+    return this.get(`security:${packageName}:${version}`) as CachedSecurityReport | undefined
   }
 }
 
 /**
+ * Workspace info structure cached by WorkspaceCache
+ */
+export interface CachedWorkspaceInfo {
+  path: string
+  name: string
+  packages: string[]
+  catalogs?: Record<string, Record<string, string>>
+}
+
+/**
+ * Package.json structure (subset of fields we use)
+ */
+export interface CachedPackageJson {
+  name?: string
+  version?: string
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+  [key: string]: unknown
+}
+
+/**
+ * Union type for all workspace cache values
+ */
+type WorkspaceCacheValue = CachedWorkspaceInfo | CachedPackageJson
+
+/**
  * Workspace-specific cache for file system operations
  */
-export class WorkspaceCache extends Cache<any> {
+export class WorkspaceCache extends Cache<WorkspaceCacheValue> {
   constructor(options: CacheOptions = {}) {
     super('workspace', {
       ttl: 300000, // 5 minutes (shorter TTL for file system)
@@ -450,29 +525,29 @@ export class WorkspaceCache extends Cache<any> {
   /**
    * Cache workspace info
    */
-  setWorkspaceInfo(workspacePath: string, info: any, ttl?: number): void {
+  setWorkspaceInfo(workspacePath: string, info: CachedWorkspaceInfo, ttl?: number): void {
     this.set(`workspace:${workspacePath}`, info, ttl)
   }
 
   /**
    * Get cached workspace info
    */
-  getWorkspaceInfo(workspacePath: string): any | undefined {
-    return this.get(`workspace:${workspacePath}`)
+  getWorkspaceInfo(workspacePath: string): CachedWorkspaceInfo | undefined {
+    return this.get(`workspace:${workspacePath}`) as CachedWorkspaceInfo | undefined
   }
 
   /**
    * Cache package.json content
    */
-  setPackageJson(filePath: string, content: any, ttl?: number): void {
+  setPackageJson(filePath: string, content: CachedPackageJson, ttl?: number): void {
     this.set(`package-json:${filePath}`, content, ttl)
   }
 
   /**
    * Get cached package.json
    */
-  getPackageJson(filePath: string): any | undefined {
-    return this.get(`package-json:${filePath}`)
+  getPackageJson(filePath: string): CachedPackageJson | undefined {
+    return this.get(`package-json:${filePath}`) as CachedPackageJson | undefined
   }
 }
 

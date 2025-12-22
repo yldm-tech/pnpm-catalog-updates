@@ -65,7 +65,7 @@ export class FileSystemService {
   /**
    * Read and parse a JSON file
    */
-  async readJsonFile<T = any>(filePath: string): Promise<T> {
+  async readJsonFile<T = unknown>(filePath: string): Promise<T> {
     try {
       const content = await this.readTextFile(filePath)
       return JSON.parse(content) as T
@@ -77,7 +77,7 @@ export class FileSystemService {
   /**
    * Write a JSON file
    */
-  async writeJsonFile(filePath: string, data: any, indent: number = 2): Promise<void> {
+  async writeJsonFile(filePath: string, data: unknown, indent: number = 2): Promise<void> {
     try {
       const content = JSON.stringify(data, null, indent)
       await this.writeTextFile(filePath, content)
@@ -89,7 +89,7 @@ export class FileSystemService {
   /**
    * Read and parse a YAML file
    */
-  async readYamlFile<T = any>(filePath: string): Promise<T> {
+  async readYamlFile<T = unknown>(filePath: string): Promise<T> {
     try {
       const content = await this.readTextFile(filePath)
       return YAML.parse(content) as T
@@ -101,7 +101,7 @@ export class FileSystemService {
   /**
    * Write a YAML file
    */
-  async writeYamlFile(filePath: string, data: any): Promise<void> {
+  async writeYamlFile(filePath: string, data: unknown): Promise<void> {
     try {
       const content = YAML.stringify(data, {
         indent: 2,
@@ -115,7 +115,7 @@ export class FileSystemService {
   /**
    * Write a YAML file while preserving comments and formatting
    */
-  async writeYamlFilePreservingFormat(filePath: string, data: any): Promise<void> {
+  async writeYamlFilePreservingFormat(filePath: string, data: PnpmWorkspaceData): Promise<void> {
     try {
       // Read the original file to preserve comments and formatting
       const originalContent = await this.readTextFile(filePath)
@@ -136,13 +136,13 @@ export class FileSystemService {
   /**
    * Update YAML content while preserving comments and formatting
    */
-  private updateYamlPreservingFormat(originalContent: string, newData: any): string {
+  private updateYamlPreservingFormat(originalContent: string, newData: PnpmWorkspaceData): string {
     const lines = originalContent.split('\n')
     const result: string[] = []
     let i = 0
 
     // Helper function to update a specific section
-    const updateSection = (sectionName: string, newValue: any): boolean => {
+    const updateSection = (sectionName: string, newValue: unknown): boolean => {
       if (!(sectionName in newData)) {
         return false
       }
@@ -306,7 +306,7 @@ export class FileSystemService {
    */
   private formatYamlSection(
     sectionName: string,
-    value: any,
+    value: unknown,
     baseIndent: number = 0,
     originalLines?: string[],
     sectionStart?: number,
@@ -322,14 +322,19 @@ export class FileSystemService {
       }
     } else if (
       (sectionName === 'catalog' || sectionName === 'catalogs') &&
-      typeof value === 'object'
+      typeof value === 'object' &&
+      value !== null
     ) {
+      // Type assertion after null check
+      const catalogValue = value as Record<string, string>
+      const catalogsValue = value as Record<string, Record<string, string>>
+
       if (sectionName === 'catalog') {
         lines.push(`${indent}catalog:`)
 
         // Try to preserve original structure and comments if available
         if (originalLines && sectionStart !== undefined && sectionEnd !== undefined) {
-          const valueEntries = Object.entries(value)
+          const valueEntries = Object.entries(catalogValue)
           const processedPackages = new Set<string>()
 
           // First pass: update existing packages while preserving comments
@@ -349,7 +354,7 @@ export class FileSystemService {
             const packageMatch = trimmed.match(/^(['"]?)([a-zA-Z0-9@\-_.\\/]+)\1:\s*(.+)$/)
             if (packageMatch?.[2]) {
               const packageName = packageMatch[2]
-              const newVersion = value[packageName]
+              const newVersion = catalogValue[packageName]
 
               if (newVersion !== undefined) {
                 // Update with new version while preserving indentation and quotes
@@ -377,7 +382,7 @@ export class FileSystemService {
           }
         } else {
           // Fallback to simple formatting
-          for (const [pkg, version] of Object.entries(value)) {
+          for (const [pkg, version] of Object.entries(catalogValue)) {
             lines.push(`${indent}  ${pkg}: ${version}`)
           }
         }
@@ -389,7 +394,7 @@ export class FileSystemService {
           // Try to preserve original structure for catalogs section
           this.formatCatalogsSection(
             lines,
-            value,
+            catalogsValue,
             baseIndent,
             originalLines,
             sectionStart,
@@ -397,7 +402,7 @@ export class FileSystemService {
           )
         } else {
           // Fallback to simple formatting
-          for (const [catalogName, catalog] of Object.entries(value as Record<string, any>)) {
+          for (const [catalogName, catalog] of Object.entries(catalogsValue)) {
             lines.push(`${indent}  ${catalogName}:`)
             for (const [pkg, version] of Object.entries(catalog)) {
               lines.push(`${indent}    ${pkg}: ${version}`)
@@ -415,7 +420,7 @@ export class FileSystemService {
    */
   private formatCatalogsSection(
     lines: string[],
-    value: Record<string, any>,
+    value: Record<string, Record<string, string>>,
     baseIndent: number,
     originalLines: string[],
     sectionStart: number,

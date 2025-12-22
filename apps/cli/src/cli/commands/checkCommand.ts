@@ -5,7 +5,13 @@
  * Provides detailed information about available updates.
  */
 
-import type { CatalogUpdateService, CheckOptions } from '@pcu/core'
+import type {
+  CatalogUpdateInfo,
+  CatalogUpdateService,
+  CheckOptions,
+  OutdatedDependencyInfo,
+  OutdatedReport,
+} from '@pcu/core'
 import { ConfigLoader } from '@pcu/utils'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
@@ -102,7 +108,7 @@ export class CheckCommand {
   /**
    * Show command summary
    */
-  private showSummary(report: any, _options: CheckCommandOptions): void {
+  private showSummary(report: OutdatedReport, _options: CheckCommandOptions): void {
     const lines: string[] = []
     const theme = ThemeManager.getTheme()
 
@@ -114,7 +120,7 @@ export class CheckCommand {
       lines.push(`  • ${report.catalogs.length} catalogs checked`)
 
       const totalPackages = report.catalogs.reduce(
-        (sum: number, cat: any) => sum + cat.totalPackages,
+        (sum: number, cat: CatalogUpdateInfo) => sum + cat.totalPackages,
         0
       )
       lines.push(`  • ${totalPackages} total catalog entries`)
@@ -139,8 +145,12 @@ export class CheckCommand {
       }
 
       // Security updates
-      const securityUpdates = report.catalogs.reduce((sum: number, cat: any) => {
-        return sum + cat.outdatedDependencies.filter((dep: any) => dep.isSecurityUpdate).length
+      const securityUpdates = report.catalogs.reduce((sum: number, cat: CatalogUpdateInfo) => {
+        return (
+          sum +
+          cat.outdatedDependencies.filter((dep: OutdatedDependencyInfo) => dep.isSecurityUpdate)
+            .length
+        )
       }, 0)
 
       if (securityUpdates > 0) {

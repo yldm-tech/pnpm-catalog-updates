@@ -131,14 +131,14 @@ export class ConfigManager {
   /**
    * Get a specific configuration value using dot notation
    */
-  get<T = any>(path: string): T {
-    return this.getNestedValue(this.config, path)
+  get<T = unknown>(path: string): T {
+    return this.getNestedValue(this.config, path) as T
   }
 
   /**
    * Set a configuration value using dot notation
    */
-  set(path: string, value: any): void {
+  set(path: string, value: unknown): void {
     this.setNestedValue(this.config, path, value)
   }
 
@@ -170,7 +170,7 @@ export class ConfigManager {
       this.config.registry.timeout = options.timeout
     }
     if (options.target) {
-      this.config.update.target = options.target as any
+      this.config.update.target = options.target as PcuConfig['update']['target']
     }
     if (options.prerelease !== undefined) {
       this.config.update.includePrerelease = options.prerelease
@@ -182,7 +182,7 @@ export class ConfigManager {
       this.config.update.force = options.force
     }
     if (options.format) {
-      this.config.output.format = options.format as any
+      this.config.output.format = options.format as PcuConfig['output']['format']
     }
     if (options.color !== undefined) {
       this.config.output.color = options.color
@@ -257,7 +257,7 @@ export class ConfigManager {
 
         // Handle default export
         if (fileConfig && typeof fileConfig === 'object' && 'default' in fileConfig) {
-          fileConfig = (fileConfig as any).default
+          fileConfig = (fileConfig as { default: Partial<PcuConfig> }).default
         }
       } else {
         // JSON file
@@ -294,7 +294,7 @@ export class ConfigManager {
     if (process.env.PCU_UPDATE_TARGET) {
       envConfig.update = {
         ...this.config.update,
-        target: process.env.PCU_UPDATE_TARGET as any,
+        target: process.env.PCU_UPDATE_TARGET as PcuConfig['update']['target'],
       }
     }
     if (process.env.PCU_UPDATE_PRERELEASE) {
@@ -308,7 +308,7 @@ export class ConfigManager {
     if (process.env.PCU_OUTPUT_FORMAT) {
       envConfig.output = {
         ...this.config.output,
-        format: process.env.PCU_OUTPUT_FORMAT as any,
+        format: process.env.PCU_OUTPUT_FORMAT as PcuConfig['output']['format'],
       }
     }
     if (process.env.PCU_OUTPUT_COLOR) {
@@ -322,7 +322,7 @@ export class ConfigManager {
     if (process.env.PCU_LOG_LEVEL) {
       envConfig.logging = {
         ...this.config.logging,
-        level: process.env.PCU_LOG_LEVEL as any,
+        level: process.env.PCU_LOG_LEVEL as PcuConfig['logging']['level'],
       }
     }
     if (process.env.PCU_LOG_FILE) {
@@ -339,14 +339,19 @@ export class ConfigManager {
   /**
    * Get nested value using dot notation
    */
-  private getNestedValue(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => current?.[key], obj)
+  private getNestedValue(obj: object, path: string): unknown {
+    return path.split('.').reduce((current: unknown, key) => {
+      if (current && typeof current === 'object' && key in current) {
+        return (current as Record<string, unknown>)[key]
+      }
+      return undefined
+    }, obj as unknown)
   }
 
   /**
    * Set nested value using dot notation (protected against prototype pollution)
    */
-  private setNestedValue(obj: any, path: string, value: any): void {
+  private setNestedValue(obj: object, path: string, value: unknown): void {
     const keys = path.split('.')
     const lastKey = keys.pop()!
 
@@ -359,7 +364,8 @@ export class ConfigManager {
       throw new Error('Invalid key: prototype pollution attempt detected')
     }
 
-    const target = keys.reduce((current, key) => {
+    const objRecord = obj as Record<string, unknown>
+    const target = keys.reduce((current: Record<string, unknown>, key) => {
       // Additional validation for each key in the path
       if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
         throw new Error(`Invalid key in path: ${key}`)
@@ -368,14 +374,14 @@ export class ConfigManager {
       if (!(key in current)) {
         // Use Object.defineProperty for safer property creation
         Object.defineProperty(current, key, {
-          value: Object.create(null),
+          value: Object.create(null) as Record<string, unknown>,
           writable: true,
           enumerable: true,
           configurable: true,
         })
       }
-      return current[key]
-    }, obj)
+      return current[key] as Record<string, unknown>
+    }, objRecord)
 
     // Use Object.defineProperty for safer final assignment
     Object.defineProperty(target, lastKey, {
@@ -389,29 +395,32 @@ export class ConfigManager {
   /**
    * Deep merge two objects (protected against prototype pollution)
    */
-  private deepMerge(target: any, source: any): any {
+  private deepMerge<T extends object>(target: T, source: Partial<T>): T {
     if (!source || typeof source !== 'object') {
       return target
     }
 
-    const result = { ...target }
+    const result = { ...target } as Record<string, unknown>
+    const sourceRecord = source as Record<string, unknown>
+    const targetRecord = target as Record<string, unknown>
 
-    for (const key in source) {
+    for (const key in sourceRecord) {
       // Prevent prototype pollution
       if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
         continue
       }
 
-      if (Object.hasOwn(source, key)) {
-        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-          result[key] = this.deepMerge(target[key] || {}, source[key])
+      if (Object.hasOwn(sourceRecord, key)) {
+        const sourceValue = sourceRecord[key]
+        if (sourceValue && typeof sourceValue === 'object' && !Array.isArray(sourceValue)) {
+          result[key] = this.deepMerge((targetRecord[key] as object) || {}, sourceValue as object)
         } else {
-          result[key] = source[key]
+          result[key] = sourceValue
         }
       }
     }
 
-    return result
+    return result as T
   }
 
   /**

@@ -15,6 +15,37 @@ export interface AutoCompleteOption {
   description?: string
 }
 
+/**
+ * Package choice for selection prompts
+ */
+interface PackageChoice {
+  name: string
+  current: string
+  latest: string
+  type: string
+}
+
+/**
+ * Configuration wizard result
+ */
+interface ConfigurationWizardResult {
+  theme: string
+  interactive: boolean
+  backup: boolean
+  updateStrategy: string
+  timeout: number
+}
+
+/**
+ * Update impact preview
+ */
+interface UpdateImpact {
+  totalUpdates: number
+  riskLevel: string
+  affectedCount: number
+  securityUpdates: number
+}
+
 export class InteractivePrompts {
   private fsService: FileSystemService
 
@@ -25,9 +56,7 @@ export class InteractivePrompts {
   /**
    * Interactive package selection with search
    */
-  async selectPackages(
-    packages: Array<{ name: string; current: string; latest: string; type: string }>
-  ): Promise<string[]> {
+  async selectPackages(packages: PackageChoice[]): Promise<string[]> {
     if (packages.length === 0) {
       return []
     }
@@ -238,7 +267,7 @@ export class InteractivePrompts {
   /**
    * Multi-step configuration wizard
    */
-  async configurationWizard(): Promise<any> {
+  async configurationWizard(): Promise<ConfigurationWizardResult> {
     console.log(chalk.bold.blue('\n🧙‍♂️ Configuration Wizard\n'))
 
     const themeAnswer = await inquirer.prompt({
@@ -291,12 +320,12 @@ export class InteractivePrompts {
       },
     })
 
-    const answers = {
-      ...themeAnswer,
-      ...interactiveAnswer,
-      ...backupAnswer,
-      ...strategyAnswer,
-      ...timeoutAnswer,
+    const answers: ConfigurationWizardResult = {
+      theme: themeAnswer.theme as string,
+      interactive: interactiveAnswer.interactive as boolean,
+      backup: backupAnswer.backup as boolean,
+      updateStrategy: strategyAnswer.updateStrategy as string,
+      timeout: timeoutAnswer.timeout as number,
     }
 
     return answers
@@ -305,7 +334,7 @@ export class InteractivePrompts {
   /**
    * Impact preview before update
    */
-  async previewImpact(impact: any): Promise<boolean> {
+  async previewImpact(impact: UpdateImpact): Promise<boolean> {
     console.log(chalk.bold.blue('\n📊 Impact Preview\n'))
 
     // Display impact summary
@@ -373,8 +402,8 @@ export class InteractivePrompts {
   /**
    * Format package choice for display
    */
-  private formatPackageChoice(pkg: any): string {
-    const updateTypeColor: Record<string, any> = {
+  private formatPackageChoice(pkg: PackageChoice): string {
+    const updateTypeColor: Record<string, (text: string) => string> = {
       major: chalk.red,
       minor: chalk.yellow,
       patch: chalk.green,
@@ -429,12 +458,23 @@ export class AutoCompleteManager {
 }
 
 /**
+ * Command builder options type
+ */
+interface CommandBuilderOptions {
+  format?: string
+  interactive?: boolean
+  dryRun?: boolean
+  backup?: boolean
+  prerelease?: boolean
+}
+
+/**
  * Interactive command builder
  */
 export class InteractiveCommandBuilder {
   static async buildCommand(): Promise<{
     command: string
-    options: Record<string, any>
+    options: CommandBuilderOptions
   }> {
     const baseCommand = await inquirer.prompt([
       {
@@ -450,7 +490,7 @@ export class InteractiveCommandBuilder {
       },
     ])
 
-    const options: Record<string, any> = {}
+    const options: CommandBuilderOptions = {}
 
     // Common options
     const common = await inquirer.prompt([

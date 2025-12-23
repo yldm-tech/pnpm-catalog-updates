@@ -12,16 +12,18 @@ Vollständige Referenz für alle PCU-Befehle und -Optionen. Erfahren Sie mehr ü
 
 PCU bietet mehrere Hauptbefehle mit sowohl vollständigen Namen als auch praktischen Abkürzungen:
 
-| Vollständiger Befehl | Shortcuts & Aliase  | Beschreibung                                        |
-| -------------------- | ------------------- | --------------------------------------------------- |
-| `pcu init`           | `pcu i`             | PNPM-Workspace und PCU-Konfiguration initialisieren |
-| `pcu check`          | `pcu chk`, `pcu -c` | Nach veralteten Katalog-Dependencies suchen         |
-| `pcu update`         | `pcu u`, `pcu -u`   | Katalog-Dependencies aktualisieren                  |
-| `pcu analyze`        | `pcu a`, `pcu -a`   | Auswirkungen von Dependency-Updates analysieren     |
-| `pcu workspace`      | `pcu w`, `pcu -s`   | Workspace-Informationen und Validierung anzeigen    |
-| `pcu theme`          | `pcu t`, `pcu -t`   | Farbthemen und UI-Einstellungen konfigurieren       |
-| `pcu security`       | `pcu sec`           | Sicherheitslücken-Scanning und -Fixes               |
-| `pcu help`           | `pcu h`, `pcu -h`   | Hilfeinformationen anzeigen                         |
+| Vollständiger Befehl | Shortcuts & Aliase                        | Beschreibung                                        |
+| -------------------- | ----------------------------------------- | --------------------------------------------------- |
+| `pcu init`           | `pcu i`                                   | PNPM-Workspace und PCU-Konfiguration initialisieren |
+| `pcu check`          | `pcu chk`, `pcu -c`, `pcu --check`        | Nach veralteten Katalog-Dependencies suchen         |
+| `pcu update`         | `pcu u`, `pcu -u`, `pcu --update`         | Katalog-Dependencies aktualisieren                  |
+| `pcu analyze`        | `pcu a`, `pcu -a`, `pcu --analyze`        | Auswirkungen von Dependency-Updates analysieren     |
+| `pcu ai`             | -                                         | AI-Provider-Verwaltung und Analyse-Tests            |
+| `pcu workspace`      | `pcu w`, `pcu -s`, `pcu --workspace-info` | Workspace-Informationen und Validierung anzeigen    |
+| `pcu theme`          | `pcu t`, `pcu -t`, `pcu --theme`          | Farbthemen und UI-Einstellungen konfigurieren       |
+| `pcu security`       | `pcu sec`                                 | Sicherheitslücken-Scanning und -Fixes               |
+| `pcu cache`          | -                                         | Cache-Verwaltung (Statistiken und Löschen)          |
+| `pcu help`           | `pcu h`, `pcu -h`                         | Hilfeinformationen anzeigen                         |
 
 ### Spezielle Shortcuts
 
@@ -560,6 +562,277 @@ pcu theme --interactive
 
 ---
 
+## `pcu ai` - AI-Provider-Verwaltung
+
+AI-Provider-Status prüfen und AI-Analyse-Cache verwalten.
+
+<CodeGroup>
+
+```bash {{ title: 'Status prüfen' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'Analyse testen' }}
+pcu ai --test
+```
+
+```bash {{ title: 'Cache-Verwaltung' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### Optionen
+
+<Properties>
+  <Property name="--status" type="boolean">
+    Status aller AI-Provider anzeigen (Standard)
+  </Property>
+  <Property name="--test" type="boolean">
+    AI-Analyse mit einer Beispielanfrage testen
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    AI-Analyse-Cache-Statistiken anzeigen
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    AI-Analyse-Cache löschen
+  </Property>
+</Properties>
+
+### Unterstützte AI-Provider
+
+PCU erkennt und verwendet automatisch verfügbare AI-CLI-Tools:
+
+| Provider   | CLI-Tool         | Erkennungsmethode              |
+| ---------- | ---------------- | ------------------------------ |
+| Claude     | `claude`         | PATH-Suche und Versionsausgabe |
+| Gemini     | `gemini`         | PATH-Suche und Versionsausgabe |
+| OpenAI     | `codex`          | PATH-Suche und Versionsausgabe |
+
+### Verwendungsbeispiele
+
+#### Provider-Status anzeigen
+
+```bash
+pcu ai
+```
+
+Zeigt alle erkannten AI-Provider mit Verfügbarkeitsstatus, Pfad und Version.
+
+#### AI-Analyse testen
+
+```bash
+pcu ai --test
+```
+
+Führt einen Testlauf mit einem Beispiel-Abhängigkeitsupdate durch, um zu überprüfen, ob die AI-Analyse funktioniert.
+
+---
+
+## `pcu cache` - Cache-Verwaltung
+
+PCU-Cache für NPM-Registry-Antworten, Workspace-Daten und AI-Analyseergebnisse verwalten.
+
+<CodeGroup>
+
+```bash {{ title: 'Statistiken anzeigen' }}
+pcu cache
+pcu cache --stats
+pcu cache --stats --verbose
+```
+
+```bash {{ title: 'Cache löschen' }}
+pcu cache --clear
+pcu cache --clear --verbose
+```
+
+</CodeGroup>
+
+### Optionen
+
+<Properties>
+  <Property name="--stats" type="boolean">
+    Cache-Statistiken anzeigen (Standardverhalten)
+  </Property>
+  <Property name="--clear" type="boolean">
+    Alle Cache-Einträge löschen
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    Detaillierte Informationen einschließlich Beschreibungen und Hit/Miss-Zähler anzeigen
+  </Property>
+  <Property name="--no-color" type="boolean">
+    Farbige Ausgabe deaktivieren
+  </Property>
+</Properties>
+
+### Cache-Typen
+
+PCU verwaltet drei separate Caches:
+
+#### Registry-Cache
+
+- **Zweck**: Speichert NPM-Registry-API-Antworten
+- **Vorteile**: Reduziert Netzwerkanfragen, schnellere Versionsabfragen
+- **TTL**: 1 Stunde (konfigurierbar)
+
+#### Workspace-Cache
+
+- **Zweck**: Speichert Workspace-Dateisystemdaten
+- **Vorteile**: Schnellere Workspace-Analyse bei wiederholten Durchläufen
+- **TTL**: 5 Minuten (konfigurierbar)
+
+#### AI-Analyse-Cache
+
+- **Zweck**: Speichert AI-gesteuerte Analyseergebnisse
+- **Vorteile**: Vermeidet redundante AI-API-Aufrufe, konsistente Ergebnisse
+- **TTL**: 24 Stunden (konfigurierbar)
+
+### Verwendungsbeispiele
+
+#### Cache-Statistiken anzeigen
+
+```bash
+pcu cache
+```
+
+Zeigt zusammenfassende Statistiken für alle Caches an.
+
+#### Alle Caches löschen
+
+```bash
+pcu cache --clear
+```
+
+Löscht alle Cache-Einträge. Nützlich bei Problemen mit veralteten Daten.
+
+---
+
+## Interaktive Features & Fortschrittsverfolgung
+
+PCU bietet erweiterte interaktive Funktionen und ausgeklügelte Fortschrittsverfolgung für alle Befehle.
+
+### Interaktive Befehlsschnittstelle
+
+#### Paketauswahl-System
+
+- **Smart Multi-Select**: Spezifische Pakete mit visuellen Checkboxen und Tastaturkürzeln auswählen
+- **Suchen & Filtern**: Echtzeitfilterung von Paketen mit Mustervergleich und Fuzzy-Search
+- **Batch-Operationen**: Ganze Gruppen mit kategorie-basierter Auswahl auswählen/abwählen
+- **Auswirkungsvorschau**: Potenzielle Änderungen vor Anwendung von Updates anzeigen
+
+#### Konfigurationsassistent
+
+Der interaktive Konfigurationsassistent (`pcu init --interactive`) bietet:
+
+- **Workspace-Erkennung**: Automatische Erkennung bestehender PNPM-Workspaces
+- **Vorlagenauswahl**: Wahl zwischen minimaler und vollständiger Konfigurationsvorlage
+- **Paketregeln-Setup**: Regeln für verschiedene Paketkategorien konfigurieren (React, Vue, TypeScript)
+- **Registry-Konfiguration**: Benutzerdefinierte NPM-Registries und Authentifizierung einrichten
+- **Validierungs-Einstellungen**: Qualitätskontrollpunkte und Sicherheitschecks konfigurieren
+
+#### Verzeichnis- & Dateibrowser
+
+- **Workspace-Navigation**: Eingebauter Dateisystem-Browser für Workspace-Auswahl
+- **Pfadvalidierung**: Echtzeitvalidierung von Workspace-Pfaden und -Strukturen
+- **Vorschaumodus**: Workspace-Inhalte vor Bestätigung der Auswahl anzeigen
+
+### Erweiterte Fortschrittsverfolgung
+
+#### Multi-Style Fortschrittsbalken
+
+PCU bietet sechs verschiedene Fortschrittsbalken-Stile, konfigurierbar pro Befehl oder global:
+
+<CodeGroup>
+
+```bash {{ title: 'Style-Beispiele' }}
+# Gradient-Fortschrittsbalken verwenden
+pcu update --progress-style gradient
+
+# Rainbow-animierte Fortschrittsanzeige
+pcu check --progress-style rainbow
+
+# Minimal für CI/CD-Umgebungen
+pcu security --progress-style minimal
+```
+
+</CodeGroup>
+
+#### Fortschrittsfunktionen
+
+- **Mehrstufige Verfolgung**: Zeigt Fortschritt über verschiedene Phasen (scan → analyze → update)
+- **Parallele Operationsstatus**: Individuelle Fortschrittsbalken für gleichzeitige Operationen
+- **Leistungsmetriken**: Echtzeit-Geschwindigkeitsindikatoren, ETA-Berechnungen, verstrichene Zeit
+- **Speichersichere Anzeige**: Stabile mehrzeilige Ausgabe, das Terminal-Flackern reduziert
+
+#### Stapelverarbeitungsstatus
+
+- **Warteschlangenmanagement**: Zeigt anstehende, aktive und abgeschlossene Paket-Operationen
+- **Konfliktauflösung**: Interaktive Behandlung von Peer-Dependency-Konflikten
+- **Fehlerwiederherstellung**: Skip/Retry-Optionen für fehlgeschlagene Operationen mit detailliertem Fehlerkontext
+- **Rollback-Fähigkeiten**: Änderungen rückgängig machen falls Probleme während Updates erkannt werden
+
+### Fehlerbehandlung & Wiederherstellung
+
+#### Intelligente Fehlererkennung
+
+- **Validierungsfehler**: Vor-Flug-Checks mit hilfreichen Vorschlägen für häufige Fehler
+- **Netzwerkprobleme**: Automatische Wiederholung mit exponentialem Backoff für Registry-Ausfälle
+- **Dependency-Konflikte**: Detaillierte Konfliktanalyse mit Auflösungsempfehlungen
+- **Berechtigungsprobleme**: Klare Anleitung für Dateisystem-Berechtigungsprobleme
+
+#### Interaktive Wiederherstellungsoptionen
+
+- **Überspringen & Fortfahren**: Problematische Pakete überspringen und mit verbleibenden Updates fortfahren
+- **Wiederholen mit Optionen**: Fehlgeschlagene Operationen mit verschiedenen Parametern wiederholen
+- **Rollback-Änderungen**: Partielle Änderungen rückgängig machen bei Problemen während Batch-Operationen
+- **Fehlerbericht exportieren**: Detaillierte Fehlerberichte für Fehlerbehebung generieren
+
+### Workspace-Integration
+
+#### Auto-Discovery-Features
+
+- **PNPM Workspace-Erkennung**: Findet und validiert automatisch Workspace-Konfigurationen
+- **Katalog-Discovery**: Erkennt bestehende Kataloge und ihre Paket-Mappings
+- **Paket-Analyse**: Analysiert Workspace-Struktur und Dependency-Beziehungen
+- **Konfigurationsvererbung**: Wendet workspace-spezifische Einstellungen automatisch an
+
+#### Validierung & Health-Checks
+
+- **Strukturvalidierung**: Stellt sicher, dass Workspace PNPM Best Practices befolgt
+- **Dependency-Konsistenz**: Überprüft auf Version-Mismatches zwischen Paketen
+- **Konfigurationsintegrität**: Validiert PCU-Konfiguration gegen Workspace-Struktur
+- **Health-Metriken**: Bietet umfassende Workspace-Health-Bewertung
+
+### Nutzungsbeispiele
+
+#### Interaktives Update mit erweiterten Features
+
+```bash
+pcu update --interactive --progress-style fancy --batch-size 15
+```
+
+Startet interaktives Update mit schicken Fortschrittsbalken und optimierter Batch-Verarbeitung.
+
+#### Konfiguration mit Vorschau
+
+```bash
+pcu init --interactive --preview --verbose
+```
+
+Führt Konfigurationsassistenten mit Vorschaumodus und detailliertem Logging aus.
+
+#### Fehlerwiederherstellungs-Workflow
+
+```bash
+pcu update --interactive --create-backup --confirm-major
+```
+
+Updates mit interaktiver Fehlerwiederherstellung, automatischen Backups und Major-Version-Bestätigung.
+
+---
+
 ## Globale Optionen
 
 Diese Optionen funktionieren mit allen Befehlen und können über Umgebungsvariablen gesetzt werden:
@@ -887,460 +1160,6 @@ PCU_CACHE_ENABLED=false pcu check
 - **Workspace-Parsing**: 80-95% schnellere Workspace-Analyse bei wiederholten Ausführungen
 - **Netzwerk-Abhängigkeit**: Reduzierte Abhängigkeit von Netzwerk-Konnektivität
 - **Startzeit**: 2-5x schnellerer Start für nachfolgende Operationen
-
----
-
-## Interaktive Features & Fortschrittsverfolgung
-
-PCU bietet erweiterte interaktive Funktionen und ausgeklügelte Fortschrittsverfolgung für alle Befehle.
-
-### Interaktive Befehlsschnittstelle
-
-#### Paketauswahl-System
-
-- **Smart Multi-Select**: Spezifische Pakete mit visuellen Checkboxen und Tastaturkürzeln auswählen
-- **Suchen & Filtern**: Echtzeitfilterung von Paketen mit Mustervergleich und Fuzzy-Search
-- **Batch-Operationen**: Ganze Gruppen mit kategorie-basierter Auswahl auswählen/abwählen
-- **Auswirkungsvorschau**: Potenzielle Änderungen vor Anwendung von Updates anzeigen
-
-#### Konfigurationsassistent
-
-Der interaktive Konfigurationsassistent (`pcu init --interactive`) bietet:
-
-- **Workspace-Erkennung**: Automatische Erkennung bestehender PNPM-Workspaces
-- **Vorlagenauswahl**: Wahl zwischen minimaler und vollständiger Konfigurationsvorlage
-- **Paketregeln-Setup**: Regeln für verschiedene Paketkategorien konfigurieren (React, Vue, TypeScript)
-- **Registry-Konfiguration**: Benutzerdefinierte NPM-Registries und Authentifizierung einrichten
-- **Validierungs-Einstellungen**: Qualitätskontrollpunkte und Sicherheitschecks konfigurieren
-
-#### Verzeichnis- & Dateibrowser
-
-- **Workspace-Navigation**: Eingebauter Dateisystem-Browser für Workspace-Auswahl
-- **Pfadvalidierung**: Echtzeitvalidierung von Workspace-Pfaden und -Strukturen
-- **Vorschaumodus**: Workspace-Inhalte vor Bestätigung der Auswahl anzeigen
-
-### Erweiterte Fortschrittsverfolgung
-
-#### Multi-Style Fortschrittsbalken
-
-PCU bietet sechs verschiedene Fortschrittsbalken-Stile, konfigurierbar pro Befehl oder global:
-
-<CodeGroup>
-
-```bash {{ title: 'Style-Beispiele' }}
-# Gradient-Fortschrittsbalken verwenden
-pcu update --progress-style gradient
-
-# Rainbow-animierte Fortschrittsanzeige
-pcu check --progress-style rainbow
-
-# Minimal für CI/CD-Umgebungen
-pcu security --progress-style minimal
-```
-
-</CodeGroup>
-
-#### Fortschrittsfunktionen
-
-- **Mehrstufige Verfolgung**: Zeigt Fortschritt über verschiedene Phasen (scan → analyze → update)
-- **Parallele Operationsstatus**: Individuelle Fortschrittsbalken für gleichzeitige Operationen
-- **Leistungsmetriken**: Echtzeit-Geschwindigkeitsindikatoren, ETA-Berechnungen, verstrichene Zeit
-- **Speichersichere Anzeige**: Stabile mehrzeilige Ausgabe, das Terminal-Flackern reduziert
-
-#### Stapelverarbeitungsstatus
-
-- **Warteschlangenmanagement**: Zeigt anstehende, aktive und abgeschlossene Paket-Operationen
-- **Konfliktauflösung**: Interaktive Behandlung von Peer-Dependency-Konflikten
-- **Fehlerwiederherstellung**: Skip/Retry-Optionen für fehlgeschlagene Operationen mit detailliertem Fehlerkontext
-- **Rollback-Fähigkeiten**: Änderungen rückgängig machen falls Probleme während Updates erkannt werden
-
-### Fehlerbehandlung & Wiederherstellung
-
-#### Intelligente Fehlererkennung
-
-- **Validierungsfehler**: Vor-Flug-Checks mit hilfreichen Vorschlägen für häufige Fehler
-- **Netzwerkprobleme**: Automatische Wiederholung mit exponentialem Backoff für Registry-Ausfälle
-- **Dependency-Konflikte**: Detaillierte Konfliktanalyse mit Auflösungsempfehlungen
-- **Berechtigungsprobleme**: Klare Anleitung für Dateisystem-Berechtigungsprobleme
-
-#### Interaktive Wiederherstellungsoptionen
-
-- **Überspringen & Fortfahren**: Problematische Pakete überspringen und mit verbleibenden Updates fortfahren
-- **Wiederholen mit Optionen**: Fehlgeschlagene Operationen mit verschiedenen Parametern wiederholen
-- **Rollback-Änderungen**: Partielle Änderungen rückgängig machen bei Problemen während Batch-Operationen
-- **Fehlerbericht exportieren**: Detaillierte Fehlerberichte für Fehlerbehebung generieren
-
-### Workspace-Integration
-
-#### Auto-Discovery-Features
-
-- **PNPM Workspace-Erkennung**: Findet und validiert automatisch Workspace-Konfigurationen
-- **Katalog-Discovery**: Erkennt bestehende Kataloge und ihre Paket-Mappings
-- **Paket-Analyse**: Analysiert Workspace-Struktur und Dependency-Beziehungen
-- **Konfigurationsvererbung**: Wendet workspace-spezifische Einstellungen automatisch an
-
-#### Validierung & Health-Checks
-
-- **Strukturvalidierung**: Stellt sicher, dass Workspace PNPM Best Practices befolgt
-- **Dependency-Konsistenz**: Überprüft auf Version-Mismatches zwischen Paketen
-- **Konfigurationsintegrität**: Validiert PCU-Konfiguration gegen Workspace-Struktur
-- **Health-Metriken**: Bietet umfassende Workspace-Health-Bewertung
-
-### Nutzungsbeispiele
-
-#### Interaktives Update mit erweiterten Features
-
-```bash
-pcu update --interactive --progress-style fancy --batch-size 15
-```
-
-Startet interaktives Update mit schicken Fortschrittsbalken und optimierter Batch-Verarbeitung.
-
-#### Konfiguration mit Vorschau
-
-```bash
-pcu init --interactive --preview --verbose
-```
-
-Führt Konfigurationsassistenten mit Vorschaumodus und detailliertem Logging aus.
-
-#### Fehlerwiederherstellungs-Workflow
-
-```bash
-pcu update --interactive --create-backup --confirm-major
-```
-
-Updates mit interaktiver Fehlerwiederherstellung, automatischen Backups und Major-Version-Bestätigung.
-
----
-
-## Globale Optionen
-
-Diese Optionen funktionieren mit allen Befehlen und können über Umgebungsvariablen gesetzt werden:
-
-<Properties>
-  <Property name="-w, --workspace" type="string" env="PCU_WORKSPACE">
-    Workspace-Verzeichnispfad
-  </Property>
-  <Property name="-v, --verbose" type="boolean" env="PCU_VERBOSE">
-    Verbose Logging mit detailliertem Output aktivieren
-  </Property>
-  <Property name="--no-color" type="boolean" env="PCU_NO_COLOR">
-    Farbige Ausgabe für CI/CD-Umgebungen deaktivieren
-  </Property>
-  <Property name="--registry" type="string" env="PCU_REGISTRY">
-    NPM-Registry-URL überschreiben
-  </Property>
-  <Property name="--timeout" type="number" env="PCU_TIMEOUT">
-    Request-Timeout in Millisekunden (Standard: 30000)
-  </Property>
-  <Property name="--config" type="string" env="PCU_CONFIG">
-    Pfad zu benutzerdefinierter Konfigurationsdatei
-  </Property>
-  <Property name="-V, --version" type="boolean">
-    Versionsnummer ausgeben und nach Updates suchen
-  </Property>
-  <Property name="-h, --help" type="boolean">
-    Hilfe für Befehl anzeigen
-  </Property>
-</Properties>
-
-### Umgebungsvariablen-Nutzung
-
-Alle globalen Optionen und befehlsspezifischen Einstellungen können über Umgebungsvariablen konfiguriert werden:
-
-#### Kern-Umgebungsvariablen
-
-<Properties>
-  <Property name="PCU_WORKSPACE" type="string">
-    Standard-Workspace-Verzeichnispfad
-  </Property>
-  <Property name="PCU_VERBOSE" type="boolean">
-    Ausführliches Logging global aktivieren
-  </Property>
-  <Property name="PCU_NO_COLOR" type="boolean">
-    Farbige Ausgabe deaktivieren (nützlich für CI/CD)
-  </Property>
-  <Property name="PCU_REGISTRY" type="string">
-    Standard-NPM-Registry-URL
-  </Property>
-  <Property name="PCU_TIMEOUT" type="number">
-    Request-Timeout in Millisekunden
-  </Property>
-  <Property name="PCU_CONFIG" type="string">
-    Pfad zu benutzerdefinierter Konfigurationsdatei
-  </Property>
-</Properties>
-
-#### Befehlsspezifische Umgebungsvariablen
-
-<Properties>
-  <Property name="PCU_CATALOG" type="string">
-    Standard-Katalog für Check/Update-Operationen
-  </Property>
-  <Property name="PCU_OUTPUT_FORMAT" type="enum">
-    Standard-Ausgabeformat: table, json, yaml, minimal
-  </Property>
-  <Property name="PCU_UPDATE_TARGET" type="enum">
-    Standard-Update-Ziel: latest, greatest, minor, patch, newest
-  </Property>
-  <Property name="PCU_PRERELEASE" type="boolean">
-    Prerelease-Versionen standardmäßig einbeziehen
-  </Property>
-  <Property name="PCU_INCLUDE" type="string">
-    Standard-Paket-Einschlussmuster
-  </Property>
-  <Property name="PCU_EXCLUDE" type="string">
-    Standard-Paket-Ausschlussmuster
-  </Property>
-  <Property name="PCU_INTERACTIVE" type="boolean">
-    Interaktiven Modus standardmäßig aktivieren
-  </Property>
-  <Property name="PCU_DRY_RUN" type="boolean">
-    Dry-Run-Modus standardmäßig aktivieren
-  </Property>
-  <Property name="PCU_FORCE" type="boolean">
-    Updates ohne Bestätigung erzwingen
-  </Property>
-  <Property name="PCU_CREATE_BACKUP" type="boolean">
-    Backup-Dateien vor Updates erstellen
-  </Property>
-</Properties>
-
-#### Theme & Display-Umgebungsvariablen
-
-<Properties>
-  <Property name="PCU_THEME" type="enum">
-    Standard-Farbthema: default, modern, minimal, neon
-  </Property>
-  <Property name="PCU_PROGRESS_STYLE" type="enum">
-    Fortschrittsbalken-Stil: default, gradient, fancy, minimal, rainbow, neon
-  </Property>
-  <Property name="PCU_ENVIRONMENT" type="enum">
-    Umgebungsvoreinstellung: development, production, presentation
-  </Property>
-</Properties>
-
-#### Sicherheits- & Cache-Umgebungsvariablen
-
-<Properties>
-  <Property name="PCU_SECURITY_AUDIT" type="boolean">
-    Automatische Sicherheitsscans aktivieren
-  </Property>
-  <Property name="PCU_FIX_VULNS" type="boolean">
-    Sicherheitslücken automatisch beheben
-  </Property>
-  <Property name="PCU_SEVERITY_THRESHOLD" type="enum">
-    Mindest-Schweregrad für Sicherheitswarnungen: low, moderate, high, critical
-  </Property>
-  <Property name="PCU_CACHE_ENABLED" type="boolean">
-    Caching-System aktivieren/deaktivieren
-  </Property>
-  <Property name="PCU_CACHE_TTL" type="number">
-    Cache-TTL in Millisekunden
-  </Property>
-  <Property name="PCU_CACHE_DIR" type="string">
-    Cache-Verzeichnispfad
-  </Property>
-</Properties>
-
-#### Erweiterte Konfigurations-Umgebungsvariablen
-
-<Properties>
-  <Property name="PCU_CONCURRENCY" type="number">
-    Maximale Anzahl gleichzeitiger Operationen (1-50)
-  </Property>
-  <Property name="PCU_BATCH_SIZE" type="number">
-    Anzahl der Pakete pro Batch-Operation
-  </Property>
-  <Property name="PCU_RETRY_COUNT" type="number">
-    Anzahl der Wiederholungsversuche bei Fehlern
-  </Property>
-  <Property name="PCU_USER_AGENT" type="string">
-    Benutzerdefinierter User-Agent für Registry-Requests
-  </Property>
-  <Property name="PCU_PROXY" type="string">
-    HTTP-Proxy-URL für Registry-Requests
-  </Property>
-  <Property name="PCU_SKIP_VERSION_CHECK" type="boolean">
-    Automatische PCU-Version-Checks überspringen
-  </Property>
-</Properties>
-
-### Umgebungsvariablen-Beispiele
-
-<CodeGroup>
-
-```bash {{ title: 'Entwicklungsumgebung' }}
-# Entwickler-freundliche Einstellungen
-export PCU_THEME=modern
-export PCU_INTERACTIVE=true
-export PCU_CREATE_BACKUP=true
-export PCU_VERBOSE=true
-
-# Mit konfigurierten Umgebungsvariablen
-pcu check
-pcu update
-```
-
-```bash {{ title: 'CI/CD-Pipeline' }}
-# CI-optimierte Einstellungen
-export PCU_NO_COLOR=true
-export PCU_INTERACTIVE=false
-export PCU_DRY_RUN=true
-export PCU_OUTPUT_FORMAT=json
-
-# Automatisierte Checks
-pcu check > dependency-report.json
-```
-
-```bash {{ title: 'Produktionsumgebung' }}
-# Konservative Produktions-Einstellungen
-export PCU_UPDATE_TARGET=patch
-export PCU_FORCE=false
-export PCU_CREATE_BACKUP=true
-export PCU_SECURITY_AUDIT=true
-
-# Sichere Updates
-pcu update --interactive
-```
-
-```bash {{ title: 'Unternehmens-Setup' }}
-# Enterprise-Konfiguration
-export PCU_REGISTRY=https://npm.company.com
-export PCU_TIMEOUT=60000
-export PCU_CONCURRENCY=5
-export PCU_CACHE_DIR=/opt/pcu/cache
-
-# Proxy- und Authentifizierung
-export PCU_PROXY=http://proxy.company.com:8080
-export NPM_TOKEN=$COMPANY_NPM_TOKEN
-
-pcu check --workspace /enterprise/monorepo
-```
-
-</CodeGroup>
-
-### Konfigurationspriorität
-
-Einstellungen werden in dieser Reihenfolge angewendet (spätere überschreiben frühere):
-
-1. Eingebaute Standardwerte
-2. Globale Konfiguration (`~/.pcurc.json`)
-3. Projektkonfiguration (`.pcurc.json`)
-4. Umgebungsvariablen (`PCU_*`)
-5. Kommandozeilen-Flags (höchste Priorität)
-
----
-
-## Auto-Update-System
-
-PCU enthält ein intelligentes Auto-Update-System, das automatisch nach neueren Versionen des Tools sucht und Benutzer über verfügbare Updates informiert.
-
-### Update-Verhalten
-
-<CodeGroup>
-
-```bash {{ title: 'Automatische Update-Checks' }}
-# PCU überprüft beim Start automatisch auf Updates
-pcu check
-# ✨ PCU v2.1.0 ist verfügbar (aktuelle Version: v2.0.5)
-# 🚀 Führen Sie 'npm install -g pcu@latest' zum Update aus
-
-# Update-Check kann deaktiviert werden
-PCU_CHECK_FOR_UPDATES=false pcu check
-```
-
-```bash {{ title: 'Manueller Update-Check' }}
-# Explizite Update-Prüfung
-pcu --version --check-updates
-
-# Version anzeigen ohne Update-Check
-pcu --version --no-update-check
-```
-
-</CodeGroup>
-
-### CI/CD-Erkennung
-
-Das System erkennt automatisch CI/CD-Umgebungen und passt das Verhalten entsprechend an:
-
-#### Erkannte CI-Umgebungen
-
-- **GitHub Actions** (`GITHUB_ACTIONS=true`)
-- **GitLab CI** (`GITLAB_CI=true`)
-- **Jenkins** (`JENKINS_URL` gesetzt)
-- **Azure DevOps** (`TF_BUILD=true`)
-- **CircleCI** (`CIRCLECI=true`)
-- **Travis CI** (`TRAVIS=true`)
-- **Generic CI** (`CI=true`)
-
-#### CI-spezifisches Verhalten
-
-<Properties>
-  <Property name="updateChecks" type="behavior" default="disabled">
-    Update-Checks sind in CI-Umgebungen standardmäßig deaktiviert
-  </Property>
-  <Property name="notifications" type="behavior" default="logs-only">
-    Updates werden nur in Logs erwähnt, keine interaktiven Prompts
-  </Property>
-  <Property name="caching" type="behavior" default="optimized">
-    Aggressivere Caching-Strategien für CI-Performance
-  </Property>
-  <Property name="errorReporting" type="behavior" default="verbose">
-    Detaillierte Fehlerberichte für Debugging in CI
-  </Property>
-</Properties>
-
-### Update-Strategien
-
-<CodeGroup>
-
-```bash {{ title: 'Konservative Updates' }}
-# Nur Patch-Versionen in CI
-npm install -g pcu@~2.0.0
-
-# Spezifische Version pinnen
-npm install -g pcu@2.0.5
-```
-
-```bash {{ title: 'Automatische Updates' }}
-# Immer neueste stabile Version
-npm install -g pcu@latest
-
-# Beta-Versionen für Early Adopters
-npm install -g pcu@beta
-```
-
-</CodeGroup>
-
-### Konfigurationsoptionen
-
-```json
-{
-  "advanced": {
-    "checkForUpdates": true,
-    "updateChannel": "stable",
-    "updateNotifications": true,
-    "ciUpdateBehavior": "log-only"
-  }
-}
-```
-
-<Properties>
-  <Property name="checkForUpdates" type="boolean" default="true">
-    Automatische Update-Checks aktivieren/deaktivieren
-  </Property>
-  <Property name="updateChannel" type="enum" default="stable">
-    Update-Kanal: stable, beta, nightly
-  </Property>
-  <Property name="updateNotifications" type="boolean" default="true">
-    Update-Benachrichtigungen anzeigen
-  </Property>
-  <Property name="ciUpdateBehavior" type="enum" default="log-only">
-    Verhalten in CI: disabled, log-only, notify
-  </Property>
-</Properties>
 
 ---
 

@@ -154,25 +154,34 @@ export class OutputFormatter {
     const lines: string[] = []
 
     // Header
-    lines.push(this.colorize(chalk.bold, `\n📦 Workspace: ${report.workspace.name}`))
-    lines.push(this.colorize(chalk.gray, `Path: ${report.workspace.path}`))
+    lines.push(this.colorize(chalk.bold, `\n📦 ${t('format.workspace')}: ${report.workspace.name}`))
+    lines.push(this.colorize(chalk.gray, `${t('format.path')}: ${report.workspace.path}`))
 
     if (!report.hasUpdates) {
-      lines.push(this.colorize(chalk.green, '\n✅ All catalog dependencies are up to date!'))
+      lines.push(this.colorize(chalk.green, `\n✅ ${t('format.allUpToDate')}`))
       return lines.join('\n')
     }
 
     lines.push(
-      this.colorize(chalk.yellow, `\n🔄 Found ${report.totalOutdated} outdated dependencies\n`)
+      this.colorize(
+        chalk.yellow,
+        `\n🔄 ${t('format.foundOutdated', { count: String(report.totalOutdated) })}\n`
+      )
     )
 
     for (const catalogInfo of report.catalogs) {
       if (catalogInfo.outdatedCount === 0) continue
 
-      lines.push(this.colorize(chalk.bold, `📋 Catalog: ${catalogInfo.catalogName}`))
+      lines.push(this.colorize(chalk.bold, `📋 ${t('format.catalog')}: ${catalogInfo.catalogName}`))
 
       const table = new Table({
-        head: this.colorizeHeaders(['Package', 'Current', 'Latest', 'Type', 'Packages']),
+        head: this.colorizeHeaders([
+          t('table.header.package'),
+          t('table.header.current'),
+          t('table.header.latest'),
+          t('table.header.type'),
+          t('table.header.packagesCount'),
+        ]),
         style: { head: [], border: [] },
         colWidths: [25, 15, 15, 8, 20],
       })
@@ -193,7 +202,7 @@ export class OutputFormatter {
           currentColored,
           latestColored,
           this.colorize(typeColor, dep.updateType),
-          `${dep.affectedPackages.length} package(s)`,
+          t('common.packagesCount', { count: String(dep.affectedPackages.length) }),
         ])
       }
 
@@ -209,7 +218,7 @@ export class OutputFormatter {
    */
   private formatOutdatedMinimal(report: OutdatedReport): string {
     if (!report.hasUpdates) {
-      return 'All dependencies up to date'
+      return t('format.allUpToDate')
     }
 
     // Collect all dependencies first to calculate max package name width
@@ -270,22 +279,33 @@ export class OutputFormatter {
     const lines: string[] = []
 
     // Header
-    lines.push(this.colorize(chalk.bold, `\n📦 Workspace: ${result.workspace.name}`))
+    lines.push(this.colorize(chalk.bold, `\n📦 ${t('format.workspace')}: ${result.workspace.name}`))
 
     if (result.success) {
-      lines.push(this.colorize(chalk.green, '✅ Update completed successfully!'))
+      lines.push(this.colorize(chalk.green, `✅ ${t('format.updateCompleted')}`))
     } else {
-      lines.push(this.colorize(chalk.red, '❌ Update completed with errors'))
+      lines.push(this.colorize(chalk.red, `❌ ${t('format.updateFailed')}`))
     }
 
     lines.push('')
 
     // Updated dependencies
     if (result.updatedDependencies.length > 0) {
-      lines.push(this.colorize(chalk.green, `🎉 Updated ${result.totalUpdated} dependencies:`))
+      lines.push(
+        this.colorize(
+          chalk.green,
+          `🎉 ${t('format.updatedCount', { count: String(result.totalUpdated) })}:`
+        )
+      )
 
       const table = new Table({
-        head: this.colorizeHeaders(['Catalog', 'Package', 'From', 'To', 'Type']),
+        head: this.colorizeHeaders([
+          t('table.header.catalog'),
+          t('table.header.package'),
+          t('table.header.from'),
+          t('table.header.to'),
+          t('table.header.type'),
+        ]),
         style: { head: [], border: [] },
         colWidths: [15, 25, 15, 15, 8],
       })
@@ -315,7 +335,9 @@ export class OutputFormatter {
 
     // Skipped dependencies
     if (result.skippedDependencies.length > 0) {
-      lines.push(this.colorize(chalk.yellow, `⚠️  Skipped ${result.totalSkipped} dependencies:`))
+      lines.push(
+        this.colorize(chalk.yellow, `⚠️  ${t('format.skippedDeps')} (${result.totalSkipped}):`)
+      )
 
       for (const dep of result.skippedDependencies) {
         lines.push(`  ${dep.catalogName}:${dep.packageName} - ${dep.reason}`)
@@ -325,7 +347,12 @@ export class OutputFormatter {
 
     // Errors
     if (result.errors.length > 0) {
-      lines.push(this.colorize(chalk.red, `❌ ${result.totalErrors} errors occurred:`))
+      lines.push(
+        this.colorize(
+          chalk.red,
+          `❌ ${t('format.errorCount', { count: String(result.totalErrors) })}:`
+        )
+      )
 
       for (const error of result.errors) {
         const prefix = error.fatal ? '💥' : '⚠️ '
@@ -343,9 +370,9 @@ export class OutputFormatter {
     const lines: string[] = []
 
     if (result.success) {
-      lines.push(`Updated ${result.totalUpdated} dependencies`)
+      lines.push(t('format.updatedCount', { count: String(result.totalUpdated) }))
     } else {
-      lines.push(`Update failed with ${result.totalErrors} errors`)
+      lines.push(t('format.errorCount', { count: String(result.totalErrors) }))
     }
 
     if (result.updatedDependencies.length > 0) {
@@ -393,24 +420,36 @@ export class OutputFormatter {
     const lines: string[] = []
 
     // Header
-    lines.push(this.colorize(chalk.bold, `\n🔍 Impact Analysis: ${analysis.packageName}`))
-    lines.push(this.colorize(chalk.gray, `Catalog: ${analysis.catalogName}`))
     lines.push(
-      this.colorize(chalk.gray, `Update: ${analysis.currentVersion} → ${analysis.proposedVersion}`)
+      this.colorize(chalk.bold, `\n🔍 ${t('format.impactAnalysis')}: ${analysis.packageName}`)
     )
-    lines.push(this.colorize(chalk.gray, `Type: ${analysis.updateType}`))
+    lines.push(this.colorize(chalk.gray, `${t('format.catalog')}: ${analysis.catalogName}`))
+    lines.push(
+      this.colorize(
+        chalk.gray,
+        `${t('format.updateInfo')}: ${analysis.currentVersion} → ${analysis.proposedVersion}`
+      )
+    )
+    lines.push(this.colorize(chalk.gray, `${t('table.header.type')}: ${analysis.updateType}`))
 
     // Risk level
     const riskColor = this.getRiskColor(analysis.riskLevel)
-    lines.push(this.colorize(riskColor, `Risk Level: ${analysis.riskLevel.toUpperCase()}`))
+    lines.push(
+      this.colorize(riskColor, `${t('format.riskLevel')}: ${analysis.riskLevel.toUpperCase()}`)
+    )
     lines.push('')
 
     // Affected packages
     if (analysis.affectedPackages.length > 0) {
-      lines.push(this.colorize(chalk.bold, '📦 Affected Packages:'))
+      lines.push(this.colorize(chalk.bold, `📦 ${t('format.affectedPackages')}:`))
 
       const table = new Table({
-        head: this.colorizeHeaders(['Package', 'Path', 'Dependency Type', 'Risk']),
+        head: this.colorizeHeaders([
+          t('table.header.package'),
+          t('table.header.path'),
+          t('table.header.dependencyType'),
+          t('table.header.risk'),
+        ]),
         style: { head: [], border: [] },
         colWidths: [20, 30, 15, 10],
       })
@@ -431,13 +470,13 @@ export class OutputFormatter {
 
     // Security impact
     if (analysis.securityImpact.hasVulnerabilities) {
-      lines.push(this.colorize(chalk.bold, '🔒 Security Impact:'))
+      lines.push(this.colorize(chalk.bold, `🔒 ${t('format.securityImpact')}:`))
 
       if (analysis.securityImpact.fixedVulnerabilities > 0) {
         lines.push(
           this.colorize(
             chalk.green,
-            `  ✅ Fixes ${analysis.securityImpact.fixedVulnerabilities} vulnerabilities`
+            `  ✅ ${t('format.fixesVulns', { count: String(analysis.securityImpact.fixedVulnerabilities) })}`
           )
         )
       }
@@ -446,7 +485,7 @@ export class OutputFormatter {
         lines.push(
           this.colorize(
             chalk.red,
-            `  ⚠️  Introduces ${analysis.securityImpact.newVulnerabilities} vulnerabilities`
+            `  ⚠️  ${t('format.introducesVulns', { count: String(analysis.securityImpact.newVulnerabilities) })}`
           )
         )
       }
@@ -456,7 +495,7 @@ export class OutputFormatter {
 
     // Recommendations
     if (analysis.recommendations.length > 0) {
-      lines.push(this.colorize(chalk.bold, '💡 Recommendations:'))
+      lines.push(this.colorize(chalk.bold, `💡 ${t('format.recommendations')}:`))
       for (const rec of analysis.recommendations) {
         lines.push(`  ${rec}`)
       }
@@ -471,8 +510,8 @@ export class OutputFormatter {
   private formatImpactMinimal(analysis: ImpactAnalysis): string {
     return [
       `${analysis.packageName}: ${analysis.currentVersion} → ${analysis.proposedVersion}`,
-      `Risk: ${analysis.riskLevel}`,
-      `Affected: ${analysis.affectedPackages.length} packages`,
+      `${t('format.riskLevel')}: ${analysis.riskLevel}`,
+      `${t('format.affectedPackages')}: ${analysis.affectedPackages.length} ${t('format.packages')}`,
     ].join('\n')
   }
 
@@ -486,21 +525,26 @@ export class OutputFormatter {
     const statusIcon = report.isValid ? '✅' : '❌'
     const statusColor = report.isValid ? chalk.green : chalk.red
 
-    lines.push(this.colorize(chalk.bold, `\n${statusIcon} Workspace Validation`))
-    lines.push(this.colorize(statusColor, `Status: ${report.isValid ? 'VALID' : 'INVALID'}`))
+    lines.push(this.colorize(chalk.bold, `\n${statusIcon} ${t('format.workspaceValidation')}`))
+    lines.push(
+      this.colorize(
+        statusColor,
+        `${t('format.status')}: ${report.isValid ? t('format.valid') : t('format.invalid')}`
+      )
+    )
     lines.push('')
 
     // Workspace info
-    lines.push(this.colorize(chalk.bold, '📦 Workspace Information:'))
-    lines.push(`  Path: ${report.workspace.path}`)
-    lines.push(`  Name: ${report.workspace.name}`)
-    lines.push(`  Packages: ${report.workspace.packageCount}`)
-    lines.push(`  Catalogs: ${report.workspace.catalogCount}`)
+    lines.push(this.colorize(chalk.bold, `📦 ${t('format.workspaceInfo')}:`))
+    lines.push(`  ${t('format.path')}: ${report.workspace.path}`)
+    lines.push(`  ${t('format.name')}: ${report.workspace.name}`)
+    lines.push(`  ${t('format.packages')}: ${report.workspace.packageCount}`)
+    lines.push(`  ${t('format.catalogs')}: ${report.workspace.catalogCount}`)
     lines.push('')
 
     // Errors
     if (report.errors.length > 0) {
-      lines.push(this.colorize(chalk.red, '❌ Errors:'))
+      lines.push(this.colorize(chalk.red, `❌ ${t('format.errors')}:`))
       for (const error of report.errors) {
         lines.push(`  • ${error}`)
       }
@@ -509,7 +553,7 @@ export class OutputFormatter {
 
     // Warnings
     if (report.warnings.length > 0) {
-      lines.push(this.colorize(chalk.yellow, '⚠️  Warnings:'))
+      lines.push(this.colorize(chalk.yellow, `⚠️  ${t('format.warnings')}:`))
       for (const warning of report.warnings) {
         lines.push(`  • ${warning}`)
       }
@@ -518,7 +562,7 @@ export class OutputFormatter {
 
     // Recommendations
     if (report.recommendations.length > 0) {
-      lines.push(this.colorize(chalk.blue, '💡 Recommendations:'))
+      lines.push(this.colorize(chalk.blue, `💡 ${t('format.recommendations')}:`))
       for (const rec of report.recommendations) {
         lines.push(`  • ${rec}`)
       }
@@ -531,11 +575,11 @@ export class OutputFormatter {
    * Format validation report minimally
    */
   private formatValidationMinimal(report: WorkspaceValidationReport): string {
-    const status = report.isValid ? 'VALID' : 'INVALID'
+    const status = report.isValid ? t('format.valid') : t('format.invalid')
     const errors = report.errors.length
     const warnings = report.warnings.length
 
-    return `${status} (${errors} errors, ${warnings} warnings)`
+    return `${status} (${errors} ${t('format.errors')}, ${warnings} ${t('format.warnings')})`
   }
 
   /**
@@ -544,26 +588,32 @@ export class OutputFormatter {
   private formatStatsTable(stats: WorkspaceStats): string {
     const lines: string[] = []
 
-    lines.push(this.colorize(chalk.bold, `\n📊 Workspace Statistics`))
-    lines.push(this.colorize(chalk.gray, `Workspace: ${stats.workspace.name}`))
+    lines.push(this.colorize(chalk.bold, `\n📊 ${t('format.workspaceStatistics')}`))
+    lines.push(this.colorize(chalk.gray, `${t('format.workspace')}: ${stats.workspace.name}`))
     lines.push('')
 
     const table = new Table({
-      head: this.colorizeHeaders(['Metric', 'Count']),
+      head: this.colorizeHeaders([t('table.header.metric'), t('table.header.count')]),
       style: { head: [], border: [] },
       colWidths: [30, 10],
     })
 
-    table.push(['Total Packages', stats.packages.total.toString()])
-    table.push(['Packages with Catalog Refs', stats.packages.withCatalogReferences.toString()])
-    table.push(['Total Catalogs', stats.catalogs.total.toString()])
-    table.push(['Catalog Entries', stats.catalogs.totalEntries.toString()])
-    table.push(['Total Dependencies', stats.dependencies.total.toString()])
-    table.push(['Catalog References', stats.dependencies.catalogReferences.toString()])
-    table.push(['Dependencies', stats.dependencies.byType.dependencies.toString()])
-    table.push(['Dev Dependencies', stats.dependencies.byType.devDependencies.toString()])
-    table.push(['Peer Dependencies', stats.dependencies.byType.peerDependencies.toString()])
-    table.push(['Optional Dependencies', stats.dependencies.byType.optionalDependencies.toString()])
+    table.push([t('stats.totalPackages'), stats.packages.total.toString()])
+    table.push([
+      t('stats.packagesWithCatalogRefs'),
+      stats.packages.withCatalogReferences.toString(),
+    ])
+    table.push([t('stats.totalCatalogs'), stats.catalogs.total.toString()])
+    table.push([t('stats.catalogEntries'), stats.catalogs.totalEntries.toString()])
+    table.push([t('stats.totalDependencies'), stats.dependencies.total.toString()])
+    table.push([t('stats.catalogReferences'), stats.dependencies.catalogReferences.toString()])
+    table.push([t('stats.dependencies'), stats.dependencies.byType.dependencies.toString()])
+    table.push([t('stats.devDependencies'), stats.dependencies.byType.devDependencies.toString()])
+    table.push([t('stats.peerDependencies'), stats.dependencies.byType.peerDependencies.toString()])
+    table.push([
+      t('stats.optionalDependencies'),
+      stats.dependencies.byType.optionalDependencies.toString(),
+    ])
 
     lines.push(table.toString())
 
@@ -575,9 +625,9 @@ export class OutputFormatter {
    */
   private formatStatsMinimal(stats: WorkspaceStats): string {
     return [
-      `Packages: ${stats.packages.total}`,
-      `Catalogs: ${stats.catalogs.total}`,
-      `Dependencies: ${stats.dependencies.total}`,
+      `${t('format.packages')}: ${stats.packages.total}`,
+      `${t('format.catalogs')}: ${stats.catalogs.total}`,
+      `${t('stats.totalDependencies')}: ${stats.dependencies.total}`,
     ].join(', ')
   }
 
@@ -588,30 +638,52 @@ export class OutputFormatter {
     const lines: string[] = []
 
     // Header
-    lines.push(this.colorize(chalk.bold, '\n🔒 Security Report'))
-    lines.push(this.colorize(chalk.gray, `Workspace: ${report.metadata.workspacePath}`))
+    lines.push(this.colorize(chalk.bold, `\n🔒 ${t('format.securityReport')}`))
     lines.push(
-      this.colorize(chalk.gray, `Scan Date: ${new Date(report.metadata.scanDate).toLocaleString()}`)
+      this.colorize(chalk.gray, `${t('format.workspace')}: ${report.metadata.workspacePath}`)
     )
-    lines.push(this.colorize(chalk.gray, `Tools: ${report.metadata.scanTools.join(', ')}`))
+    lines.push(
+      this.colorize(
+        chalk.gray,
+        `${t('format.scanDate')}: ${new Date(report.metadata.scanDate).toLocaleString()}`
+      )
+    )
+    lines.push(
+      this.colorize(chalk.gray, `${t('format.tools')}: ${report.metadata.scanTools.join(', ')}`)
+    )
 
     // Summary
     lines.push('')
-    lines.push(this.colorize(chalk.bold, '📊 Summary:'))
+    lines.push(this.colorize(chalk.bold, `📊 ${t('format.summary')}:`))
 
     const summaryTable = new Table({
-      head: this.colorizeHeaders(['Severity', 'Count']),
+      head: this.colorizeHeaders([t('table.header.severity'), t('table.header.count')]),
       style: { head: [], border: [] },
       colWidths: [15, 10],
     })
 
-    summaryTable.push(['Critical', this.colorize(chalk.red, report.summary.critical.toString())])
-    summaryTable.push(['High', this.colorize(chalk.yellow, report.summary.high.toString())])
-    summaryTable.push(['Moderate', this.colorize(chalk.blue, report.summary.moderate.toString())])
-    summaryTable.push(['Low', this.colorize(chalk.green, report.summary.low.toString())])
-    summaryTable.push(['Info', this.colorize(chalk.gray, report.summary.info.toString())])
     summaryTable.push([
-      'Total',
+      t('severity.critical'),
+      this.colorize(chalk.red, report.summary.critical.toString()),
+    ])
+    summaryTable.push([
+      t('severity.high'),
+      this.colorize(chalk.yellow, report.summary.high.toString()),
+    ])
+    summaryTable.push([
+      t('severity.moderate'),
+      this.colorize(chalk.blue, report.summary.moderate.toString()),
+    ])
+    summaryTable.push([
+      t('severity.low'),
+      this.colorize(chalk.green, report.summary.low.toString()),
+    ])
+    summaryTable.push([
+      t('severity.info'),
+      this.colorize(chalk.gray, report.summary.info.toString()),
+    ])
+    summaryTable.push([
+      t('severity.total'),
       this.colorize(chalk.bold, report.summary.totalVulnerabilities.toString()),
     ])
 
@@ -620,10 +692,15 @@ export class OutputFormatter {
     // Vulnerabilities
     if (report.vulnerabilities.length > 0) {
       lines.push('')
-      lines.push(this.colorize(chalk.bold, '🐛 Vulnerabilities:'))
+      lines.push(this.colorize(chalk.bold, `🐛 ${t('format.vulnerabilities')}:`))
 
       const vulnTable = new Table({
-        head: this.colorizeHeaders(['Package', 'Severity', 'Title', 'Fix Available']),
+        head: this.colorizeHeaders([
+          t('table.header.package'),
+          t('table.header.severity'),
+          t('table.header.title'),
+          t('table.header.fixAvailable'),
+        ]),
         style: { head: [], border: [] },
         colWidths: [20, 12, 40, 15],
       })
@@ -633,8 +710,8 @@ export class OutputFormatter {
         const fixStatus = vuln.fixAvailable
           ? typeof vuln.fixAvailable === 'string'
             ? vuln.fixAvailable
-            : 'Yes'
-          : 'No'
+            : t('common.yes')
+          : t('common.no')
 
         vulnTable.push([
           vuln.package,
@@ -650,7 +727,7 @@ export class OutputFormatter {
     // Recommendations
     if (report.recommendations.length > 0) {
       lines.push('')
-      lines.push(this.colorize(chalk.bold, '💡 Recommendations:'))
+      lines.push(this.colorize(chalk.bold, `💡 ${t('format.recommendations')}:`))
 
       for (const rec of report.recommendations) {
         lines.push(`  ${rec.package}: ${rec.currentVersion} → ${rec.recommendedVersion}`)
@@ -667,15 +744,15 @@ export class OutputFormatter {
   private formatSecurityMinimal(report: SecurityReport): string {
     const vulnerabilities = report.summary.totalVulnerabilities
     if (vulnerabilities === 0) {
-      return 'No vulnerabilities found'
+      return t('format.noVulnsFound')
     }
 
     return [
-      `${vulnerabilities} vulnerabilities found:`,
-      `  Critical: ${report.summary.critical}`,
-      `  High: ${report.summary.high}`,
-      `  Moderate: ${report.summary.moderate}`,
-      `  Low: ${report.summary.low}`,
+      `${t('format.vulnerabilities')}: ${vulnerabilities}`,
+      `  ${t('severity.critical')}: ${report.summary.critical}`,
+      `  ${t('severity.high')}: ${report.summary.high}`,
+      `  ${t('severity.moderate')}: ${report.summary.moderate}`,
+      `  ${t('severity.low')}: ${report.summary.low}`,
     ].join('\n')
   }
 

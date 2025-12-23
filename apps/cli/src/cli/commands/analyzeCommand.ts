@@ -148,7 +148,7 @@ export class AnalyzeCommand {
     const errors: string[] = []
 
     if (!packageName || packageName.trim() === '') {
-      errors.push('Package name is required')
+      errors.push(t('validation.packageNameRequired'))
     }
 
     return errors

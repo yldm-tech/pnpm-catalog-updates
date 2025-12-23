@@ -11,16 +11,18 @@ export const metadata = {
 
 PCU는 전체 이름과 편리한 단축키를 모두 제공하는 여러 주요 명령어를 제공합니다:
 
-| 전체 명령어     | 단축키 & 별칭       | 설명                              |
-| --------------- | ------------------- | --------------------------------- |
-| `pcu init`      | `pcu i`             | PNPM 작업공간 및 PCU 구성 초기화  |
-| `pcu check`     | `pcu chk`, `pcu -c` | 오래된 카탈로그 종속성 확인       |
-| `pcu update`    | `pcu u`, `pcu -u`   | 카탈로그 종속성 업데이트          |
-| `pcu analyze`   | `pcu a`, `pcu -a`   | 종속성 업데이트의 영향 분석       |
-| `pcu workspace` | `pcu w`, `pcu -s`   | 작업공간 정보 및 유효성 검사 표시 |
-| `pcu theme`     | `pcu t`, `pcu -t`   | 색상 테마 및 UI 설정 구성         |
-| `pcu security`  | `pcu sec`           | 보안 취약점 스캔 및 수정          |
-| `pcu help`      | `pcu h`, `pcu -h`   | 도움말 정보 표시                  |
+| 전체 명령어     | 단축키 & 별칭                             | 설명                              |
+| --------------- | ----------------------------------------- | --------------------------------- |
+| `pcu init`      | `pcu i`                                   | PNPM 작업공간 및 PCU 구성 초기화  |
+| `pcu check`     | `pcu chk`, `pcu -c`, `pcu --check`        | 오래된 카탈로그 종속성 확인       |
+| `pcu update`    | `pcu u`, `pcu -u`, `pcu --update`         | 카탈로그 종속성 업데이트          |
+| `pcu analyze`   | `pcu a`, `pcu -a`, `pcu --analyze`        | 종속성 업데이트의 영향 분석       |
+| `pcu ai`        | -                                         | AI 제공자 관리 및 분석 테스트     |
+| `pcu workspace` | `pcu w`, `pcu -s`, `pcu --workspace-info` | 작업공간 정보 및 유효성 검사 표시 |
+| `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | 색상 테마 및 UI 설정 구성         |
+| `pcu security`  | `pcu sec`                                 | 보안 취약점 스캔 및 수정          |
+| `pcu cache`     | -                                         | 캐시 관리 (통계 및 삭제)          |
+| `pcu help`      | `pcu h`, `pcu -h`                         | 도움말 정보 표시                  |
 
 ### 특별 단축키
 
@@ -903,6 +905,153 @@ pcu -t -i
 ```
 
 테마를 미리보고 UI 설정을 대화형으로 구성할 수 있는 가이드 테마 선택 마법사를 실행합니다.
+
+---
+
+## `pcu ai` - AI 제공자 관리
+
+AI 제공자 상태를 확인하고 AI 분석 캐시를 관리합니다.
+
+<CodeGroup>
+
+```bash {{ title: '상태 확인' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: '분석 테스트' }}
+pcu ai --test
+```
+
+```bash {{ title: '캐시 관리' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### 옵션
+
+<Properties>
+  <Property name="--status" type="boolean">
+    모든 AI 제공자 상태 표시 (기본값)
+  </Property>
+  <Property name="--test" type="boolean">
+    샘플 요청으로 AI 분석 테스트
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    AI 분석 캐시 통계 표시
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    AI 분석 캐시 삭제
+  </Property>
+</Properties>
+
+### 지원되는 AI 제공자
+
+PCU는 사용 가능한 AI CLI 도구를 자동으로 감지하고 사용합니다:
+
+| 제공자   | CLI 도구   | 감지 방법                 |
+| -------- | ---------- | ------------------------- |
+| Claude   | `claude`   | PATH 검색 및 버전 출력    |
+| Gemini   | `gemini`   | PATH 검색 및 버전 출력    |
+| OpenAI   | `codex`    | PATH 검색 및 버전 출력    |
+
+### 사용 예제
+
+#### 제공자 상태 표시
+
+```bash
+pcu ai
+```
+
+감지된 모든 AI 제공자를 가용성 상태, 경로 및 버전과 함께 표시합니다.
+
+#### AI 분석 테스트
+
+```bash
+pcu ai --test
+```
+
+샘플 종속성 업데이트로 테스트 실행을 수행하여 AI 분석이 작동하는지 확인합니다.
+
+---
+
+## `pcu cache` - 캐시 관리
+
+NPM 레지스트리 응답, 작업공간 데이터 및 AI 분석 결과를 위한 PCU 캐시를 관리합니다.
+
+<CodeGroup>
+
+```bash {{ title: '통계 표시' }}
+pcu cache
+pcu cache --stats
+pcu cache --stats --verbose
+```
+
+```bash {{ title: '캐시 삭제' }}
+pcu cache --clear
+pcu cache --clear --verbose
+```
+
+</CodeGroup>
+
+### 옵션
+
+<Properties>
+  <Property name="--stats" type="boolean">
+    캐시 통계 표시 (기본 동작)
+  </Property>
+  <Property name="--clear" type="boolean">
+    모든 캐시 항목 삭제
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    설명 및 히트/미스 카운터를 포함한 자세한 정보 표시
+  </Property>
+  <Property name="--no-color" type="boolean">
+    색상 출력 비활성화
+  </Property>
+</Properties>
+
+### 캐시 유형
+
+PCU는 세 가지 별도의 캐시를 관리합니다:
+
+#### 레지스트리 캐시
+
+- **목적**: NPM 레지스트리 API 응답 저장
+- **이점**: 네트워크 요청 감소, 더 빠른 버전 쿼리
+- **TTL**: 1시간 (구성 가능)
+
+#### 작업공간 캐시
+
+- **목적**: 작업공간 파일 시스템 데이터 저장
+- **이점**: 반복 실행 시 더 빠른 작업공간 분석
+- **TTL**: 5분 (구성 가능)
+
+#### AI 분석 캐시
+
+- **목적**: AI 기반 분석 결과 저장
+- **이점**: 중복 AI API 호출 방지, 일관된 결과
+- **TTL**: 24시간 (구성 가능)
+
+### 사용 예제
+
+#### 캐시 통계 표시
+
+```bash
+pcu cache
+```
+
+모든 캐시의 요약 통계를 표시합니다.
+
+#### 모든 캐시 삭제
+
+```bash
+pcu cache --clear
+```
+
+모든 캐시 항목을 삭제합니다. 오래된 데이터 문제가 발생할 때 유용합니다.
 
 ---
 

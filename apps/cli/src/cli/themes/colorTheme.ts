@@ -4,6 +4,7 @@
  * Provides consistent color schemes and styling across the CLI
  */
 
+import { t } from '@pcu/utils'
 import chalk from 'chalk'
 
 export interface ColorTheme {
@@ -384,22 +385,22 @@ export interface ThemeConfig {
 export const themePresets = {
   development: {
     name: 'development',
-    description: 'Bright colors for development environments',
+    description: t('theme.preset.development'),
     theme: 'modern',
   },
   production: {
     name: 'production',
-    description: 'Subtle colors for production environments',
+    description: t('theme.preset.production'),
     theme: 'minimal',
   },
   presentation: {
     name: 'presentation',
-    description: 'High contrast colors for presentations',
+    description: t('theme.preset.presentation'),
     theme: 'neon',
   },
   default: {
     name: 'default',
-    description: 'Balanced colors for general use',
+    description: t('theme.preset.default'),
     theme: 'default',
   },
 }

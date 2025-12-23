@@ -194,7 +194,7 @@ export class CheckCommand {
 
     // Validate format
     if (options.format && !['table', 'json', 'yaml', 'minimal'].includes(options.format)) {
-      errors.push('Invalid format. Must be one of: table, json, yaml, minimal')
+      errors.push(t('validation.invalidFormat'))
     }
 
     // Validate target
@@ -202,16 +202,16 @@ export class CheckCommand {
       options.target &&
       !['latest', 'greatest', 'minor', 'patch', 'newest'].includes(options.target)
     ) {
-      errors.push('Invalid target. Must be one of: latest, greatest, minor, patch, newest')
+      errors.push(t('validation.invalidTarget'))
     }
 
     // Validate include/exclude patterns
     if (options.include?.some((pattern) => !pattern.trim())) {
-      errors.push('Include patterns cannot be empty')
+      errors.push(t('validation.includePatternsEmpty'))
     }
 
     if (options.exclude?.some((pattern) => !pattern.trim())) {
-      errors.push('Exclude patterns cannot be empty')
+      errors.push(t('validation.excludePatternsEmpty'))
     }
 
     return errors

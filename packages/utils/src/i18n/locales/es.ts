@@ -32,6 +32,18 @@ export const es: TranslationDictionary = {
   'error.packageSkipped': 'Omitiendo paquete "{{packageName}}" (verificación fallida)',
   'error.unknown': 'Ocurrió un error desconocido',
 
+  // Validation errors
+  'validation.packageNameRequired': 'El nombre del paquete es requerido',
+  'validation.invalidFormat': 'Formato inválido. Debe ser uno de: table, json, yaml, minimal',
+  'validation.invalidSeverity':
+    'Severidad inválida. Debe ser uno de: low, moderate, high, critical',
+  'validation.invalidTarget':
+    'Objetivo inválido. Debe ser uno de: latest, greatest, minor, patch, newest',
+  'validation.interactiveWithDryRun': 'No se puede usar --interactive con --dry-run',
+  'validation.includePatternsEmpty': 'Los patrones de inclusión no pueden estar vacíos',
+  'validation.excludePatternsEmpty': 'Los patrones de exclusión no pueden estar vacíos',
+  'validation.workspaceDirNotExist': 'El directorio del workspace no existe: {{path}}',
+
   // Success messages
   'success.updateComplete': 'Actualización completada exitosamente',
   'success.cacheCleared': 'Caché limpiada exitosamente',
@@ -171,6 +183,9 @@ export const es: TranslationDictionary = {
   // Common messages
   'common.stackTrace': 'Traza de pila:',
   'common.noStackTrace': 'Sin traza de pila disponible',
+  'common.yes': 'Sí',
+  'common.no': 'No',
+  'common.packagesCount': '{{count}} paquete(s)',
 
   // Security command
   'command.security.scanning': 'Escaneo de vulnerabilidades de seguridad',
@@ -258,6 +273,16 @@ export const es: TranslationDictionary = {
   'progress.securityCompleted': 'Análisis de seguridad completado',
   'progress.securityFailed': 'Análisis de seguridad fallido',
   'progress.operationFailed': 'Operación fallida',
+  'progress.processing': 'Procesando...',
+  'progress.success': 'ÉXITO',
+  'progress.error': 'ERROR',
+  'progress.warning': 'ADVERTENCIA',
+  'progress.info': 'INFO',
+  'progress.completed': 'completado',
+  'progress.failed': 'fallido',
+  'progress.steps': 'Pasos de progreso',
+  'progress.allStepsCompleted': '¡Todos los pasos completados!',
+  'progress.overallProgress': 'Progreso general',
 
   // Security command additions
   'command.security.criticalVulnsFound': '{{count}} vulnerabilidades críticas encontradas',
@@ -384,6 +409,19 @@ export const es: TranslationDictionary = {
   'prompt.dryRunMode': '¿Modo de prueba?',
   'prompt.createBackup': '¿Crear copia de seguridad?',
   'prompt.includePrerelease': '¿Incluir versiones preliminares?',
+  'prompt.warning': 'Advertencia:',
+  'prompt.confirmOperation': '¿Está seguro de que desea {{operation}}?',
+  'prompt.browsePath': 'Examinar: {{path}}',
+  'prompt.securityUpdatesCount': '{{count}} actualizaciones de seguridad',
+  'prompt.errorMessage': 'Error: {{error}}',
+
+  // Severity labels
+  'severity.critical': 'Crítico',
+  'severity.high': 'Alto',
+  'severity.moderate': 'Moderado',
+  'severity.low': 'Bajo',
+  'severity.info': 'Info',
+  'severity.total': 'Total',
 
   // Option group titles
   'optionGroup.global': 'Opciones globales',
@@ -414,4 +452,175 @@ export const es: TranslationDictionary = {
   'aiReport.tableAction': 'Acción',
   'aiReport.tableRisk': 'Riesgo',
   'aiReport.tableReason': 'Razón',
+
+  // Theme preset descriptions
+  'theme.preset.development': 'Colores brillantes para entornos de desarrollo',
+  'theme.preset.production': 'Colores sutiles para entornos de producción',
+  'theme.preset.presentation': 'Colores de alto contraste para presentaciones',
+  'theme.preset.default': 'Colores equilibrados para uso general',
+
+  // Validation messages (commandValidator.ts)
+  'validation.catalogMustBeString': 'El nombre del catálogo debe ser una cadena',
+  'validation.interactiveNotUsefulWithJson':
+    'El modo interactivo no es útil con formato de salida JSON',
+  'validation.verboseWithSilent': 'No se puede usar --verbose y --silent juntos',
+  'validation.interactiveWithDryRunError': 'No se puede usar --interactive con --dry-run',
+  'validation.forceWithoutBackup':
+    'Usando --force sin respaldo. Considere usar --create-backup por seguridad',
+  'validation.majorUpdatesWarning':
+    'Las actualizaciones mayores pueden contener cambios importantes. Considere usar --interactive o --force',
+  'validation.patternsOverlap':
+    'Algunos patrones aparecen tanto en listas de inclusión como exclusión',
+  'validation.catalogRequired': 'El nombre del catálogo es requerido',
+  'validation.catalogNoPathSeparators':
+    'El nombre del catálogo no puede contener separadores de ruta',
+  'validation.packageRequired': 'El nombre del paquete es requerido',
+  'validation.invalidPackageNameFormat': 'Formato de nombre de paquete inválido',
+  'validation.invalidVersionFormat':
+    'Formato de versión inválido. Use versionado semántico (ej. 1.2.3)',
+  'validation.multipleWorkspaceActions':
+    'No se pueden usar múltiples acciones de workspace simultáneamente',
+  'validation.colorWithNoColor': 'No se puede usar --color y --no-color juntos',
+  'validation.deprecatedOption':
+    'La opción "{{option}}" está obsoleta. Use "{{replacement}}" en su lugar',
+  'validation.configNotFound': 'Archivo de configuración no encontrado: {{path}}',
+  'validation.failedToLoadJsConfig': 'Error al cargar archivo de configuración JS: {{error}}',
+  'validation.failedToParseJsonConfig':
+    'Error al analizar archivo de configuración JSON: {{error}}',
+  'validation.configMustBeObject': 'La configuración debe ser un objeto',
+  'validation.registryMustBeObject': 'La configuración del registro debe ser un objeto',
+  'validation.updateMustBeObject': 'La configuración de actualización debe ser un objeto',
+  'validation.outputMustBeObject': 'La configuración de salida debe ser un objeto',
+  'validation.unknownConfigKeys': 'Claves de configuración desconocidas: {{keys}}',
+  'validation.failedToValidateConfig': 'Error al validar la configuración: {{error}}',
+  'validation.interactiveWithDryRunConflict': 'No se puede usar --interactive con --dry-run',
+  'validation.multipleWorkspaceActionsConflict':
+    'No se pueden usar múltiples acciones de workspace simultáneamente',
+  'validation.verboseWithSilentConflict': 'No se puede usar --verbose y --silent al mismo tiempo',
+
+  // Suggestion messages
+  'suggestion.specifyWorkspace': 'Use -w o --workspace para especificar el directorio',
+  'suggestion.jsonAlreadyDetailed': 'El formato JSON ya incluye todos los detalles',
+  'suggestion.useDryRunFirst': 'Use --dry-run para previsualizar cambios primero',
+  'suggestion.addPrereleaseWithGreatest':
+    'Considere agregar --prerelease al usar --target greatest',
+  'suggestion.useJsonForProgrammatic': 'Use --format json para análisis programático',
+  'suggestion.useValidateOrStats':
+    'Use --validate para verificar workspace o --stats para estadísticas',
+  'suggestion.globalVerboseEnabled': 'Modo verbose global habilitado via PCU_VERBOSE',
+
+  // Table headers (outputFormatter.ts)
+  'table.header.package': 'Paquete',
+  'table.header.current': 'Actual',
+  'table.header.latest': 'Última',
+  'table.header.type': 'Tipo',
+  'table.header.packagesCount': 'Paquetes',
+  'table.header.catalog': 'Catálogo',
+  'table.header.from': 'Desde',
+  'table.header.to': 'Hasta',
+  'table.header.path': 'Ruta',
+  'table.header.dependencyType': 'Tipo de dependencia',
+  'table.header.risk': 'Riesgo',
+  'table.header.metric': 'Métrica',
+  'table.header.count': 'Cantidad',
+  'table.header.severity': 'Severidad',
+  'table.header.title': 'Título',
+  'table.header.fixAvailable': 'Fix disponible',
+
+  // Format labels (outputFormatter.ts)
+  'format.workspace': 'Workspace',
+  'format.path': 'Ruta',
+  'format.allUpToDate': 'Todas las dependencias están actualizadas',
+  'format.foundOutdated': 'Se encontraron {{count}} dependencias desactualizadas',
+  'format.catalog': 'Catálogo',
+  'format.updateCompleted': 'Actualización completada',
+  'format.updateFailed': 'Actualización fallida',
+  'format.updatedDeps': 'Dependencias actualizadas',
+  'format.skippedDeps': 'Dependencias omitidas',
+  'format.errorsOccurred': 'Errores ocurridos',
+  'format.updatedCount': 'Actualizados: {{count}}',
+  'format.errorCount': 'Errores: {{count}}',
+  'format.impactAnalysis': 'Análisis de impacto',
+  'format.updateInfo': 'Info de actualización',
+  'format.riskLevel': 'Nivel de riesgo',
+  'format.affectedPackages': 'Paquetes afectados',
+  'format.securityImpact': 'Impacto de seguridad',
+  'format.fixesVulns': 'Corrige {{count}} vulnerabilidades',
+  'format.introducesVulns': 'Puede introducir {{count}} vulnerabilidades',
+  'format.recommendations': 'Recomendaciones',
+  'format.workspaceValidation': 'Validación del workspace',
+  'format.status': 'Estado',
+  'format.valid': 'VÁLIDO',
+  'format.invalid': 'INVÁLIDO',
+  'format.workspaceInfo': 'Información del workspace',
+  'format.name': 'Nombre',
+  'format.packages': 'Paquetes',
+  'format.catalogs': 'Catálogos',
+  'format.errors': 'Errores',
+  'format.warnings': 'Advertencias',
+  'format.workspaceStats': 'Estadísticas del workspace',
+  'format.securityReport': 'Informe de seguridad',
+  'format.scanDate': 'Fecha de escaneo',
+  'format.tools': 'Herramientas',
+  'format.summary': 'Resumen',
+  'format.vulnerabilities': 'Vulnerabilidades',
+  'format.noVulnsFound': 'No se encontraron vulnerabilidades',
+  'format.packagesAffected': 'Paquetes afectados',
+  'format.foundOutdatedDependencies': 'Se encontraron {{count}} dependencias desactualizadas',
+  'format.catalogLabel': 'Catálogo',
+  'format.updateLabel': 'Actualización',
+  'format.typeLabel': 'Tipo',
+  'format.updateCompletedSuccessfully': 'Actualización completada exitosamente',
+  'format.updateCompletedWithErrors': 'Actualización completada con {{count}} errores',
+  'format.updatedDependenciesTitle': 'Dependencias actualizadas',
+  'format.skippedDependencies': 'Se omitieron {{count}} dependencias',
+  'format.fixesVulnerabilities': 'Corrige {{count}} vulnerabilidades',
+  'format.introducesVulnerabilities': 'Introduce {{count}} vulnerabilidades',
+  'format.workspaceInformation': 'Información del workspace',
+  'format.workspaceStatistics': 'Estadísticas del workspace',
+  'format.packagesCount': '{{count}} paquetes',
+  'format.catalogsCount': '{{count}} catálogos',
+
+  // Statistics labels (workspaceCommand.ts)
+  'stats.totalPackages': 'Paquetes totales',
+  'stats.packagesWithCatalogRefs': 'Paquetes con referencias de catálogo',
+  'stats.totalCatalogs': 'Catálogos totales',
+  'stats.catalogEntries': 'Entradas del catálogo',
+  'stats.totalDependencies': 'Dependencias totales',
+  'stats.catalogReferences': 'Referencias del catálogo',
+  'stats.dependencies': 'Dependencias',
+  'stats.devDependencies': 'Dependencias de desarrollo',
+  'stats.peerDependencies': 'Dependencias de pares',
+  'stats.optionalDependencies': 'Dependencias opcionales',
+
+  // Unit labels (cacheCommand.ts)
+  'unit.bytes': 'B',
+  'unit.kilobytes': 'KB',
+  'unit.megabytes': 'MB',
+  'unit.gigabytes': 'GB',
+
+  // Global option descriptions (globalOptions.ts)
+  'option.workspacePath': 'ruta del directorio workspace',
+  'option.verboseLogging': 'habilitar registro detallado',
+  'option.noColorOutput': 'deshabilitar salida con colores',
+  'option.registryUrl': 'URL del registro NPM',
+  'option.timeout': 'tiempo de espera en milisegundos',
+  'option.configPath': 'ruta al archivo de configuración',
+  'option.catalogOnly': 'verificar solo catálogo específico',
+  'option.outputFormat': 'formato de salida',
+  'option.updateTarget': 'objetivo de actualización',
+  'option.prereleaseVersions': 'incluir versiones preliminares',
+  'option.includePattern': 'incluir paquetes que coincidan con el patrón',
+  'option.excludePattern': 'excluir paquetes que coincidan con el patrón',
+  'option.interactiveMode': 'modo interactivo para elegir actualizaciones',
+  'option.dryRunPreview': 'previsualizar cambios sin escribir archivos',
+  'option.forceRisky': 'forzar actualizaciones aunque sean riesgosas',
+  'option.backupFiles': 'crear archivos de respaldo antes de actualizar',
+  'option.aiAnalysis': 'habilitar análisis con IA',
+  'option.aiProvider': 'proveedor de IA a usar',
+  'option.analysisTypeOpt': 'tipo de análisis de IA',
+  'option.skipAiCache': 'omitir caché de análisis de IA',
+  'option.validateWorkspace': 'validar configuración del workspace',
+  'option.showStats': 'mostrar estadísticas del workspace',
+  'option.showInfo': 'mostrar información del workspace',
 }

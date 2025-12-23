@@ -22,6 +22,7 @@ PCU provides several main commands with both full names and convenient shortcuts
 | `pcu workspace` | `pcu w`, `pcu -s`, `pcu --workspace-info` | Show workspace information and validation       |
 | `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | Configure color themes and UI settings          |
 | `pcu security`  | `pcu sec`           | Security vulnerability scanning and fixes       |
+| `pcu cache`     | -                   | Manage PCU cache (registry, workspace, AI)      |
 | `pcu help`      | `pcu h`, `pcu -h`   | Display help information                        |
 
 ### Special Shortcuts
@@ -908,6 +909,199 @@ Launches a guided theme selection wizard that allows you to preview themes and c
 
 ---
 
+## `pcu ai` - AI Provider Management
+
+Check AI provider status, test AI analysis, and manage AI cache.
+
+<CodeGroup>
+
+```bash {{ title: 'Basic Status' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'Test & Cache' }}
+pcu ai --test
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### Options
+
+<Properties>
+  <Property name="--status" type="boolean">
+    Show status of all AI providers (default behavior)
+  </Property>
+  <Property name="--test" type="boolean">
+    Test AI analysis with a sample request
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    Show AI analysis cache statistics
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    Clear AI analysis cache
+  </Property>
+</Properties>
+
+### Provider Detection
+
+PCU automatically detects and prioritizes available AI CLI tools:
+
+| Provider | Priority | Detection Method |
+| -------- | -------- | ---------------- |
+| Claude   | 100      | `claude` CLI     |
+| Gemini   | 80       | `gemini` CLI     |
+| Codex    | 60       | `codex` CLI      |
+
+### Status Output
+
+The status command shows:
+
+- **Available Providers**: Which AI CLI tools are installed
+- **Provider Details**: Path, version, and priority for each provider
+- **Best Provider**: The recommended provider based on priority
+- **Cache Statistics**: Hit rate and entry count (with `--cache-stats`)
+
+### Usage Examples
+
+#### Check AI Provider Status
+
+```bash
+pcu ai
+```
+
+Shows all detected AI providers with their availability and priority.
+
+#### Test AI Analysis
+
+```bash
+pcu ai --test
+```
+
+Runs a test analysis with a sample package update to verify AI integration is working.
+
+#### View Cache Statistics
+
+```bash
+pcu ai --cache-stats
+```
+
+Displays cache statistics including total entries, hits, misses, and hit rate.
+
+#### Clear AI Cache
+
+```bash
+pcu ai --clear-cache
+```
+
+Clears all cached AI analysis results to force fresh analysis.
+
+---
+
+## `pcu cache` - Cache Management
+
+Manage PCU cache for NPM registry responses, workspace data, and AI analysis results.
+
+<CodeGroup>
+
+```bash {{ title: 'View Statistics' }}
+pcu cache
+pcu cache --stats
+pcu cache --stats --verbose
+```
+
+```bash {{ title: 'Clear Cache' }}
+pcu cache --clear
+pcu cache --clear --verbose
+```
+
+</CodeGroup>
+
+### Options
+
+<Properties>
+  <Property name="--stats" type="boolean">
+    Show cache statistics (default behavior)
+  </Property>
+  <Property name="--clear" type="boolean">
+    Clear all cache entries
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    Show detailed information including descriptions and hit/miss counts
+  </Property>
+  <Property name="--no-color" type="boolean">
+    Disable colored output
+  </Property>
+</Properties>
+
+### Cache Types
+
+PCU maintains three separate caches:
+
+#### Registry Cache
+
+- **Purpose**: Stores NPM registry API responses
+- **Benefits**: Reduces network requests, faster version lookups
+- **TTL**: 1 hour (configurable)
+
+#### Workspace Cache
+
+- **Purpose**: Stores workspace file system data
+- **Benefits**: Faster workspace analysis on repeat runs
+- **TTL**: 5 minutes (configurable)
+
+#### AI Analysis Cache
+
+- **Purpose**: Stores AI-powered analysis results
+- **Benefits**: Avoids redundant AI API calls, consistent results
+- **TTL**: 24 hours (configurable)
+
+### Statistics Output
+
+The stats command shows for each cache:
+
+- **Entries**: Number of cached items
+- **Size**: Total cache size in bytes
+- **Hit Rate**: Percentage of cache hits vs misses
+
+### Usage Examples
+
+#### View Cache Statistics
+
+```bash
+pcu cache
+```
+
+Shows summary statistics for all caches.
+
+#### Detailed Statistics
+
+```bash
+pcu cache --stats --verbose
+```
+
+Shows detailed statistics including descriptions and hit/miss breakdown.
+
+#### Clear All Caches
+
+```bash
+pcu cache --clear
+```
+
+Clears all cache entries. Useful when experiencing stale data issues.
+
+#### Clear with Confirmation
+
+```bash
+pcu cache --clear --verbose
+```
+
+Clears all caches with detailed output showing each cache being cleared.
+
+---
+
 ## Interactive Features & Progress Tracking
 
 PCU provides advanced interactive capabilities and sophisticated progress tracking across all commands.
@@ -1055,6 +1249,9 @@ These options work with all commands and can be set via environment variables:
   <Property name="--config" type="string" env="PCU_CONFIG">
     Path to custom configuration file
   </Property>
+  <Property name="--lang" type="enum" env="PCU_LANG">
+    Display language: en, zh, ja, ko, es, de, fr (default: auto-detect from system)
+  </Property>
   <Property name="-V, --version" type="boolean">
     Output the version number and check for updates
   </Property>
@@ -1087,6 +1284,9 @@ All global options and command-specific settings can be configured via environme
   </Property>
   <Property name="PCU_CONFIG" type="string">
     Path to custom configuration file
+  </Property>
+  <Property name="PCU_LANG" type="enum">
+    Display language: en, zh, ja, ko, es, de, fr
   </Property>
 </Properties>
 

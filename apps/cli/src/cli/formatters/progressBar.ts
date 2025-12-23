@@ -5,6 +5,7 @@
  * with multiple styles and themes.
  */
 
+import { t } from '@pcu/utils'
 import chalk from 'chalk'
 
 export interface ProgressBarOptions {
@@ -24,7 +25,7 @@ export class ProgressBar {
   private showSpeed: boolean
 
   constructor(options: ProgressBarOptions = {}) {
-    this.text = options.text || 'Processing...'
+    this.text = options.text || t('progress.processing')
     this.total = options.total || 0
     this.style = options.style || 'default'
     this.showSpeed = options.showSpeed ?? true
@@ -119,7 +120,7 @@ export class ProgressBar {
       case 'rainbow':
         return `${chalk.magenta('🌈')} ${chalk.green(text)} ${chalk.gray(elapsed)}`
       case 'neon':
-        return `${chalk.green.bold('⚡ SUCCESS')} ${chalk.green(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.green.bold(`⚡ ${t('progress.success').toUpperCase()}`)} ${chalk.green(text)} ${chalk.gray(elapsed)}`
       default:
         return `${chalk.green('✅')} ${chalk.green(text)} ${chalk.gray(elapsed)}`
     }
@@ -140,7 +141,7 @@ export class ProgressBar {
       case 'rainbow':
         return `${chalk.red('⚠️')} ${chalk.red(text)} ${chalk.gray(elapsed)}`
       case 'neon':
-        return `${chalk.red.bold('⚡ ERROR')} ${chalk.red(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.red.bold(`⚡ ${t('progress.error').toUpperCase()}`)} ${chalk.red(text)} ${chalk.gray(elapsed)}`
       default:
         return `${chalk.red('❌')} ${chalk.red(text)} ${chalk.gray(elapsed)}`
     }
@@ -152,14 +153,14 @@ export class ProgressBar {
   private getCompletionText(): string {
     const elapsed = this.getElapsedTime()
     const speed = this.getAverageSpeed()
-    return `${this.text} completed ${speed} ${elapsed}`
+    return `${this.text} ${t('progress.completed')} ${speed} ${elapsed}`
   }
 
   /**
    * Get failure text
    */
   private getFailureText(): string {
-    return `${this.text} failed`
+    return `${this.text} ${t('progress.failed')}`
   }
 
   /**
@@ -221,7 +222,7 @@ export class ProgressBar {
       case 'rainbow':
         return `${chalk.yellow('⚠️')} ${chalk.yellow(text)} ${chalk.gray(elapsed)}`
       case 'neon':
-        return `${chalk.yellow.bold('⚡ WARNING')} ${chalk.yellow(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.yellow.bold(`⚡ ${t('progress.warning').toUpperCase()}`)} ${chalk.yellow(text)} ${chalk.gray(elapsed)}`
       default:
         return `${chalk.yellow('⚠️')} ${chalk.yellow(text)} ${chalk.gray(elapsed)}`
     }
@@ -242,7 +243,7 @@ export class ProgressBar {
       case 'rainbow':
         return `${chalk.blue('ℹ️')} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
       case 'neon':
-        return `${chalk.blue.bold('⚡ INFO')} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.blue.bold(`⚡ ${t('progress.info').toUpperCase()}`)} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
       default:
         return `${chalk.blue('ℹ️')} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
     }
@@ -345,7 +346,7 @@ export class MultiStepProgress {
   }
 
   start(): void {
-    console.log(chalk.bold('\n📋 Progress Steps:\n'))
+    console.log(chalk.bold(`\n📋 ${t('progress.steps')}:\n`))
     this.renderSteps()
   }
 
@@ -362,7 +363,7 @@ export class MultiStepProgress {
   }
 
   complete(): void {
-    console.log(chalk.green('\n🎉 All steps completed!\n'))
+    console.log(chalk.green(`\n🎉 ${t('progress.allStepsCompleted')}\n`))
   }
 
   private renderSteps(): void {
@@ -678,7 +679,7 @@ export class BatchProgressManager {
 
     console.log(
       chalk.cyan(
-        `📊 Overall Progress: ${percentage}% (${this.completedOperations}/${this.totalOperations})`
+        `📊 ${t('progress.overallProgress')}: ${percentage}% (${this.completedOperations}/${this.totalOperations})`
       )
     )
     if (text) {

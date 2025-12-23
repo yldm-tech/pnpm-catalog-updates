@@ -350,7 +350,7 @@ catalogs:
 
     // Validate workspace path exists if provided
     if (options.workspace && !existsSync(options.workspace)) {
-      errors.push(`Workspace directory does not exist: ${options.workspace}`)
+      errors.push(t('validation.workspaceDirNotExist', { path: options.workspace }))
     }
 
     return errors

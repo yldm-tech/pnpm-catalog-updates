@@ -360,7 +360,7 @@ export class UpdateCommand {
 
     // Validate format
     if (options.format && !['table', 'json', 'yaml', 'minimal'].includes(options.format)) {
-      errors.push('Invalid format. Must be one of: table, json, yaml, minimal')
+      errors.push(t('validation.invalidFormat'))
     }
 
     // Validate target
@@ -368,12 +368,12 @@ export class UpdateCommand {
       options.target &&
       !['latest', 'greatest', 'minor', 'patch', 'newest'].includes(options.target)
     ) {
-      errors.push('Invalid target. Must be one of: latest, greatest, minor, patch, newest')
+      errors.push(t('validation.invalidTarget'))
     }
 
     // Interactive and dry-run conflict
     if (options.interactive && options.dryRun) {
-      errors.push('Cannot use --interactive with --dry-run')
+      errors.push(t('validation.interactiveWithDryRun'))
     }
 
     return errors

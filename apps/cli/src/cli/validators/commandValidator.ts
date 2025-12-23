@@ -5,7 +5,7 @@
  * Provides detailed error messages and suggestions.
  */
 
-import { getConfig, type ValidationResult, validateCliOptions } from '@pcu/utils'
+import { getConfig, t, type ValidationResult, validateCliOptions } from '@pcu/utils'
 
 export interface ValidatedOptions {
   workspace?: string
@@ -69,16 +69,16 @@ export class CommandValidator {
 
     // Check-specific validations
     if (options.catalog && typeof options.catalog !== 'string') {
-      errors.push('Catalog name must be a string')
+      errors.push(t('validation.catalogMustBeString'))
     }
 
     // Validate mutually exclusive options
     if (options.interactive && options.format === 'json') {
-      warnings.push('Interactive mode is not useful with JSON output format')
+      warnings.push(t('validation.interactiveNotUsefulWithJson'))
     }
 
     if (options.verbose && options.silent) {
-      errors.push('Cannot use both --verbose and --silent options')
+      errors.push(t('validation.verboseWithSilent'))
     }
 
     return {
@@ -102,17 +102,15 @@ export class CommandValidator {
 
     // Update-specific validations
     if (options.interactive && options.dryRun) {
-      errors.push('Cannot use --interactive with --dry-run')
+      errors.push(t('validation.interactiveWithDryRun'))
     }
 
     if (options.force && !options.dryRun && !options.createBackup) {
-      warnings.push('Using --force without backup. Consider using --create-backup for safety')
+      warnings.push(t('validation.forceWithoutBackup'))
     }
 
     if (options.target === 'major' && !options.force && !options.interactive) {
-      warnings.push(
-        'Major updates may contain breaking changes. Consider using --interactive or --force'
-      )
+      warnings.push(t('validation.majorUpdatesWarning'))
     }
 
     // Validate include/exclude patterns
@@ -123,7 +121,7 @@ export class CommandValidator {
         excludeArray.some((exc: unknown) => inc === exc)
       )
       if (overlapping) {
-        warnings.push('Some patterns appear in both include and exclude lists')
+        warnings.push(t('validation.patternsOverlap'))
       }
     }
 
@@ -143,19 +141,19 @@ export class CommandValidator {
 
     // Validate catalog name
     if (!catalog || catalog.trim() === '') {
-      errors.push('Catalog name is required')
+      errors.push(t('validation.catalogRequired'))
     } else if (catalog.includes('/') || catalog.includes('\\')) {
-      errors.push('Catalog name cannot contain path separators')
+      errors.push(t('validation.catalogNoPathSeparators'))
     }
 
     // Validate package name
     if (!packageName || packageName.trim() === '') {
-      errors.push('Package name is required')
+      errors.push(t('validation.packageNameRequired'))
     } else {
       // Basic package name validation
       const packageNameRegex = /^(?:@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/
       if (!packageNameRegex.test(packageName)) {
-        errors.push('Invalid package name format')
+        errors.push(t('validation.invalidPackageNameFormat'))
       }
     }
 
@@ -164,7 +162,7 @@ export class CommandValidator {
       const semverRegex =
         /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
       if (!semverRegex.test(version)) {
-        errors.push('Invalid version format. Use semantic versioning (e.g., 1.2.3)')
+        errors.push(t('validation.invalidVersionFormat'))
       }
     }
 
@@ -190,7 +188,7 @@ export class CommandValidator {
     // Workspace-specific validations
     const actionCount = [options.validate, options.stats, options.info].filter(Boolean).length
     if (actionCount > 1) {
-      errors.push('Cannot use multiple workspace actions simultaneously')
+      errors.push(t('validation.multipleWorkspaceActions'))
     }
 
     return {
@@ -215,14 +213,14 @@ export class CommandValidator {
 
     // Validate color options
     if (options.noColor && options.color) {
-      errors.push('Cannot use both --color and --no-color')
+      errors.push(t('validation.colorWithNoColor'))
     }
 
     // Check for deprecated options (future-proofing)
     const deprecatedOptions = ['silent'] // Example
     for (const deprecated of deprecatedOptions) {
       if (options[deprecated]) {
-        warnings.push(`Option --${deprecated} is deprecated and will be removed in future versions`)
+        warnings.push(t('validation.deprecatedOption', { option: deprecated }))
       }
     }
 
@@ -245,7 +243,7 @@ export class CommandValidator {
       // const path = require('path'); // Reserved for future use
 
       if (!fs.existsSync(configPath)) {
-        errors.push(`Configuration file not found: ${configPath}`)
+        errors.push(t('validation.configNotFound', { path: configPath }))
         return { isValid: false, errors, warnings }
       }
 
@@ -257,7 +255,7 @@ export class CommandValidator {
           delete require.cache[require.resolve(configPath)]
           config = require(configPath)
         } catch (error) {
-          errors.push(`Failed to load JavaScript config: ${error}`)
+          errors.push(t('validation.failedToLoadJsConfig', { error: String(error) }))
           return { isValid: false, errors, warnings }
         }
       } else {
@@ -266,28 +264,28 @@ export class CommandValidator {
           const content = fs.readFileSync(configPath, 'utf-8')
           config = JSON.parse(content)
         } catch (error) {
-          errors.push(`Failed to parse JSON config: ${error}`)
+          errors.push(t('validation.failedToParseJsonConfig', { error: String(error) }))
           return { isValid: false, errors, warnings }
         }
       }
 
       // Validate config structure
       if (typeof config !== 'object' || config === null) {
-        errors.push('Configuration must be an object')
+        errors.push(t('validation.configMustBeObject'))
         return { isValid: false, errors, warnings }
       }
 
       // Validate known configuration sections
       if (config.registry && typeof config.registry !== 'object') {
-        errors.push('registry configuration must be an object')
+        errors.push(t('validation.registryMustBeObject'))
       }
 
       if (config.update && typeof config.update !== 'object') {
-        errors.push('update configuration must be an object')
+        errors.push(t('validation.updateMustBeObject'))
       }
 
       if (config.output && typeof config.output !== 'object') {
-        errors.push('output configuration must be an object')
+        errors.push(t('validation.outputMustBeObject'))
       }
 
       // Check for unknown top-level keys
@@ -295,10 +293,10 @@ export class CommandValidator {
       const unknownKeys = Object.keys(config).filter((key) => !knownKeys.includes(key))
 
       if (unknownKeys.length > 0) {
-        warnings.push(`Unknown configuration keys: ${unknownKeys.join(', ')}`)
+        warnings.push(t('validation.unknownConfigKeys', { keys: unknownKeys.join(', ') }))
       }
     } catch (error) {
-      errors.push(`Failed to validate configuration file: ${error}`)
+      errors.push(t('validation.failedToValidateConfig', { error: String(error) }))
     }
 
     return {
@@ -378,40 +376,38 @@ export class CommandValidator {
     switch (command) {
       case 'check':
         if (!options.workspace) {
-          suggestions.push('Consider specifying --workspace for non-standard directory structures')
+          suggestions.push(t('suggestion.specifyWorkspace'))
         }
         if (options.format === 'json' && options.verbose) {
-          suggestions.push('JSON output already includes detailed info, --verbose may be redundant')
+          suggestions.push(t('suggestion.jsonAlreadyDetailed'))
         }
         break
 
       case 'update':
         if (!options.dryRun && !options.createBackup && !options.force) {
-          suggestions.push('Consider using --dry-run first to preview changes')
+          suggestions.push(t('suggestion.useDryRunFirst'))
         }
         if (options.target === 'greatest' && !options.prerelease) {
-          suggestions.push('Add --prerelease to include pre-release versions with greatest target')
+          suggestions.push(t('suggestion.addPrereleaseWithGreatest'))
         }
         break
 
       case 'analyze':
         if (!options.format) {
-          suggestions.push('Use --format json for programmatic consumption of analysis data')
+          suggestions.push(t('suggestion.useJsonForProgrammatic'))
         }
         break
 
       case 'workspace':
         if (!options.validate && !options.stats) {
-          suggestions.push(
-            'Use --validate to check workspace integrity or --stats for detailed information'
-          )
+          suggestions.push(t('suggestion.useValidateOrStats'))
         }
         break
     }
 
     // General suggestions
     if (this.config.output.verbose && !options.verbose) {
-      suggestions.push('Global verbose mode is enabled in config')
+      suggestions.push(t('suggestion.globalVerboseEnabled'))
     }
 
     return suggestions

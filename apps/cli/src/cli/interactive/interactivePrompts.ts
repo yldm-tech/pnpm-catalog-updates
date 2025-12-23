@@ -71,7 +71,7 @@ export class InteractivePrompts {
     const answers = await inquirer.prompt({
       type: 'checkbox',
       name: 'selectedPackages',
-      message: StyledText.iconPackage('Select packages to update:'),
+      message: StyledText.iconPackage(t('prompt.selectPackages')),
       choices,
       pageSize: 15,
       validate: (input: unknown) => {
@@ -104,7 +104,7 @@ export class InteractivePrompts {
       {
         type: 'list',
         name: 'catalog',
-        message: StyledText.iconCatalog('Select catalog to update:'),
+        message: StyledText.iconCatalog(t('prompt.selectCatalog')),
         choices,
         pageSize: 10,
       },
@@ -129,7 +129,7 @@ export class InteractivePrompts {
       {
         type: 'list',
         name: 'strategy',
-        message: StyledText.iconUpdate('Select update strategy:'),
+        message: StyledText.iconUpdate(t('prompt.selectUpdateStrategy')),
         choices: strategies,
       },
     ])
@@ -143,14 +143,14 @@ export class InteractivePrompts {
   async confirmDangerousOperation(operation: string, details?: string): Promise<boolean> {
     console.log('')
     if (details) {
-      console.log(chalk.yellow('⚠️  Warning:'), details)
+      console.log(chalk.yellow(`⚠️  ${t('prompt.warning')}`), details)
     }
 
     const answers = await inquirer.prompt([
       {
         type: 'confirm',
         name: 'confirmed',
-        message: StyledText.warning(`Are you sure you want to ${operation}?`),
+        message: StyledText.warning(t('prompt.confirmOperation', { operation })),
         default: false,
       },
     ])
@@ -163,7 +163,7 @@ export class InteractivePrompts {
    */
   async autoCompletePackage(
     packages: string[],
-    message: string = 'Select package:'
+    message: string = t('prompt.selectPackage')
   ): Promise<string> {
     const answers = await inquirer.prompt([
       {
@@ -192,7 +192,7 @@ export class InteractivePrompts {
       {
         type: 'list',
         name: 'path',
-        message: StyledText.icon('📁', 'Select workspace directory:'),
+        message: StyledText.icon('📁', t('prompt.selectWorkspace')),
         choices,
       },
     ])
@@ -222,7 +222,7 @@ export class InteractivePrompts {
       {
         type: 'list',
         name: 'selected',
-        message: `Browse: ${currentPath}`,
+        message: t('prompt.browsePath', { path: currentPath }),
         choices,
         pageSize: 15,
       },
@@ -344,7 +344,9 @@ export class InteractivePrompts {
     console.log(t('prompt.affectedPackages', { count: impact.affectedCount }))
 
     if (impact.securityUpdates > 0) {
-      console.log(StyledText.iconSecurity(`${impact.securityUpdates} security updates`))
+      console.log(
+        StyledText.iconSecurity(t('prompt.securityUpdatesCount', { count: impact.securityUpdates }))
+      )
     }
 
     console.log('')
@@ -376,7 +378,7 @@ export class InteractivePrompts {
       {
         type: 'list',
         name: 'action',
-        message: StyledText.iconError(`Error: ${error}`),
+        message: StyledText.iconError(t('prompt.errorMessage', { error })),
         choices: options,
       },
     ])

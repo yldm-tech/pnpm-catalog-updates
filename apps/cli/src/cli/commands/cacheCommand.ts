@@ -184,9 +184,9 @@ export class CacheCommand {
    * Format bytes to human readable string
    */
   private formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B'
+    if (bytes === 0) return `0 ${t('unit.bytes')}`
 
-    const units = ['B', 'KB', 'MB', 'GB']
+    const units = [t('unit.bytes'), t('unit.kilobytes'), t('unit.megabytes'), t('unit.gigabytes')]
     const k = 1024
     const i = Math.floor(Math.log(bytes) / Math.log(k))
 

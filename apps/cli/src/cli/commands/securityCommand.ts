@@ -584,12 +584,12 @@ export class SecurityCommand {
 
     // Validate format
     if (options.format && !['table', 'json', 'yaml', 'minimal'].includes(options.format)) {
-      errors.push('Invalid format. Must be one of: table, json, yaml, minimal')
+      errors.push(t('validation.invalidFormat'))
     }
 
     // Validate severity
     if (options.severity && !['low', 'moderate', 'high', 'critical'].includes(options.severity)) {
-      errors.push('Invalid severity. Must be one of: low, moderate, high, critical')
+      errors.push(t('validation.invalidSeverity'))
     }
 
     return errors

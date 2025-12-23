@@ -12,16 +12,18 @@ Référence complète pour toutes les commandes et options PCU. Apprenez chaque 
 
 PCU fournit plusieurs commandes principales avec des noms complets et des raccourcis pratiques :
 
-| Commande complète | Raccourcis et alias | Description                                                    |
-| ----------------- | ------------------- | -------------------------------------------------------------- |
-| `pcu init`        | `pcu i`             | Initialiser l'espace de travail PNPM et la configuration PCU   |
-| `pcu check`       | `pcu chk`, `pcu -c` | Vérifier les dépendances de catalogue obsolètes                |
-| `pcu update`      | `pcu u`, `pcu -u`   | Mettre à jour les dépendances de catalogue                     |
-| `pcu analyze`     | `pcu a`, `pcu -a`   | Analyser l'impact des mises à jour de dépendances              |
-| `pcu workspace`   | `pcu w`, `pcu -s`   | Afficher les informations et validation de l'espace de travail |
-| `pcu theme`       | `pcu t`, `pcu -t`   | Configurer les thèmes couleur et paramètres d'interface        |
-| `pcu security`    | `pcu sec`           | Analyse et corrections des vulnérabilités de sécurité          |
-| `pcu help`        | `pcu h`, `pcu -h`   | Afficher l'aide                                                |
+| Commande complète | Raccourcis et alias                       | Description                                                    |
+| ----------------- | ----------------------------------------- | -------------------------------------------------------------- |
+| `pcu init`        | `pcu i`                                   | Initialiser l'espace de travail PNPM et la configuration PCU   |
+| `pcu check`       | `pcu chk`, `pcu -c`, `pcu --check`        | Vérifier les dépendances de catalogue obsolètes                |
+| `pcu update`      | `pcu u`, `pcu -u`, `pcu --update`         | Mettre à jour les dépendances de catalogue                     |
+| `pcu analyze`     | `pcu a`, `pcu -a`, `pcu --analyze`        | Analyser l'impact des mises à jour de dépendances              |
+| `pcu ai`          | -                                         | Gestion des fournisseurs AI et tests d'analyse                 |
+| `pcu workspace`   | `pcu w`, `pcu -s`, `pcu --workspace-info` | Afficher les informations et validation de l'espace de travail |
+| `pcu theme`       | `pcu t`, `pcu -t`, `pcu --theme`          | Configurer les thèmes couleur et paramètres d'interface        |
+| `pcu security`    | `pcu sec`                                 | Analyse et corrections des vulnérabilités de sécurité          |
+| `pcu cache`       | -                                         | Gestion du cache (statistiques et nettoyage)                   |
+| `pcu help`        | `pcu h`, `pcu -h`                         | Afficher l'aide                                                |
 
 ### Raccourcis spéciaux
 
@@ -904,6 +906,153 @@ pcu -t -i
 ```
 
 Lance un assistant de sélection de thème guidé qui permet de prévisualiser les thèmes et configurer les paramètres d'interface de manière interactive.
+
+---
+
+## `pcu ai` - Gestion des fournisseurs AI
+
+Vérifier l'état des fournisseurs AI et gérer le cache d'analyse AI.
+
+<CodeGroup>
+
+```bash {{ title: 'Vérifier le statut' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'Tester l'analyse' }}
+pcu ai --test
+```
+
+```bash {{ title: 'Gestion du cache' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### Options
+
+<Properties>
+  <Property name="--status" type="boolean">
+    Afficher l'état de tous les fournisseurs AI (par défaut)
+  </Property>
+  <Property name="--test" type="boolean">
+    Tester l'analyse AI avec une requête d'exemple
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    Afficher les statistiques du cache d'analyse AI
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    Vider le cache d'analyse AI
+  </Property>
+</Properties>
+
+### Fournisseurs AI pris en charge
+
+PCU détecte et utilise automatiquement les outils CLI AI disponibles :
+
+| Fournisseur | Outil CLI | Méthode de détection                      |
+| ----------- | --------- | ----------------------------------------- |
+| Claude      | `claude`  | Recherche dans PATH et sortie de version  |
+| Gemini      | `gemini`  | Recherche dans PATH et sortie de version  |
+| OpenAI      | `codex`   | Recherche dans PATH et sortie de version  |
+
+### Exemples d'utilisation
+
+#### Afficher l'état des fournisseurs
+
+```bash
+pcu ai
+```
+
+Affiche tous les fournisseurs AI détectés avec l'état de disponibilité, le chemin et la version.
+
+#### Tester l'analyse AI
+
+```bash
+pcu ai --test
+```
+
+Exécute un test avec une mise à jour de dépendance d'exemple pour vérifier que l'analyse AI fonctionne.
+
+---
+
+## `pcu cache` - Gestion du cache
+
+Gérer le cache PCU pour les réponses du registre NPM, les données d'espace de travail et les résultats d'analyse AI.
+
+<CodeGroup>
+
+```bash {{ title: 'Afficher les statistiques' }}
+pcu cache
+pcu cache --stats
+pcu cache --stats --verbose
+```
+
+```bash {{ title: 'Vider le cache' }}
+pcu cache --clear
+pcu cache --clear --verbose
+```
+
+</CodeGroup>
+
+### Options
+
+<Properties>
+  <Property name="--stats" type="boolean">
+    Afficher les statistiques du cache (comportement par défaut)
+  </Property>
+  <Property name="--clear" type="boolean">
+    Vider toutes les entrées de cache
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    Afficher les informations détaillées incluant descriptions et compteurs hits/misses
+  </Property>
+  <Property name="--no-color" type="boolean">
+    Désactiver la sortie colorée
+  </Property>
+</Properties>
+
+### Types de cache
+
+PCU gère trois caches séparés :
+
+#### Cache de registre
+
+- **Objectif** : Stocke les réponses de l'API du registre NPM
+- **Avantages** : Réduit les requêtes réseau, requêtes de version plus rapides
+- **TTL** : 1 heure (configurable)
+
+#### Cache d'espace de travail
+
+- **Objectif** : Stocke les données du système de fichiers de l'espace de travail
+- **Avantages** : Analyse d'espace de travail plus rapide lors d'exécutions répétées
+- **TTL** : 5 minutes (configurable)
+
+#### Cache d'analyse AI
+
+- **Objectif** : Stocke les résultats d'analyse alimentés par AI
+- **Avantages** : Évite les appels API AI redondants, résultats cohérents
+- **TTL** : 24 heures (configurable)
+
+### Exemples d'utilisation
+
+#### Afficher les statistiques de cache
+
+```bash
+pcu cache
+```
+
+Affiche les statistiques résumées de tous les caches.
+
+#### Vider tous les caches
+
+```bash
+pcu cache --clear
+```
+
+Vide toutes les entrées de cache. Utile lorsque vous rencontrez des problèmes avec des données obsolètes.
 
 ---
 

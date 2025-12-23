@@ -82,19 +82,17 @@ export interface WorkspaceCliOptions extends GlobalCliOptions {
  * Global options available to all commands
  */
 export const globalOptions = [
-  new Option('-w, --workspace <path>', 'workspace directory path').env('PCU_WORKSPACE'),
+  new Option('-w, --workspace <path>', t('option.workspacePath')).env('PCU_WORKSPACE'),
 
-  new Option('-v, --verbose', 'enable verbose logging').env('PCU_VERBOSE'),
+  new Option('-v, --verbose', t('option.verboseLogging')).env('PCU_VERBOSE'),
 
-  new Option('--no-color', 'disable colored output').env('PCU_NO_COLOR'),
+  new Option('--no-color', t('option.noColorOutput')).env('PCU_NO_COLOR'),
 
-  new Option('--registry <url>', 'NPM registry URL').env('PCU_REGISTRY'),
+  new Option('--registry <url>', t('option.registryUrl')).env('PCU_REGISTRY'),
 
-  new Option('--timeout <ms>', 'request timeout in milliseconds')
-    .argParser(parseInt)
-    .env('PCU_TIMEOUT'),
+  new Option('--timeout <ms>', t('option.timeout')).argParser(parseInt).env('PCU_TIMEOUT'),
 
-  new Option('--config <path>', 'path to configuration file').env('PCU_CONFIG'),
+  new Option('--config <path>', t('option.configPath')).env('PCU_CONFIG'),
 ]
 
 /**
@@ -103,23 +101,23 @@ export const globalOptions = [
 export const checkOptions = [
   ...globalOptions,
 
-  new Option('--catalog <name>', 'check specific catalog only').env('PCU_CATALOG'),
+  new Option('--catalog <name>', t('option.catalogOnly')).env('PCU_CATALOG'),
 
-  new Option('-f, --format <type>', 'output format')
+  new Option('-f, --format <type>', t('option.outputFormat'))
     .choices(['table', 'json', 'yaml', 'minimal'])
     .default('table')
     .env('PCU_OUTPUT_FORMAT'),
 
-  new Option('-t, --target <type>', 'update target')
+  new Option('-t, --target <type>', t('option.updateTarget'))
     .choices(['latest', 'greatest', 'minor', 'patch', 'newest'])
     .default('latest')
     .env('PCU_UPDATE_TARGET'),
 
-  new Option('--prerelease', 'include prerelease versions').env('PCU_PRERELEASE'),
+  new Option('--prerelease', t('option.prereleaseVersions')).env('PCU_PRERELEASE'),
 
-  new Option('--include <pattern...>', 'include packages matching pattern').env('PCU_INCLUDE'),
+  new Option('--include <pattern...>', t('option.includePattern')).env('PCU_INCLUDE'),
 
-  new Option('--exclude <pattern...>', 'exclude packages matching pattern').env('PCU_EXCLUDE'),
+  new Option('--exclude <pattern...>', t('option.excludePattern')).env('PCU_EXCLUDE'),
 ]
 
 /**
@@ -128,13 +126,13 @@ export const checkOptions = [
 export const updateOptions = [
   ...checkOptions,
 
-  new Option('-i, --interactive', 'interactive mode to choose updates').env('PCU_INTERACTIVE'),
+  new Option('-i, --interactive', t('option.interactiveMode')).env('PCU_INTERACTIVE'),
 
-  new Option('-d, --dry-run', 'preview changes without writing files').env('PCU_DRY_RUN'),
+  new Option('-d, --dry-run', t('option.dryRunPreview')).env('PCU_DRY_RUN'),
 
-  new Option('--force', 'force updates even if risky').env('PCU_FORCE'),
+  new Option('--force', t('option.forceRisky')).env('PCU_FORCE'),
 
-  new Option('--create-backup', 'create backup files before updating').env('PCU_CREATE_BACKUP'),
+  new Option('--create-backup', t('option.backupFiles')).env('PCU_CREATE_BACKUP'),
 ]
 
 /**
@@ -143,24 +141,24 @@ export const updateOptions = [
 export const analyzeOptions = [
   ...globalOptions,
 
-  new Option('-f, --format <type>', 'output format')
+  new Option('-f, --format <type>', t('option.outputFormat'))
     .choices(['table', 'json', 'yaml', 'minimal'])
     .default('table')
     .env('PCU_OUTPUT_FORMAT'),
 
-  new Option('--ai', 'enable AI-powered analysis').env('PCU_AI_ENABLED'),
+  new Option('--ai', t('option.aiAnalysis')).env('PCU_AI_ENABLED'),
 
-  new Option('--provider <name>', 'AI provider to use')
+  new Option('--provider <name>', t('option.aiProvider'))
     .choices(['auto', 'claude', 'gemini', 'codex'])
     .default('auto')
     .env('PCU_AI_PROVIDER'),
 
-  new Option('--analysis-type <type>', 'type of AI analysis')
+  new Option('--analysis-type <type>', t('option.analysisTypeOpt'))
     .choices(['impact', 'security', 'compatibility', 'recommend'])
     .default('impact')
     .env('PCU_AI_ANALYSIS_TYPE'),
 
-  new Option('--skip-cache', 'skip AI analysis cache').env('PCU_AI_SKIP_CACHE'),
+  new Option('--skip-cache', t('option.skipAiCache')).env('PCU_AI_SKIP_CACHE'),
 ]
 
 /**
@@ -169,13 +167,13 @@ export const analyzeOptions = [
 export const workspaceOptions = [
   ...globalOptions,
 
-  new Option('--validate', 'validate workspace configuration'),
+  new Option('--validate', t('option.validateWorkspace')),
 
-  new Option('--stats', 'show workspace statistics'),
+  new Option('--stats', t('option.showStats')),
 
-  new Option('--info', 'show workspace information'),
+  new Option('--info', t('option.showInfo')),
 
-  new Option('-f, --format <type>', 'output format')
+  new Option('-f, --format <type>', t('option.outputFormat'))
     .choices(['table', 'json', 'yaml', 'minimal'])
     .default('table')
     .env('PCU_OUTPUT_FORMAT'),
@@ -192,39 +190,39 @@ export const optionGroups = {
   output: {
     title: t('optionGroup.output'),
     options: [
-      new Option('-f, --format <type>', 'output format')
+      new Option('-f, --format <type>', t('option.outputFormat'))
         .choices(['table', 'json', 'yaml', 'minimal'])
         .default('table'),
-      new Option('--no-color', 'disable colored output'),
-      new Option('-v, --verbose', 'enable verbose logging'),
+      new Option('--no-color', t('option.noColorOutput')),
+      new Option('-v, --verbose', t('option.verboseLogging')),
     ],
   },
   filtering: {
     title: t('optionGroup.filtering'),
     options: [
-      new Option('--catalog <name>', 'check specific catalog only'),
-      new Option('--include <pattern...>', 'include packages matching pattern'),
-      new Option('--exclude <pattern...>', 'exclude packages matching pattern'),
+      new Option('--catalog <name>', t('option.catalogOnly')),
+      new Option('--include <pattern...>', t('option.includePattern')),
+      new Option('--exclude <pattern...>', t('option.excludePattern')),
     ],
   },
   update: {
     title: t('optionGroup.update'),
     options: [
-      new Option('-t, --target <type>', 'update target')
+      new Option('-t, --target <type>', t('option.updateTarget'))
         .choices(['latest', 'greatest', 'minor', 'patch', 'newest'])
         .default('latest'),
-      new Option('--prerelease', 'include prerelease versions'),
-      new Option('-i, --interactive', 'interactive mode'),
-      new Option('-d, --dry-run', 'preview changes only'),
-      new Option('--force', 'force updates'),
-      new Option('--create-backup', 'create backup files'),
+      new Option('--prerelease', t('option.prereleaseVersions')),
+      new Option('-i, --interactive', t('option.interactiveMode')),
+      new Option('-d, --dry-run', t('option.dryRunPreview')),
+      new Option('--force', t('option.forceRisky')),
+      new Option('--create-backup', t('option.backupFiles')),
     ],
   },
   registry: {
     title: t('optionGroup.registry'),
     options: [
-      new Option('--registry <url>', 'NPM registry URL'),
-      new Option('--timeout <ms>', 'request timeout').argParser(parseInt),
+      new Option('--registry <url>', t('option.registryUrl')),
+      new Option('--timeout <ms>', t('option.timeout')).argParser(parseInt),
     ],
   },
 }
@@ -439,7 +437,7 @@ export class OptionUtils {
           OptionUtils.parseBoolean(options.interactive) &&
           OptionUtils.parseBoolean(options.dryRun)
         ) {
-          errors.push('Cannot use --interactive with --dry-run')
+          errors.push(t('validation.interactiveWithDryRun'))
         }
         break
 
@@ -448,7 +446,7 @@ export class OptionUtils {
           OptionUtils.parseBoolean(v)
         ).length
         if (actionCount > 1) {
-          errors.push('Cannot use multiple workspace actions simultaneously')
+          errors.push(t('validation.multipleWorkspaceActions'))
         }
         if (actionCount === 0) {
           // Default to info
@@ -460,7 +458,7 @@ export class OptionUtils {
 
     // Global validations
     if (OptionUtils.parseBoolean(options.verbose) && OptionUtils.parseBoolean(options.silent)) {
-      errors.push('Cannot use both --verbose and --silent')
+      errors.push(t('validation.verboseWithSilent'))
     }
 
     return errors

@@ -7,7 +7,7 @@
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { FileSystemError } from '@pcu/utils'
+import { FileSystemError, logger } from '@pcu/utils'
 import { glob } from 'glob'
 import YAML from 'yaml'
 import type { PackageJsonData } from '../../domain/entities/package.js'
@@ -157,8 +157,9 @@ export class FileSystemService {
       await this.writeTextFile(filePath, updatedContent)
     } catch (error) {
       // If reading the original file fails, fall back to regular YAML writing
-      console.warn(
-        `Could not preserve YAML format for ${filePath}, falling back to standard formatting`
+      logger.warn(
+        `Could not preserve YAML format for ${filePath}, falling back to standard formatting`,
+        { error }
       )
       await this.writeYamlFile(filePath, data)
     }
@@ -681,7 +682,7 @@ export class FileSystemService {
         results.push(...matches)
       } catch (error) {
         // Continue with other patterns if one fails
-        console.warn(`Failed to process pattern ${pattern}:`, error)
+        logger.warn(`Failed to process pattern ${pattern}`, { error })
       }
     }
 
@@ -704,7 +705,7 @@ export class FileSystemService {
         })
         results.push(...matches)
       } catch (error) {
-        console.warn(`Failed to process pattern ${pattern}:`, error)
+        logger.warn(`Failed to process pattern ${pattern}`, { error })
       }
     }
 

@@ -6,6 +6,7 @@
  */
 
 import chalk from 'chalk'
+import { t } from '../i18n/i18n.js'
 import { Logger } from '../logger/logger.js'
 import { ErrorTracker } from './errorTracker.js'
 
@@ -603,14 +604,14 @@ export class UserFriendlyErrorHandler {
     const suggestions = UserFriendlyErrorHandler.packageSuggestions.get(packageName)
 
     if (suggestions && suggestions.length > 0) {
-      console.log(chalk.yellow(`⚠️  包 "${packageName}" 不存在`))
-      console.log(chalk.cyan(`💡 可能的正确包名:`))
+      console.log(chalk.yellow(`⚠️  ${t('error.packageNotFoundWithSuggestion', { packageName })}`))
+      console.log(chalk.cyan(`💡 ${t('error.possiblePackageNames')}`))
       suggestions.forEach((suggestion) => {
         console.log(chalk.cyan(`   • ${suggestion}`))
       })
     } else {
-      console.log(chalk.yellow(`⚠️  包 "${packageName}" 在 npm registry 中不存在`))
-      console.log(chalk.cyan(`💡 请检查包名是否正确，或者该包可能已被移除`))
+      console.log(chalk.yellow(`⚠️  ${t('error.packageNotFound', { packageName })}`))
+      console.log(chalk.cyan(`💡 ${t('error.checkPackageName')}`))
     }
 
     // Track for summary
@@ -624,11 +625,8 @@ export class UserFriendlyErrorHandler {
    * Handle empty version errors
    */
   static handleEmptyVersion(packageName: string, context?: ErrorContext): void {
-    console.log(chalk.yellow(`⚠️  包 "${packageName}" 的版本信息为空`))
-    console.log(chalk.cyan(`💡 这可能是由于:`))
-    console.log(chalk.cyan(`   • 包的 package.json 配置问题`))
-    console.log(chalk.cyan(`   • catalog 配置中的版本格式错误`))
-    console.log(chalk.cyan(`   • npm registry 数据同步问题`))
+    console.log(chalk.yellow(`⚠️  ${t('error.emptyVersion', { packageName })}`))
+    console.log(chalk.cyan(`💡 ${t('error.emptyVersionReasons')}`))
 
     // Track for summary
     ErrorTracker.trackSkippedPackage(packageName, new Error('Version string cannot be empty'))
@@ -640,8 +638,8 @@ export class UserFriendlyErrorHandler {
    * Handle network/timeout errors
    */
   static handleNetworkError(packageName: string, error: Error, context?: ErrorContext): void {
-    console.log(chalk.yellow(`⚠️  检查包 "${packageName}" 时遇到网络问题`))
-    console.log(chalk.cyan(`💡 请稍后重试，或检查网络连接`))
+    console.log(chalk.yellow(`⚠️  ${t('error.networkError', { packageName })}`))
+    console.log(chalk.cyan(`💡 ${t('error.networkRetry')}`))
 
     // Track for summary
     ErrorTracker.trackSkippedPackage(packageName, error)
@@ -672,7 +670,7 @@ export class UserFriendlyErrorHandler {
 
     // Don't spam the user with security check failures unless it's critical
     if (context?.operation === 'update' || context?.operation === 'security-audit') {
-      console.log(chalk.yellow(`⚠️  无法检查 "${packageName}" 的安全状态`))
+      console.log(chalk.yellow(`⚠️  ${t('error.securityCheckUnavailable', { packageName })}`))
     }
   }
 
@@ -711,7 +709,7 @@ export class UserFriendlyErrorHandler {
       UserFriendlyErrorHandler.handleEmptyVersion(packageName)
     } else {
       // Generic error handling
-      console.log(chalk.yellow(`⚠️  跳过包 "${packageName}" (检查失败)`))
+      console.log(chalk.yellow(`⚠️  ${t('error.packageSkipped', { packageName })}`))
       UserFriendlyErrorHandler.logger.debug('Package check failed', {
         packageName,
         error: error.message,
@@ -752,39 +750,45 @@ export class UserFriendlyErrorHandler {
     if (totalSkipped === 0) return
 
     console.log()
-    console.log(chalk.cyan(`📋 跳过了 ${totalSkipped} 个包的检查:`))
+    console.log(chalk.cyan(`📋 ${t('summary.skippedPackages', { count: totalSkipped })}`))
 
     const grouped = ErrorTracker.getSkippedPackages()
 
     if (grouped.notFound.length > 0) {
       console.log(
-        chalk.yellow(`   不存在的包 (${grouped.notFound.length}): ${grouped.notFound.join(', ')}`)
+        chalk.yellow(
+          `   ${t('summary.notFoundPackages', { count: grouped.notFound.length, packages: grouped.notFound.join(', ') })}`
+        )
       )
     }
 
     if (grouped.emptyVersion.length > 0) {
       console.log(
         chalk.yellow(
-          `   版本信息为空 (${grouped.emptyVersion.length}): ${grouped.emptyVersion.join(', ')}`
+          `   ${t('summary.emptyVersionPackages', { count: grouped.emptyVersion.length, packages: grouped.emptyVersion.join(', ') })}`
         )
       )
     }
 
     if (grouped.network.length > 0) {
       console.log(
-        chalk.yellow(`   网络问题 (${grouped.network.length}): ${grouped.network.join(', ')}`)
+        chalk.yellow(
+          `   ${t('summary.networkIssuePackages', { count: grouped.network.length, packages: grouped.network.join(', ') })}`
+        )
       )
     }
 
     if (grouped.other.length > 0) {
       console.log(
-        chalk.yellow(`   其他问题 (${grouped.other.length}): ${grouped.other.join(', ')}`)
+        chalk.yellow(
+          `   ${t('summary.otherIssuePackages', { count: grouped.other.length, packages: grouped.other.join(', ') })}`
+        )
       )
     }
 
     const stats = ErrorTracker.getErrorStats()
     if (stats.security > 0) {
-      console.log(chalk.gray(`   安全检查失败: ${stats.security} 次`))
+      console.log(chalk.gray(`   ${t('summary.securityCheckFailures', { count: stats.security })}`))
     }
   }
 

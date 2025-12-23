@@ -7,7 +7,7 @@
 
 import { spawnSync } from 'node:child_process'
 import * as path from 'node:path'
-import { logger } from '@pcu/utils'
+import { CommandExitError, logger } from '@pcu/utils'
 import * as fs from 'fs-extra'
 import type { OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { ProgressBar } from '../formatters/progressBar.js'
@@ -161,8 +161,13 @@ export class SecurityCommand {
 
       // Exit with appropriate code based on findings
       const exitCode = report.summary.critical > 0 ? 1 : 0
-      process.exit(exitCode)
+      throw CommandExitError.withCode(exitCode)
     } catch (error) {
+      // Re-throw CommandExitError as-is
+      if (error instanceof CommandExitError) {
+        throw error
+      }
+
       logger.error('Security scan failed', error instanceof Error ? error : undefined, { options })
       if (progressBar) {
         progressBar.fail('Security analysis failed')
@@ -176,7 +181,7 @@ export class SecurityCommand {
         console.error(StyledText.muted(error.stack || 'No stack trace available'))
       }
 
-      process.exit(1)
+      throw CommandExitError.failure('Security scan failed')
     }
   }
 

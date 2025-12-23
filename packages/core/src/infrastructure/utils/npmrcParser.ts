@@ -8,6 +8,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { logger } from '@pcu/utils'
 
 export interface NpmrcConfig {
   // Default registry
@@ -110,7 +111,7 @@ export class NpmrcParser {
       }
     } catch (error) {
       // Silently ignore errors reading npmrc files
-      console.debug(`Failed to parse npmrc file ${filepath}:`, error)
+      logger.debug(`Failed to parse npmrc file ${filepath}`, { error })
     }
   }
 

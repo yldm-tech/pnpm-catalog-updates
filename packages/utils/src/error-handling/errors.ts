@@ -30,6 +30,9 @@ export enum ErrorCode {
   FILE_SYSTEM_ERROR = 'ERR_FILE_SYSTEM_ERROR',
   CACHE_ERROR = 'ERR_CACHE_ERROR',
   EXTERNAL_SERVICE_ERROR = 'ERR_EXTERNAL_SERVICE_ERROR',
+
+  // CLI errors (4xxx)
+  COMMAND_EXIT = 'ERR_COMMAND_EXIT',
 }
 
 /**
@@ -78,11 +81,7 @@ export abstract class BaseError extends Error {
 /**
  * Base class for domain-level errors
  */
-export abstract class DomainError extends BaseError {
-  constructor(message: string, code: ErrorCode, context?: Record<string, unknown>, cause?: Error) {
-    super(message, code, context, cause)
-  }
-}
+export abstract class DomainError extends BaseError {}
 
 /**
  * Thrown when a workspace cannot be found at the specified path
@@ -164,11 +163,7 @@ export class WorkspaceValidationError extends DomainError {
 /**
  * Base class for application-level errors
  */
-export abstract class ApplicationError extends BaseError {
-  constructor(message: string, code: ErrorCode, context?: Record<string, unknown>, cause?: Error) {
-    super(message, code, context, cause)
-  }
-}
+export abstract class ApplicationError extends BaseError {}
 
 /**
  * Thrown when update planning fails
@@ -242,11 +237,7 @@ export class ConfigurationError extends ApplicationError {
 /**
  * Base class for infrastructure-level errors
  */
-export abstract class InfrastructureError extends BaseError {
-  constructor(message: string, code: ErrorCode, context?: Record<string, unknown>, cause?: Error) {
-    super(message, code, context, cause)
-  }
-}
+export abstract class InfrastructureError extends BaseError {}
 
 /**
  * Thrown when npm registry operations fail
@@ -322,6 +313,58 @@ export class ExternalServiceError extends InfrastructureError {
       cause
     )
   }
+}
+
+// ============================================================================
+// CLI Errors - Command execution and exit handling
+// ============================================================================
+
+/**
+ * Thrown when a CLI command needs to exit with a specific code.
+ * This replaces direct process.exit() calls for better testability and control.
+ */
+export class CommandExitError extends Error {
+  public readonly exitCode: number
+  public readonly silent: boolean
+
+  constructor(exitCode: number, message?: string, silent = false) {
+    super(message || (exitCode === 0 ? 'Command completed successfully' : 'Command failed'))
+    this.name = 'CommandExitError'
+    this.exitCode = exitCode
+    this.silent = silent
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor)
+    }
+  }
+
+  /**
+   * Create a success exit (code 0)
+   */
+  static success(message?: string): CommandExitError {
+    return new CommandExitError(0, message, true)
+  }
+
+  /**
+   * Create a failure exit (code 1)
+   */
+  static failure(message?: string): CommandExitError {
+    return new CommandExitError(1, message)
+  }
+
+  /**
+   * Create an exit with custom code
+   */
+  static withCode(code: number, message?: string): CommandExitError {
+    return new CommandExitError(code, message)
+  }
+}
+
+/**
+ * Check if an error is a CommandExitError
+ */
+export function isCommandExitError(error: unknown): error is CommandExitError {
+  return error instanceof CommandExitError
 }
 
 // ============================================================================

@@ -7,7 +7,7 @@
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { logger, type PackageFilterConfig } from '@pcu/utils'
+import { CommandExitError, logger, type PackageFilterConfig } from '@pcu/utils'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
 
 export interface InitCommandOptions {
@@ -92,7 +92,7 @@ export class InitCommand {
         console.log(StyledText.iconWarning('Configuration file already exists!'))
         console.log(StyledText.muted(`Found: ${configPath}`))
         console.log(StyledText.muted('Use --force to overwrite existing configuration'))
-        process.exit(1)
+        throw CommandExitError.failure('Configuration file already exists')
       }
 
       // Create directory if it doesn't exist
@@ -115,8 +115,13 @@ export class InitCommand {
       // Show next steps
       this.showNextSteps(configPath)
 
-      process.exit(0)
+      throw CommandExitError.success()
     } catch (error) {
+      // Re-throw CommandExitError as-is
+      if (error instanceof CommandExitError) {
+        throw error
+      }
+
       logger.error('Init command failed', error instanceof Error ? error : undefined, { options })
       console.error(StyledText.iconError('Error initializing configuration:'))
       console.error(StyledText.error(String(error)))
@@ -126,7 +131,7 @@ export class InitCommand {
         console.error(StyledText.muted(error.stack || 'No stack trace available'))
       }
 
-      process.exit(1)
+      throw CommandExitError.failure('Init command failed')
     }
   }
 

@@ -7,7 +7,7 @@
  * @see https://osv.dev/
  */
 
-import { ExternalServiceError, NetworkError } from '@pcu/utils'
+import { ExternalServiceError, logger, NetworkError } from '@pcu/utils'
 
 export interface VulnerabilityInfo {
   id: string
@@ -361,9 +361,9 @@ export class SecurityAdvisoryService {
       return report
     } catch (error) {
       // Return empty report on error, don't block the analysis
-      console.error(
-        `Security advisory query failed for ${packageName}@${version}:`,
-        (error as Error).message
+      logger.error(
+        `Security advisory query failed for ${packageName}@${version}`,
+        error instanceof Error ? error : undefined
       )
 
       return {
@@ -832,9 +832,9 @@ export class SecurityAdvisoryService {
       // No safe version found within the limit
       return undefined
     } catch (error) {
-      console.error(
-        `Failed to find safe version for ${packageName}@${currentVersion}:`,
-        (error as Error).message
+      logger.error(
+        `Failed to find safe version for ${packageName}@${currentVersion}`,
+        error instanceof Error ? error : undefined
       )
       return undefined
     }

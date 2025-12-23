@@ -4,11 +4,8 @@
 
 import { FileSystemError } from '@pcu/utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Catalog } from '../../../domain/entities/catalog.js'
-import { Package } from '../../../domain/entities/package.js'
 import { Workspace } from '../../../domain/entities/workspace.js'
 import { CatalogCollection } from '../../../domain/value-objects/catalogCollection.js'
-import { CatalogDefinition } from '../../../domain/value-objects/catalogDefinition.js'
 import { PackageCollection } from '../../../domain/value-objects/packageCollection.js'
 import { WorkspaceConfig } from '../../../domain/value-objects/workspaceConfig.js'
 import { WorkspaceId } from '../../../domain/value-objects/workspaceId.js'

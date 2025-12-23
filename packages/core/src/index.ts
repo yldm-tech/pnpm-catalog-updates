@@ -77,8 +77,15 @@ export {
   GeminiProvider,
   RuleEngine,
 } from './infrastructure/ai/index'
-// Infrastructure
-export { Cache } from './infrastructure/cache/cache'
+// Infrastructure - Cache
+export type { CacheStats } from './infrastructure/cache/cache'
+export {
+  Cache,
+  RegistryCache,
+  registryCache,
+  WorkspaceCache,
+  workspaceCache,
+} from './infrastructure/cache/cache'
 export { NpmRegistryService } from './infrastructure/external-services/npmRegistryService'
 // Security Advisory Types
 export type {

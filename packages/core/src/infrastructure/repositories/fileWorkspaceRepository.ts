@@ -7,7 +7,7 @@
 
 import path from 'node:path'
 
-import { FileSystemError } from '@pcu/utils'
+import { FileSystemError, logger } from '@pcu/utils'
 import { Catalog } from '../../domain/entities/catalog.js'
 import { Package } from '../../domain/entities/package.js'
 import { Workspace } from '../../domain/entities/workspace.js'
@@ -46,7 +46,10 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
 
       return Workspace.create(id, path, config, catalogs, packages)
     } catch (error) {
-      console.error(`Failed to load workspace from ${path.toString()}:`, error)
+      logger.error(
+        `Failed to load workspace from ${path.toString()}`,
+        error instanceof Error ? error : undefined
+      )
       return null
     }
   }
@@ -140,7 +143,10 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
 
       return await this.findByPath(WorkspacePath.fromString(workspacePath))
     } catch (error) {
-      console.error(`Failed to discover workspace from ${startPath}:`, error)
+      logger.error(
+        `Failed to discover workspace from ${startPath}`,
+        error instanceof Error ? error : undefined
+      )
       return null
     }
   }
@@ -177,7 +183,7 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
 
           packages.push(pkg)
         } catch (error) {
-          console.warn(`Failed to load package from ${packageJsonPath}:`, error)
+          logger.warn(`Failed to load package from ${packageJsonPath}`, { error })
           // Continue with other packages
         }
       }
@@ -232,7 +238,10 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
         const packageData = pkg.toPackageJsonData()
         await this.fileSystemService.writePackageJson(pkg.getPath(), packageData)
       } catch (error) {
-        console.error(`Failed to save package ${pkg.getName()}:`, error)
+        logger.error(
+          `Failed to save package ${pkg.getName()}`,
+          error instanceof Error ? error : undefined
+        )
         // Continue with other packages
       }
     }

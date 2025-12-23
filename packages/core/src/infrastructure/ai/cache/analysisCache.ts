@@ -42,9 +42,11 @@ export interface AnalysisCacheOptions {
  */
 export interface AnalysisCacheStats {
   totalEntries: number
+  totalSize: number
   hits: number
   misses: number
   hitRate: number
+  missRate: number
   oldestEntry: number
   newestEntry: number
 }
@@ -213,14 +215,19 @@ export class AnalysisCache {
    * Get cache statistics
    */
   getStats(): AnalysisCacheStats {
-    const timestamps = Array.from(this.entries.values()).map((e) => e.timestamp)
+    const entries = Array.from(this.entries.values())
+    const timestamps = entries.map((e) => e.timestamp)
     const total = this.stats.hits + this.stats.misses
+    // Estimate size: each entry is roughly 1KB average for JSON serialized content
+    const estimatedSize = entries.reduce((sum, e) => sum + JSON.stringify(e.result).length, 0)
 
     return {
       totalEntries: this.entries.size,
+      totalSize: estimatedSize,
       hits: this.stats.hits,
       misses: this.stats.misses,
       hitRate: total > 0 ? this.stats.hits / total : 0,
+      missRate: total > 0 ? this.stats.misses / total : 0,
       oldestEntry: timestamps.length > 0 ? Math.min(...timestamps) : 0,
       newestEntry: timestamps.length > 0 ? Math.max(...timestamps) : 0,
     }

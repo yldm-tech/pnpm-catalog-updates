@@ -279,7 +279,7 @@ describe('Package', () => {
 
       expect(result.name).toBe('test-package')
       expect(result.version).toBe('1.0.0')
-      expect(result.dependencies?.['lodash']).toBe('^4.17.21')
+      expect(result.dependencies?.lodash).toBe('^4.17.21')
     })
   })
 

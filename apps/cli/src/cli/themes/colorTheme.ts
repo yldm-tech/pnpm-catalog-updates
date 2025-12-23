@@ -323,6 +323,23 @@ export class StyledText {
   static iconComplete(text?: string): string {
     return StyledText.icon('🎉', text)
   }
+
+  // Text formatting
+  static bold(text: string): string {
+    return chalk.bold(text)
+  }
+
+  static dim(text: string): string {
+    return chalk.dim(text)
+  }
+
+  static italic(text: string): string {
+    return chalk.italic(text)
+  }
+
+  static underline(text: string): string {
+    return chalk.underline(text)
+  }
 }
 
 /**

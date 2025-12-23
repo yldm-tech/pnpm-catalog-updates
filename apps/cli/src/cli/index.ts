@@ -19,11 +19,12 @@ import {
   WorkspaceService,
 } from '@pcu/core'
 // CLI Commands
-import { ConfigLoader, logger, VersionChecker } from '@pcu/utils'
+import { ConfigLoader, isCommandExitError, logger, VersionChecker } from '@pcu/utils'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import { AiCommand } from './commands/aiCommand.js'
 import { AnalyzeCommand } from './commands/analyzeCommand.js'
+import { CacheCommand } from './commands/cacheCommand.js'
 import { CheckCommand } from './commands/checkCommand.js'
 import { InitCommand } from './commands/initCommand.js'
 import { SecurityCommand } from './commands/securityCommand.js'
@@ -146,8 +147,10 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         })
-        process.exit(0)
       } catch (error) {
+        if (isCommandExitError(error)) {
+          process.exit(error.exitCode)
+        }
         logger.error('Check command failed', error instanceof Error ? error : undefined, {
           command: 'check',
         })
@@ -212,8 +215,10 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
           analysisType: options.analysisType as AnalysisType,
           skipCache: parseBooleanFlag(options.skipCache),
         })
-        process.exit(0)
       } catch (error) {
+        if (isCommandExitError(error)) {
+          process.exit(error.exitCode)
+        }
         logger.error('Update command failed', error instanceof Error ? error : undefined, {
           command: 'update',
         })
@@ -258,8 +263,10 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         })
-        process.exit(0)
       } catch (error) {
+        if (isCommandExitError(error)) {
+          process.exit(error.exitCode)
+        }
         logger.error('Analyze command failed', error instanceof Error ? error : undefined, {
           command: 'analyze',
         })
@@ -281,7 +288,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         const globalOptions = command.parent.opts()
         const workspaceCommand = new WorkspaceCommand(services.workspaceService)
 
-        const exitCode = await workspaceCommand.execute({
+        await workspaceCommand.execute({
           workspace: globalOptions.workspace,
           validate: options.validate,
           stats: options.stats,
@@ -289,8 +296,10 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         })
-        process.exit(exitCode)
       } catch (error) {
+        if (isCommandExitError(error)) {
+          process.exit(error.exitCode)
+        }
         logger.error('Workspace command failed', error instanceof Error ? error : undefined, {
           command: 'workspace',
         })
@@ -315,8 +324,10 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
           list: options.list,
           interactive: options.interactive,
         })
-        process.exit(0)
       } catch (error) {
+        if (isCommandExitError(error)) {
+          process.exit(error.exitCode)
+        }
         logger.error('Theme command failed', error instanceof Error ? error : undefined, {
           command: 'theme',
         })
@@ -356,8 +367,10 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         })
-        process.exit(0)
       } catch (error) {
+        if (isCommandExitError(error)) {
+          process.exit(error.exitCode)
+        }
         logger.error('Security command failed', error instanceof Error ? error : undefined, {
           command: 'security',
         })
@@ -393,8 +406,10 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         })
-        process.exit(0)
       } catch (error) {
+        if (isCommandExitError(error)) {
+          process.exit(error.exitCode)
+        }
         logger.error('Init command failed', error instanceof Error ? error : undefined, {
           command: 'init',
         })
@@ -420,10 +435,41 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
           cacheStats: options.cacheStats,
           clearCache: options.clearCache,
         })
-        process.exit(0)
       } catch (error) {
+        if (isCommandExitError(error)) {
+          process.exit(error.exitCode)
+        }
         logger.error('AI command failed', error instanceof Error ? error : undefined, {
           command: 'ai',
+        })
+        console.error(chalk.red('❌ Error:'), error)
+        process.exit(1)
+      }
+    })
+
+  // Cache command
+  program
+    .command('cache')
+    .description('manage PCU cache for registry and workspace data')
+    .option('--stats', 'show cache statistics (default)')
+    .option('--clear', 'clear all cache entries')
+    .action(async (options, command) => {
+      try {
+        const globalOptions = command.parent.opts()
+        const cacheCommand = new CacheCommand()
+
+        await cacheCommand.execute({
+          stats: options.stats,
+          clear: options.clear,
+          verbose: globalOptions.verbose,
+          color: !globalOptions.noColor,
+        })
+      } catch (error) {
+        if (isCommandExitError(error)) {
+          process.exit(error.exitCode)
+        }
+        logger.error('Cache command failed', error instanceof Error ? error : undefined, {
+          command: 'cache',
         })
         console.error(chalk.red('❌ Error:'), error)
         process.exit(1)
@@ -610,6 +656,9 @@ export async function main(): Promise<void> {
   try {
     await program.parseAsync(args)
   } catch (error) {
+    if (isCommandExitError(error)) {
+      process.exit(error.exitCode)
+    }
     logger.error('CLI parse error', error instanceof Error ? error : undefined, { args })
     console.error(chalk.red('❌ Unexpected error:'), error)
     if (error instanceof Error && error.stack) {
@@ -622,6 +671,9 @@ export async function main(): Promise<void> {
 // Run the CLI if this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
+    if (isCommandExitError(error)) {
+      process.exit(error.exitCode)
+    }
     logger.error('Fatal CLI error', error instanceof Error ? error : undefined)
     console.error(chalk.red('❌ Fatal error:'), error)
     process.exit(1)

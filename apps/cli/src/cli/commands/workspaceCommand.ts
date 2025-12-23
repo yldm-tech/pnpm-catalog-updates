@@ -5,6 +5,7 @@
  */
 
 import type { WorkspaceService } from '@pcu/core'
+import { CommandExitError } from '@pcu/utils'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 
 export interface WorkspaceCommandOptions {
@@ -22,19 +23,21 @@ export class WorkspaceCommand {
   /**
    * Execute the workspace command
    */
-  async execute(options: WorkspaceCommandOptions = {}): Promise<number> {
+  async execute(options: WorkspaceCommandOptions = {}): Promise<void> {
     const formatter = new OutputFormatter(options.format || 'table', options.color !== false)
 
     if (options.validate) {
       const report = await this.workspaceService.validateWorkspace(options.workspace)
       const formattedOutput = formatter.formatValidationReport(report)
       console.log(formattedOutput)
-      return report.isValid ? 0 : 1
+      throw report.isValid
+        ? CommandExitError.success()
+        : CommandExitError.failure('Validation failed')
     } else if (options.stats) {
       const stats = await this.workspaceService.getWorkspaceStats(options.workspace)
       const formattedOutput = formatter.formatWorkspaceStats(stats)
       console.log(formattedOutput)
-      return 0
+      throw CommandExitError.success()
     } else {
       const info = await this.workspaceService.getWorkspaceInfo(options.workspace)
       console.log(formatter.formatMessage(`Workspace: ${info.name}`, 'info'))
@@ -47,7 +50,7 @@ export class WorkspaceCommand {
           formatter.formatMessage(`Catalog names: ${info.catalogNames.join(', ')}`, 'info')
         )
       }
-      return 0
+      throw CommandExitError.success()
     }
   }
 

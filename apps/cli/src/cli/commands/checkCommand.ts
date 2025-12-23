@@ -12,7 +12,7 @@ import type {
   OutdatedDependencyInfo,
   OutdatedReport,
 } from '@pcu/core'
-import { ConfigLoader, logger } from '@pcu/utils'
+import { CommandExitError, ConfigLoader, logger } from '@pcu/utils'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
 
@@ -91,8 +91,13 @@ export class CheckCommand {
 
       // Always exit with 0 since this is just a check command
       // and finding updates is not an error condition
-      process.exit(0)
+      throw CommandExitError.success()
     } catch (error) {
+      // Re-throw CommandExitError as-is
+      if (error instanceof CommandExitError) {
+        throw error
+      }
+
       logger.error('Check dependencies failed', error instanceof Error ? error : undefined, {
         options,
       })
@@ -104,7 +109,7 @@ export class CheckCommand {
         console.error(StyledText.muted(error.stack || 'No stack trace available'))
       }
 
-      process.exit(1)
+      throw CommandExitError.failure('Check command failed')
     }
   }
 

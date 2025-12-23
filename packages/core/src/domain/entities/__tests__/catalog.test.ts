@@ -271,7 +271,7 @@ describe('Catalog', () => {
       expect(obj.id).toBe('cat-1')
       expect(obj.name).toBe('default')
       expect(obj.mode).toBe(CatalogMode.STRICT)
-      expect(obj.dependencies['lodash']).toBe('^4.17.21')
+      expect(obj.dependencies.lodash).toBe('^4.17.21')
     })
   })
 

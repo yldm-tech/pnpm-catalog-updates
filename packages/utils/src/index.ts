@@ -13,16 +13,15 @@ export * from './error-handling/errors'
 export * from './error-handling/errorTracker'
 export * from './error-handling/index'
 export * from './error-handling/userFriendlyErrorHandler'
-
+// Internationalization
+export * from './i18n/index'
 // Logger
 export * from './logger/index'
 export * from './logger/logger'
-
 // Types
 export * from './types/cli'
 export * from './types/core'
 export * from './types/index'
-
 // Utilities
 export * from './utils/async'
 export * from './utils/format'

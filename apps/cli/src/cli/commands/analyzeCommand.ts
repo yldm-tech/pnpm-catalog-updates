@@ -7,7 +7,7 @@
 
 import type { AnalysisType, CatalogUpdateService, WorkspaceService } from '@pcu/core'
 import { AIAnalysisService, NpmRegistryService } from '@pcu/core'
-import { logger } from '@pcu/utils'
+import { logger, t } from '@pcu/utils'
 import chalk from 'chalk'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 
@@ -42,7 +42,7 @@ export class AnalyzeCommand {
     // Auto-detect catalog if not specified
     let catalog = options.catalog
     if (!catalog) {
-      console.log(chalk.gray(`🔍 Auto-detecting catalog for ${packageName}...`))
+      console.log(chalk.gray(`🔍 ${t('command.analyze.autoDetecting', { packageName })}`))
       catalog =
         (await this.catalogUpdateService.findCatalogForPackage(packageName, options.workspace)) ??
         undefined
@@ -51,11 +51,11 @@ export class AnalyzeCommand {
           packageName,
           workspace: options.workspace,
         })
-        console.error(chalk.red(`❌ Package "${packageName}" not found in any catalog`))
-        console.log(chalk.gray('Use --catalog <name> to specify the catalog manually'))
-        throw new Error(`Package "${packageName}" not found in any catalog`)
+        console.error(chalk.red(`❌ ${t('command.analyze.notFoundInCatalog', { packageName })}`))
+        console.log(chalk.gray(t('command.analyze.specifyManually')))
+        throw new Error(t('command.analyze.notFoundInCatalog', { packageName }))
       }
-      console.log(chalk.gray(`   Found in catalog: ${catalog}`))
+      console.log(chalk.gray(`   ${t('command.analyze.foundInCatalog', { catalog })}`))
     }
 
     // Get latest version if not specified
@@ -77,7 +77,7 @@ export class AnalyzeCommand {
     const aiEnabled = options.ai !== false
 
     if (aiEnabled) {
-      console.log(chalk.blue('🤖 Running AI-powered analysis...'))
+      console.log(chalk.blue(`🤖 ${t('command.analyze.runningAI')}`))
 
       const aiService = new AIAnalysisService({
         config: {
@@ -125,7 +125,7 @@ export class AnalyzeCommand {
           targetVersion,
           provider: options.provider,
         })
-        console.warn(chalk.yellow('⚠️  AI analysis failed, showing basic analysis:'))
+        console.warn(chalk.yellow(`⚠️  ${t('command.analyze.aiFailed')}`))
         if (options.verbose) {
           console.warn(chalk.gray(String(aiError)))
         }

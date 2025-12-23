@@ -5,23 +5,69 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SecurityAdvisoryService } from '../securityAdvisoryService.js'
 
+// Mock logger and error classes
+const mockUtils = vi.hoisted(() => {
+  const mockLogger = {
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+  }
+
+  // Mock ExternalServiceError class
+  class MockExternalServiceError extends Error {
+    constructor(
+      public readonly serviceName: string,
+      public readonly operation: string,
+      public readonly reason: string,
+      cause?: Error
+    ) {
+      super(`External service "${serviceName}" ${operation} failed: ${reason}`, { cause })
+      this.name = 'ExternalServiceError'
+    }
+  }
+
+  // Mock NetworkError class
+  class MockNetworkError extends Error {
+    constructor(
+      public readonly url: string,
+      public readonly reason: string,
+      public readonly statusCode?: number,
+      cause?: Error
+    ) {
+      super(`Network request failed for "${url}": ${reason}`, { cause })
+      this.name = 'NetworkError'
+    }
+  }
+
+  return {
+    logger: mockLogger,
+    ExternalServiceError: MockExternalServiceError,
+    NetworkError: MockNetworkError,
+  }
+})
+
+// Mock @pcu/utils with logger and error classes
+vi.mock('@pcu/utils', () => ({
+  logger: mockUtils.logger,
+  ExternalServiceError: mockUtils.ExternalServiceError,
+  NetworkError: mockUtils.NetworkError,
+}))
+
 // Mock fetch globally
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
 describe('SecurityAdvisoryService', () => {
   let service: SecurityAdvisoryService
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     service = new SecurityAdvisoryService({ cacheMinutes: 30, timeout: 10000 })
   })
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore()
     vi.useRealTimers()
     vi.resetAllMocks()
   })
@@ -154,7 +200,7 @@ describe('SecurityAdvisoryService', () => {
 
       expect(report.vulnerabilities).toHaveLength(0)
       expect(report.totalVulnerabilities).toBe(0)
-      expect(consoleErrorSpy).toHaveBeenCalled()
+      expect(mockUtils.logger.error).toHaveBeenCalled()
     })
 
     it('should handle API timeout', async () => {
@@ -165,7 +211,7 @@ describe('SecurityAdvisoryService', () => {
       const report = await service.queryVulnerabilities('timeout-package', '1.0.0')
 
       expect(report.vulnerabilities).toHaveLength(0)
-      expect(consoleErrorSpy).toHaveBeenCalled()
+      expect(mockUtils.logger.error).toHaveBeenCalled()
     })
   })
 

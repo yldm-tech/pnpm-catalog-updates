@@ -12,7 +12,7 @@ import type {
   OutdatedDependencyInfo,
   OutdatedReport,
 } from '@pcu/core'
-import { CommandExitError, ConfigLoader, logger } from '@pcu/utils'
+import { CommandExitError, ConfigLoader, logger, t } from '@pcu/utils'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
 
@@ -40,15 +40,19 @@ export class CheckCommand {
       ThemeManager.setTheme('default')
 
       if (options.verbose) {
-        console.log(StyledText.iconAnalysis('Checking for outdated catalog dependencies'))
-        console.log(StyledText.muted(`Workspace: ${options.workspace || process.cwd()}`))
+        console.log(StyledText.iconAnalysis(t('info.checkingUpdates')))
+        console.log(
+          StyledText.muted(`${t('command.workspace.title')}: ${options.workspace || process.cwd()}`)
+        )
 
         if (options.catalog) {
-          console.log(StyledText.muted(`Catalog: ${options.catalog}`))
+          console.log(
+            StyledText.muted(t('command.check.catalogLabel', { catalog: options.catalog }))
+          )
         }
 
         if (options.target && options.target !== 'latest') {
-          console.log(StyledText.muted(`Target: ${options.target}`))
+          console.log(StyledText.muted(t('command.check.targetLabel', { target: options.target })))
         }
 
         console.log('')
@@ -101,12 +105,12 @@ export class CheckCommand {
       logger.error('Check dependencies failed', error instanceof Error ? error : undefined, {
         options,
       })
-      console.error(StyledText.iconError('Error checking dependencies:'))
+      console.error(StyledText.iconError(t('command.check.errorChecking')))
       console.error(StyledText.error(String(error)))
 
       if (options.verbose && error instanceof Error) {
-        console.error(StyledText.muted('Stack trace:'))
-        console.error(StyledText.muted(error.stack || 'No stack trace available'))
+        console.error(StyledText.muted(t('common.stackTrace')))
+        console.error(StyledText.muted(error.stack || t('common.noStackTrace')))
       }
 
       throw CommandExitError.failure('Check command failed')
@@ -121,17 +125,17 @@ export class CheckCommand {
     const theme = ThemeManager.getTheme()
 
     if (!report.hasUpdates) {
-      lines.push(StyledText.iconSuccess('All catalog dependencies are up to date!'))
+      lines.push(StyledText.iconSuccess(t('info.noUpdatesFound')))
     } else {
-      lines.push(StyledText.iconInfo('Summary:'))
-      lines.push(`  • ${report.totalOutdated} outdated dependencies found`)
-      lines.push(`  • ${report.catalogs.length} catalogs checked`)
+      lines.push(StyledText.iconInfo(`${t('command.check.summary')}:`))
+      lines.push(`  • ${t('info.foundOutdated', { count: report.totalOutdated })}`)
+      lines.push(`  • ${t('command.check.catalogsChecked', { count: report.catalogs.length })}`)
 
       const totalPackages = report.catalogs.reduce(
         (sum: number, cat: CatalogUpdateInfo) => sum + cat.totalPackages,
         0
       )
-      lines.push(`  • ${totalPackages} total catalog entries`)
+      lines.push(`  • ${t('command.check.totalCatalogEntries', { count: totalPackages })}`)
 
       // Show breakdown by update type
       const updateTypes = { major: 0, minor: 0, patch: 0 }
@@ -143,13 +147,19 @@ export class CheckCommand {
       }
 
       if (updateTypes.major > 0) {
-        lines.push(theme.major(`  • ${updateTypes.major} major updates`))
+        lines.push(
+          theme.major(`  • ${t('command.check.majorUpdates', { count: updateTypes.major })}`)
+        )
       }
       if (updateTypes.minor > 0) {
-        lines.push(theme.minor(`  • ${updateTypes.minor} minor updates`))
+        lines.push(
+          theme.minor(`  • ${t('command.check.minorUpdates', { count: updateTypes.minor })}`)
+        )
       }
       if (updateTypes.patch > 0) {
-        lines.push(theme.patch(`  • ${updateTypes.patch} patch updates`))
+        lines.push(
+          theme.patch(`  • ${t('command.check.patchUpdates', { count: updateTypes.patch })}`)
+        )
       }
 
       // Security updates
@@ -162,14 +172,14 @@ export class CheckCommand {
       }, 0)
 
       if (securityUpdates > 0) {
-        lines.push(StyledText.iconSecurity(`${securityUpdates} security updates`))
+        lines.push(StyledText.iconSecurity(t('info.securityUpdates', { count: securityUpdates })))
       }
 
       lines.push('')
-      lines.push(StyledText.iconUpdate('Run with --update to apply updates'))
+      lines.push(StyledText.iconUpdate(t('info.runWithUpdate')))
 
       if (updateTypes.major > 0) {
-        lines.push(StyledText.iconWarning('Major updates may contain breaking changes'))
+        lines.push(StyledText.iconWarning(t('info.majorWarning')))
       }
     }
 

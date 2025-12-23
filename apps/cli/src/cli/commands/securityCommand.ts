@@ -7,7 +7,7 @@
 
 import { spawnSync } from 'node:child_process'
 import * as path from 'node:path'
-import { CommandExitError, logger } from '@pcu/utils'
+import { CommandExitError, logger, t } from '@pcu/utils'
 import * as fs from 'fs-extra'
 import type { OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { ProgressBar } from '../formatters/progressBar.js'
@@ -129,21 +129,27 @@ export class SecurityCommand {
 
       // Show loading with progress bar
       progressBar = new ProgressBar({
-        text: 'Performing security analysis...',
+        text: t('progress.securityAnalyzing'),
       })
       progressBar.start()
 
       if (options.verbose) {
-        console.log(StyledText.iconAnalysis('Security vulnerability scanning'))
-        console.log(StyledText.muted(`Workspace: ${options.workspace || process.cwd()}`))
-        console.log(StyledText.muted(`Severity filter: ${options.severity || 'all'}`))
+        console.log(StyledText.iconAnalysis(t('command.security.scanning')))
+        console.log(
+          StyledText.muted(`${t('command.workspace.title')}: ${options.workspace || process.cwd()}`)
+        )
+        console.log(
+          StyledText.muted(
+            t('command.security.severityFilter', { severity: options.severity || 'all' })
+          )
+        )
         console.log('')
       }
 
       // Execute security scan
       const report = await this.performSecurityScan(options)
 
-      progressBar.succeed('Security analysis completed')
+      progressBar.succeed(t('progress.securityCompleted'))
 
       // Format and display results
       const formattedOutput = this.outputFormatter.formatSecurityReport(report)
@@ -170,15 +176,15 @@ export class SecurityCommand {
 
       logger.error('Security scan failed', error instanceof Error ? error : undefined, { options })
       if (progressBar) {
-        progressBar.fail('Security analysis failed')
+        progressBar.fail(t('progress.securityFailed'))
       }
 
-      console.error(StyledText.iconError('Error performing security scan:'))
+      console.error(StyledText.iconError(t('command.security.errorScanning')))
       console.error(StyledText.error(String(error)))
 
       if (options.verbose && error instanceof Error) {
-        console.error(StyledText.muted('Stack trace:'))
-        console.error(StyledText.muted(error.stack || 'No stack trace available'))
+        console.error(StyledText.muted(t('common.stackTrace')))
+        console.error(StyledText.muted(error.stack || t('common.noStackTrace')))
       }
 
       throw CommandExitError.failure('Security scan failed')
@@ -316,7 +322,7 @@ export class SecurityCommand {
       const err = error as NodeJS.ErrnoException
       if (err.code === 'ENOENT') {
         logger.debug('Snyk not found', { code: err.code })
-        console.warn(StyledText.iconWarning('Snyk not found. Install with: npm install -g snyk'))
+        console.warn(StyledText.iconWarning(t('command.security.snykNotFound')))
         return []
       }
       logger.error('Snyk scan failed', err, { workspacePath })
@@ -412,8 +418,8 @@ export class SecurityCommand {
             currentVersion: currentVersion,
             recommendedVersion: recommendedVersion,
             type: 'update',
-            reason: `${criticalVulns.length} critical vulnerabilities found`,
-            impact: 'High - Security vulnerability fix',
+            reason: t('command.security.criticalVulnsFound', { count: criticalVulns.length }),
+            impact: t('command.security.highImpactFix'),
           })
         }
       }
@@ -490,7 +496,7 @@ export class SecurityCommand {
       return
     }
 
-    console.log(`\n${StyledText.iconInfo('Security Recommendations:')}`)
+    console.log(`\n${StyledText.iconInfo(t('command.security.recommendations'))}`)
 
     for (const rec of report.recommendations) {
       console.log(
@@ -501,7 +507,7 @@ export class SecurityCommand {
     }
 
     console.log('')
-    console.log(StyledText.iconUpdate('Run with --fix-vulns to apply automatic fixes'))
+    console.log(StyledText.iconUpdate(t('command.security.runWithFix')))
   }
 
   /**
@@ -512,17 +518,17 @@ export class SecurityCommand {
     options: SecurityCommandOptions
   ): Promise<void> {
     if (report.recommendations.length === 0) {
-      console.log(StyledText.iconSuccess('No security fixes available'))
+      console.log(StyledText.iconSuccess(t('command.security.noFixesAvailable')))
       return
     }
 
-    console.log(`\n${StyledText.iconUpdate('Applying security fixes...')}`)
+    console.log(`\n${StyledText.iconUpdate(t('command.security.applyingFixes'))}`)
 
     const workspacePath = options.workspace || process.cwd()
     const fixableVulns = report.recommendations.filter((r) => r.type === 'update')
 
     if (fixableVulns.length === 0) {
-      console.log(StyledText.iconInfo('No automatic fixes available'))
+      console.log(StyledText.iconInfo(t('command.security.noAutoFixes')))
       return
     }
 
@@ -547,16 +553,14 @@ export class SecurityCommand {
         throw new Error(`npm audit fix failed with status ${result.status}`)
       }
 
-      console.log(StyledText.iconSuccess('Security fixes applied successfully'))
+      console.log(StyledText.iconSuccess(t('command.security.fixesApplied')))
 
       // Re-run scan to verify fixes
-      console.log(StyledText.iconInfo('Re-running security scan to verify fixes...'))
+      console.log(StyledText.iconInfo(t('command.security.verifyingFixes')))
       const newReport = await this.performSecurityScan({ ...options, fixVulns: false })
 
       if (newReport.summary.critical === 0 && newReport.summary.high === 0) {
-        console.log(
-          StyledText.iconSuccess('All critical and high severity vulnerabilities have been fixed!')
-        )
+        console.log(StyledText.iconSuccess(t('command.security.allFixed')))
       } else {
         console.log(
           StyledText.iconWarning(
@@ -567,7 +571,7 @@ export class SecurityCommand {
     } catch (error) {
       const err = error as Error
       logger.error('Failed to apply security fixes', err, { workspacePath, options })
-      console.error(StyledText.iconError('Failed to apply security fixes:'))
+      console.error(StyledText.iconError(t('command.security.fixesFailed')))
       console.error(StyledText.error(err.message))
     }
   }

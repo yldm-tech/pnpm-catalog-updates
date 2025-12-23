@@ -14,6 +14,11 @@ const mocks = vi.hoisted(() => ({
   cacheGetStats: vi.fn(),
 }))
 
+// Mock @pcu/utils
+vi.mock('@pcu/utils', () => ({
+  t: (key: string) => key,
+}))
+
 // Mock chalk
 vi.mock('chalk', () => ({
   default: {
@@ -104,7 +109,7 @@ describe('AiCommand', () => {
 
       expect(mocks.cacheClear).toHaveBeenCalled()
       const calls = consoleSpy.mock.calls.flat().join(' ')
-      expect(calls).toContain('cache cleared')
+      expect(calls).toContain('command.ai.cacheCleared')
     })
 
     it('should show cache stats when --cache-stats flag is set', async () => {
@@ -112,17 +117,17 @@ describe('AiCommand', () => {
 
       expect(mocks.cacheGetStats).toHaveBeenCalled()
       const calls = consoleSpy.mock.calls.flat().join(' ')
-      expect(calls).toContain('Cache Statistics')
-      expect(calls).toContain('10') // totalEntries
-      expect(calls).toContain('8') // hits
-      expect(calls).toContain('2') // misses
+      expect(calls).toContain('command.ai.cacheStats')
+      expect(calls).toContain('command.ai.totalEntries')
+      expect(calls).toContain('command.ai.cacheHits')
+      expect(calls).toContain('command.ai.cacheMisses')
     })
 
     it('should run test when --test flag is set', async () => {
       await command.execute({ test: true })
 
       const calls = consoleSpy.mock.calls.flat().join(' ')
-      expect(calls).toContain('Testing AI analysis')
+      expect(calls).toContain('command.ai.testingAnalysis')
     })
 
     it('should show provider details in status', async () => {
@@ -138,7 +143,7 @@ describe('AiCommand', () => {
 
       expect(mocks.getBestProvider).toHaveBeenCalled()
       const calls = consoleSpy.mock.calls.flat().join(' ')
-      expect(calls).toContain('Best available provider')
+      expect(calls).toContain('command.ai.bestProvider')
     })
   })
 

@@ -53,12 +53,12 @@ export class CacheCommand {
       }
 
       logger.error('Cache command failed', error instanceof Error ? error : undefined, { options })
-      console.error(StyledText.iconError('Error managing cache:'))
+      console.error(StyledText.iconError(t('command.cache.errorManaging')))
       console.error(StyledText.error(String(error)))
 
       if (options.verbose && error instanceof Error) {
-        console.error(StyledText.muted('Stack trace:'))
-        console.error(StyledText.muted(error.stack || 'No stack trace available'))
+        console.error(StyledText.muted(t('command.cache.stackTrace')))
+        console.error(StyledText.muted(error.stack || t('command.cache.noStackTrace')))
       }
 
       throw CommandExitError.failure('Cache command failed')
@@ -70,26 +70,26 @@ export class CacheCommand {
    */
   private async clearCache(options: CacheCommandOptions): Promise<void> {
     if (options.verbose) {
-      console.log(StyledText.iconInfo('Clearing caches...'))
+      console.log(StyledText.iconInfo(t('command.cache.clearingCaches')))
       console.log('')
     }
 
     // Clear registry cache (NPM API responses)
     registryCache.clear()
     if (options.verbose) {
-      console.log(StyledText.muted('  ✓ Registry cache cleared'))
+      console.log(StyledText.muted(`  ✓ ${t('command.cache.registryCacheCleared')}`))
     }
 
     // Clear workspace cache (file system data)
     workspaceCache.clear()
     if (options.verbose) {
-      console.log(StyledText.muted('  ✓ Workspace cache cleared'))
+      console.log(StyledText.muted(`  ✓ ${t('command.cache.workspaceCacheCleared')}`))
     }
 
     // Clear AI analysis cache
     analysisCache.clear()
     if (options.verbose) {
-      console.log(StyledText.muted('  ✓ AI analysis cache cleared'))
+      console.log(StyledText.muted(`  ✓ ${t('command.cache.aiCacheCleared')}`))
     }
 
     console.log('')
@@ -102,23 +102,23 @@ export class CacheCommand {
   private showStats(options: CacheCommandOptions): void {
     const caches: CacheInfo[] = [
       {
-        name: 'Registry Cache',
+        name: t('command.cache.registryCache'),
         stats: registryCache.getStats(),
-        description: 'NPM registry API responses (package info, versions)',
+        description: t('command.cache.registryDescription'),
       },
       {
-        name: 'Workspace Cache',
+        name: t('command.cache.workspaceCache'),
         stats: workspaceCache.getStats(),
-        description: 'Workspace file system data (package.json files)',
+        description: t('command.cache.workspaceDescription'),
       },
       {
-        name: 'AI Analysis Cache',
+        name: t('command.cache.aiAnalysisCache'),
         stats: analysisCache.getStats(),
-        description: 'AI-powered dependency analysis results',
+        description: t('command.cache.aiDescription'),
       },
     ]
 
-    console.log(StyledText.iconInfo('Cache Statistics'))
+    console.log(StyledText.iconInfo(t('command.cache.statistics')))
     console.log('')
 
     for (const cache of caches) {
@@ -133,10 +133,18 @@ export class CacheCommand {
     const overallHitRate = totalHits + totalMisses > 0 ? totalHits / (totalHits + totalMisses) : 0
 
     console.log(StyledText.muted('─'.repeat(50)))
-    console.log(StyledText.bold('Summary'))
-    console.log(StyledText.muted(`  Total entries: ${totalEntries}`))
-    console.log(StyledText.muted(`  Total size: ${this.formatBytes(totalSize)}`))
-    console.log(StyledText.muted(`  Overall hit rate: ${(overallHitRate * 100).toFixed(1)}%`))
+    console.log(StyledText.bold(t('command.cache.summary')))
+    console.log(
+      StyledText.muted(`  ${t('command.cache.totalEntries', { count: String(totalEntries) })}`)
+    )
+    console.log(
+      StyledText.muted(`  ${t('command.cache.totalSize', { size: this.formatBytes(totalSize) })}`)
+    )
+    console.log(
+      StyledText.muted(
+        `  ${t('command.cache.overallHitRate', { rate: (overallHitRate * 100).toFixed(1) })}`
+      )
+    )
     console.log('')
   }
 
@@ -150,12 +158,24 @@ export class CacheCommand {
     if (options.verbose) {
       console.log(StyledText.muted(`   ${cache.description}`))
     }
-    console.log(StyledText.muted(`   Entries: ${stats.totalEntries}`))
-    console.log(StyledText.muted(`   Size: ${this.formatBytes(stats.totalSize)}`))
-    console.log(StyledText.muted(`   Hit rate: ${(stats.hitRate * 100).toFixed(1)}%`))
+    console.log(
+      StyledText.muted(`   ${t('command.cache.entries', { count: String(stats.totalEntries) })}`)
+    )
+    console.log(
+      StyledText.muted(`   ${t('command.cache.size', { size: this.formatBytes(stats.totalSize) })}`)
+    )
+    console.log(
+      StyledText.muted(
+        `   ${t('command.cache.hitRate', { rate: (stats.hitRate * 100).toFixed(1) })}`
+      )
+    )
 
     if (options.verbose) {
-      console.log(StyledText.muted(`   Hits: ${stats.hits}, Misses: ${stats.misses}`))
+      console.log(
+        StyledText.muted(
+          `   ${t('command.cache.hitsAndMisses', { hits: String(stats.hits), misses: String(stats.misses) })}`
+        )
+      )
     }
     console.log('')
   }

@@ -5,6 +5,7 @@
  * Provides consistent option parsing and validation.
  */
 
+import { t } from '@pcu/utils'
 import { Option } from 'commander'
 
 /**
@@ -185,11 +186,11 @@ export const workspaceOptions = [
  */
 export const optionGroups = {
   global: {
-    title: 'Global Options',
+    title: t('optionGroup.global'),
     options: globalOptions,
   },
   output: {
-    title: 'Output Options',
+    title: t('optionGroup.output'),
     options: [
       new Option('-f, --format <type>', 'output format')
         .choices(['table', 'json', 'yaml', 'minimal'])
@@ -199,7 +200,7 @@ export const optionGroups = {
     ],
   },
   filtering: {
-    title: 'Filtering Options',
+    title: t('optionGroup.filtering'),
     options: [
       new Option('--catalog <name>', 'check specific catalog only'),
       new Option('--include <pattern...>', 'include packages matching pattern'),
@@ -207,7 +208,7 @@ export const optionGroups = {
     ],
   },
   update: {
-    title: 'Update Options',
+    title: t('optionGroup.update'),
     options: [
       new Option('-t, --target <type>', 'update target')
         .choices(['latest', 'greatest', 'minor', 'patch', 'newest'])
@@ -220,7 +221,7 @@ export const optionGroups = {
     ],
   },
   registry: {
-    title: 'Registry Options',
+    title: t('optionGroup.registry'),
     options: [
       new Option('--registry <url>', 'NPM registry URL'),
       new Option('--timeout <ms>', 'request timeout').argParser(parseInt),

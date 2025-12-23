@@ -13,6 +13,16 @@ vi.mock('@pcu/utils', () => ({
     info: vi.fn(),
     debug: vi.fn(),
   },
+  t: (key: string, params?: Record<string, unknown>) => {
+    if (params) {
+      let result = key
+      for (const [k, v] of Object.entries(params)) {
+        result = result.replace(`{{${k}}}`, String(v))
+      }
+      return result
+    }
+    return key
+  },
 }))
 
 // Use vi.hoisted to ensure mocks are available during vi.mock hoisting
@@ -181,7 +191,7 @@ describe('AnalyzeCommand', () => {
       mockCatalogUpdateService.findCatalogForPackage = vi.fn().mockResolvedValue(null)
 
       await expect(command.execute('unknown-package', undefined, {})).rejects.toThrow(
-        'Package "unknown-package" not found in any catalog'
+        'command.analyze.notFoundInCatalog'
       )
     })
 

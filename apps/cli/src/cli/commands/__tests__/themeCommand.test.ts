@@ -12,6 +12,16 @@ vi.mock('@pcu/utils', () => ({
     info: vi.fn(),
     debug: vi.fn(),
   },
+  t: (key: string, params?: Record<string, unknown>) => {
+    if (params) {
+      let result = key
+      for (const [k, v] of Object.entries(params)) {
+        result = result.replace(`{{${k}}}`, String(v))
+      }
+      return result
+    }
+    return key
+  },
 }))
 
 // Use vi.hoisted to ensure mocks are available during vi.mock hoisting
@@ -111,7 +121,7 @@ describe('ThemeCommand', () => {
 
     it('should throw error when --set flag is used with invalid theme', async () => {
       await expect(command.execute({ set: 'invalid-theme' })).rejects.toThrow(
-        'Invalid theme: invalid-theme'
+        'command.theme.invalidTheme'
       )
 
       expect(consoleErrorSpy).toHaveBeenCalled()

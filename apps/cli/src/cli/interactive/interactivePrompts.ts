@@ -5,6 +5,7 @@
  */
 
 import { FileSystemService } from '@pcu/core'
+import { t } from '@pcu/utils'
 import chalk from 'chalk'
 import inquirer from 'inquirer'
 import { StyledText } from '../themes/colorTheme.js'
@@ -75,7 +76,7 @@ export class InteractivePrompts {
       pageSize: 15,
       validate: (input: unknown) => {
         const selected = input as string[]
-        return selected.length > 0 || 'Please select at least one package'
+        return selected.length > 0 || t('prompt.selectAtLeastOne')
       },
     })
 
@@ -95,7 +96,7 @@ export class InteractivePrompts {
     }
 
     const choices = [
-      { name: 'All catalogs', value: 'all' },
+      { name: t('prompt.allCatalogs'), value: 'all' },
       ...catalogs.map((name) => ({ name, value: name })),
     ]
 
@@ -117,11 +118,11 @@ export class InteractivePrompts {
    */
   async selectUpdateStrategy(): Promise<string> {
     const strategies = [
-      { name: 'Latest (recommended)', value: 'latest' },
-      { name: 'Greatest (highest version)', value: 'greatest' },
-      { name: 'Minor (non-breaking)', value: 'minor' },
-      { name: 'Patch (bug fixes only)', value: 'patch' },
-      { name: 'Newest (latest release)', value: 'newest' },
+      { name: t('prompt.strategyLatest'), value: 'latest' },
+      { name: t('prompt.strategyGreatest'), value: 'greatest' },
+      { name: t('prompt.strategyMinor'), value: 'minor' },
+      { name: t('prompt.strategyPatch'), value: 'patch' },
+      { name: t('prompt.strategyNewest'), value: 'newest' },
     ]
 
     const answers = await inquirer.prompt([
@@ -183,8 +184,8 @@ export class InteractivePrompts {
   async selectWorkspacePath(): Promise<string> {
     const currentDir = process.cwd()
     const choices = [
-      { name: `Current directory (${currentDir})`, value: currentDir },
-      { name: 'Browse for directory...', value: 'browse' },
+      { name: t('prompt.currentDirectory', { path: currentDir }), value: currentDir },
+      { name: t('prompt.browseDirectory'), value: 'browse' },
     ]
 
     const answers = await inquirer.prompt([
@@ -209,8 +210,8 @@ export class InteractivePrompts {
   private async browseDirectory(currentPath = process.cwd()): Promise<string> {
     const directoryNames = await this.fsService.listDirectories(currentPath)
     const choices = [
-      { name: '.. (parent directory)', value: '..' },
-      { name: `. (current: ${currentPath})`, value: '.' },
+      { name: t('prompt.parentDirectory'), value: '..' },
+      { name: t('prompt.currentDirectory', { path: currentPath }), value: '.' },
       ...directoryNames.map((name: string) => ({
         name: `📁 ${name}`,
         value: `${currentPath}/${name}`,
@@ -251,7 +252,7 @@ export class InteractivePrompts {
         {
           type: 'confirm',
           name: 'useThis',
-          message: `Use ${answers.selected} as workspace?`,
+          message: t('prompt.useAsWorkspace', { path: answers.selected }),
           default: true,
         },
       ])
@@ -268,17 +269,17 @@ export class InteractivePrompts {
    * Multi-step configuration wizard
    */
   async configurationWizard(): Promise<ConfigurationWizardResult> {
-    console.log(chalk.bold.blue('\n🧙‍♂️ Configuration Wizard\n'))
+    console.log(chalk.bold.blue(`\n🧙‍♂️ ${t('prompt.configWizard')}\n`))
 
     const themeAnswer = await inquirer.prompt({
       type: 'list',
       name: 'theme',
-      message: 'Select color theme:',
+      message: t('prompt.selectTheme'),
       choices: [
-        { name: 'Default - Balanced colors', value: 'default' },
-        { name: 'Modern - Vibrant colors', value: 'modern' },
-        { name: 'Minimal - Clean and simple', value: 'minimal' },
-        { name: 'Neon - High contrast', value: 'neon' },
+        { name: t('prompt.themeDefault'), value: 'default' },
+        { name: t('prompt.themeModern'), value: 'modern' },
+        { name: t('prompt.themeMinimal'), value: 'minimal' },
+        { name: t('prompt.themeNeon'), value: 'neon' },
       ],
       default: 'default',
     })
@@ -286,25 +287,25 @@ export class InteractivePrompts {
     const interactiveAnswer = await inquirer.prompt({
       type: 'confirm',
       name: 'interactive',
-      message: 'Enable interactive mode by default?',
+      message: t('prompt.enableInteractive'),
       default: true,
     })
 
     const backupAnswer = await inquirer.prompt({
       type: 'confirm',
       name: 'backup',
-      message: 'Create backups before updates?',
+      message: t('prompt.createBackups'),
       default: true,
     })
 
     const strategyAnswer = await inquirer.prompt({
       type: 'list',
       name: 'updateStrategy',
-      message: 'Default update strategy:',
+      message: t('prompt.defaultStrategy'),
       choices: [
-        { name: 'Latest stable versions', value: 'latest' },
-        { name: 'Minor updates (non-breaking)', value: 'minor' },
-        { name: 'Patch updates (bug fixes)', value: 'patch' },
+        { name: t('prompt.strategyLatestStable'), value: 'latest' },
+        { name: t('prompt.strategyMinorUpdates'), value: 'minor' },
+        { name: t('prompt.strategyPatchUpdates'), value: 'patch' },
       ],
       default: 'latest',
     })
@@ -312,11 +313,11 @@ export class InteractivePrompts {
     const timeoutAnswer = await inquirer.prompt({
       type: 'number',
       name: 'timeout',
-      message: 'Network timeout (seconds):',
+      message: t('prompt.networkTimeout'),
       default: 30,
       validate: (input: number | undefined) => {
-        if (input === undefined) return 'Timeout is required'
-        return input > 0 || 'Timeout must be positive'
+        if (input === undefined) return t('prompt.timeoutRequired')
+        return input > 0 || t('prompt.timeoutPositive')
       },
     })
 
@@ -335,12 +336,12 @@ export class InteractivePrompts {
    * Impact preview before update
    */
   async previewImpact(impact: UpdateImpact): Promise<boolean> {
-    console.log(chalk.bold.blue('\n📊 Impact Preview\n'))
+    console.log(chalk.bold.blue(`\n📊 ${t('prompt.impactPreview')}\n`))
 
     // Display impact summary
-    console.log(`Packages to update: ${impact.totalUpdates}`)
-    console.log(`Risk level: ${impact.riskLevel}`)
-    console.log(`Affected packages: ${impact.affectedCount}`)
+    console.log(t('prompt.packagesToUpdate', { count: impact.totalUpdates }))
+    console.log(t('prompt.riskLevel', { level: impact.riskLevel }))
+    console.log(t('prompt.affectedPackages', { count: impact.affectedCount }))
 
     if (impact.securityUpdates > 0) {
       console.log(StyledText.iconSecurity(`${impact.securityUpdates} security updates`))
@@ -352,7 +353,7 @@ export class InteractivePrompts {
       {
         type: 'confirm',
         name: 'proceed',
-        message: 'Proceed with update?',
+        message: t('prompt.proceedWithUpdate'),
         default: true,
       },
     ])
@@ -365,10 +366,10 @@ export class InteractivePrompts {
    */
   async errorRecoveryOptions(error: string): Promise<string> {
     const options = [
-      { name: 'Retry operation', value: 'retry' },
-      { name: 'Skip this package', value: 'skip' },
-      { name: 'Continue with remaining', value: 'continue' },
-      { name: 'Abort operation', value: 'abort' },
+      { name: t('prompt.retryOperation'), value: 'retry' },
+      { name: t('prompt.skipPackage'), value: 'skip' },
+      { name: t('prompt.continueRemaining'), value: 'continue' },
+      { name: t('prompt.abortOperation'), value: 'abort' },
     ]
 
     const answers = await inquirer.prompt([
@@ -480,12 +481,12 @@ export class InteractiveCommandBuilder {
       {
         type: 'list',
         name: 'command',
-        message: 'What would you like to do?',
+        message: t('prompt.whatToDo'),
         choices: [
-          { name: 'Check for updates', value: 'check' },
-          { name: 'Update dependencies', value: 'update' },
-          { name: 'Analyze impact', value: 'analyze' },
-          { name: 'Show workspace info', value: 'workspace' },
+          { name: t('prompt.checkForUpdates'), value: 'check' },
+          { name: t('prompt.updateDependencies'), value: 'update' },
+          { name: t('prompt.analyzeImpact'), value: 'analyze' },
+          { name: t('prompt.showWorkspaceInfo'), value: 'workspace' },
         ],
       },
     ])
@@ -497,12 +498,12 @@ export class InteractiveCommandBuilder {
       {
         type: 'list',
         name: 'format',
-        message: 'Output format:',
+        message: t('prompt.outputFormat'),
         choices: [
-          { name: 'Table (rich)', value: 'table' },
-          { name: 'JSON', value: 'json' },
-          { name: 'YAML', value: 'yaml' },
-          { name: 'Minimal', value: 'minimal' },
+          { name: t('prompt.formatTable'), value: 'table' },
+          { name: t('prompt.formatJson'), value: 'json' },
+          { name: t('prompt.formatYaml'), value: 'yaml' },
+          { name: t('prompt.formatMinimal'), value: 'minimal' },
         ],
         default: 'table',
       },
@@ -517,19 +518,19 @@ export class InteractiveCommandBuilder {
           {
             type: 'confirm',
             name: 'interactive',
-            message: 'Interactive mode?',
+            message: t('prompt.interactiveMode'),
             default: true,
           },
           {
             type: 'confirm',
             name: 'dryRun',
-            message: 'Dry run mode?',
+            message: t('prompt.dryRunMode'),
             default: false,
           },
           {
             type: 'confirm',
             name: 'backup',
-            message: 'Create backup?',
+            message: t('prompt.createBackup'),
             default: true,
           },
         ])
@@ -542,7 +543,7 @@ export class InteractiveCommandBuilder {
           {
             type: 'confirm',
             name: 'includePrerelease',
-            message: 'Include pre-release versions?',
+            message: t('prompt.includePrerelease'),
             default: false,
           },
         ])

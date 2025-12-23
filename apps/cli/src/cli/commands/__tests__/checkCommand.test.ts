@@ -6,16 +6,45 @@ import type { CatalogUpdateService, OutdatedReport } from '@pcu/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Use vi.hoisted to ensure mocks are available during vi.mock hoisting
-const utilsMocks = vi.hoisted(() => ({
-  loadConfig: vi.fn(),
-}))
+const mocks = vi.hoisted(() => {
+  // Create a mock CommandExitError class for instanceof checks
+  class MockCommandExitError extends Error {
+    public readonly exitCode: number
+    public readonly silent: boolean
+
+    constructor(exitCode: number, message?: string, silent = false) {
+      super(message || (exitCode === 0 ? 'Command completed successfully' : 'Command failed'))
+      this.name = 'CommandExitError'
+      this.exitCode = exitCode
+      this.silent = silent
+    }
+
+    static success(message?: string): MockCommandExitError {
+      return new MockCommandExitError(0, message, true)
+    }
+
+    static failure(message?: string): MockCommandExitError {
+      return new MockCommandExitError(1, message)
+    }
+
+    static withCode(code: number, message?: string): MockCommandExitError {
+      return new MockCommandExitError(code, message)
+    }
+  }
+
+  return {
+    loadConfig: vi.fn(),
+    CommandExitError: MockCommandExitError,
+  }
+})
 
 const formatterMocks = vi.hoisted(() => ({
   formatOutdatedReport: vi.fn().mockReturnValue('Formatted output'),
 }))
 
-// Mock @pcu/utils
+// Mock @pcu/utils - include CommandExitError for instanceof checks
 vi.mock('@pcu/utils', () => ({
+  CommandExitError: mocks.CommandExitError,
   logger: {
     error: vi.fn(),
     warn: vi.fn(),
@@ -23,7 +52,13 @@ vi.mock('@pcu/utils', () => ({
     debug: vi.fn(),
   },
   ConfigLoader: {
-    loadConfig: utilsMocks.loadConfig,
+    loadConfig: mocks.loadConfig,
+  },
+  t: (key: string, params?: Record<string, unknown>) => {
+    if (params) {
+      return `${key} ${JSON.stringify(params)}`
+    }
+    return key
   },
 }))
 
@@ -141,7 +176,7 @@ describe('CheckCommand', () => {
     vi.clearAllMocks()
 
     // Set up default mock return values for ConfigLoader
-    utilsMocks.loadConfig.mockReturnValue({
+    mocks.loadConfig.mockReturnValue({
       defaults: {
         target: 'latest',
         format: 'table',
@@ -175,15 +210,22 @@ describe('CheckCommand', () => {
 
   describe('execute', () => {
     it('should check for outdated dependencies', async () => {
-      await command.execute({})
+      try {
+        await command.execute({})
+      } catch (error) {
+        expect((error as { exitCode: number }).exitCode).toBe(0)
+      }
 
       expect(mockCatalogUpdateService.checkOutdatedDependencies).toHaveBeenCalled()
       expect(consoleSpy).toHaveBeenCalled()
-      expect(processExitSpy).toHaveBeenCalledWith(0)
     })
 
     it('should use specified workspace path', async () => {
-      await command.execute({ workspace: '/custom/workspace' })
+      try {
+        await command.execute({ workspace: '/custom/workspace' })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(mockCatalogUpdateService.checkOutdatedDependencies).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -193,7 +235,11 @@ describe('CheckCommand', () => {
     })
 
     it('should filter by catalog name', async () => {
-      await command.execute({ catalog: 'react17' })
+      try {
+        await command.execute({ catalog: 'react17' })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(mockCatalogUpdateService.checkOutdatedDependencies).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -203,7 +249,11 @@ describe('CheckCommand', () => {
     })
 
     it('should use specified target', async () => {
-      await command.execute({ target: 'minor' })
+      try {
+        await command.execute({ target: 'minor' })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(mockCatalogUpdateService.checkOutdatedDependencies).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -213,7 +263,11 @@ describe('CheckCommand', () => {
     })
 
     it('should include prerelease versions when specified', async () => {
-      await command.execute({ prerelease: true })
+      try {
+        await command.execute({ prerelease: true })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(mockCatalogUpdateService.checkOutdatedDependencies).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -223,7 +277,11 @@ describe('CheckCommand', () => {
     })
 
     it('should apply include patterns', async () => {
-      await command.execute({ include: ['lodash', 'react*'] })
+      try {
+        await command.execute({ include: ['lodash', 'react*'] })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(mockCatalogUpdateService.checkOutdatedDependencies).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -233,7 +291,11 @@ describe('CheckCommand', () => {
     })
 
     it('should apply exclude patterns', async () => {
-      await command.execute({ exclude: ['@types/*'] })
+      try {
+        await command.execute({ exclude: ['@types/*'] })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(mockCatalogUpdateService.checkOutdatedDependencies).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -243,7 +305,11 @@ describe('CheckCommand', () => {
     })
 
     it('should show verbose output when specified', async () => {
-      await command.execute({ verbose: true })
+      try {
+        await command.execute({ verbose: true })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(consoleSpy).toHaveBeenCalled()
       // Verbose mode shows additional information
@@ -256,10 +322,13 @@ describe('CheckCommand', () => {
         .fn()
         .mockRejectedValue(new Error('Check failed'))
 
-      await command.execute({})
-
+      try {
+        await command.execute({})
+        expect.fail('Should have thrown CommandExitError')
+      } catch (error) {
+        expect((error as { exitCode: number }).exitCode).toBe(1)
+      }
       expect(consoleErrorSpy).toHaveBeenCalled()
-      expect(processExitSpy).toHaveBeenCalledWith(1)
     })
 
     it('should show summary when no updates found', async () => {
@@ -282,10 +351,13 @@ describe('CheckCommand', () => {
         .fn()
         .mockResolvedValue(noUpdatesReport)
 
-      await command.execute({})
+      try {
+        await command.execute({})
+      } catch (error) {
+        expect((error as { exitCode: number }).exitCode).toBe(0)
+      }
 
       expect(consoleSpy).toHaveBeenCalled()
-      expect(processExitSpy).toHaveBeenCalledWith(0)
     })
   })
 

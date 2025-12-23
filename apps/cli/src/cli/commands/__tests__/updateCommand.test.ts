@@ -26,6 +26,16 @@ vi.mock('@pcu/utils', () => ({
   ConfigLoader: {
     loadConfig: mocks.loadConfig,
   },
+  t: (key: string, params?: Record<string, unknown>) => {
+    if (params) {
+      let result = key
+      for (const [k, v] of Object.entries(params)) {
+        result = result.replace(`{{${k}}}`, String(v))
+      }
+      return result
+    }
+    return key
+  },
 }))
 
 // Mock OutputFormatter - needs to be a proper class constructor

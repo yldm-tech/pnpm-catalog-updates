@@ -157,3 +157,4 @@ bin/pnpm-catalog-updates
 package-lock.json
 yarn.lock
 .playwright-mcp
+packages/core/tsup.config.bundled_hlicin9d6a.mjs

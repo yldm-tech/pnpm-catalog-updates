@@ -9,7 +9,12 @@
  * - Runtime locale switching
  */
 
+import { de } from './locales/de.js'
 import { en } from './locales/en.js'
+import { es } from './locales/es.js'
+import { fr } from './locales/fr.js'
+import { ja } from './locales/ja.js'
+import { ko } from './locales/ko.js'
 import { zh } from './locales/zh.js'
 import type { Locale, TranslationDictionary, TranslationKey, TranslationParams } from './types.js'
 
@@ -29,11 +34,11 @@ const DEFAULT_LOCALE: Locale = 'en'
 const translations: Record<Locale, Partial<TranslationDictionary>> = {
   en,
   zh,
-  ja: {}, // TODO: Add Japanese translations
-  es: {}, // TODO: Add Spanish translations
-  de: {}, // TODO: Add German translations
-  fr: {}, // TODO: Add French translations
-  ko: {}, // TODO: Add Korean translations
+  ja,
+  es,
+  de,
+  fr,
+  ko,
 }
 
 /**

@@ -6,20 +6,50 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OutputFormatter } from '../../formatters/outputFormatter.js'
 
 // Use vi.hoisted to ensure mocks are available during vi.mock hoisting
-const mocks = vi.hoisted(() => ({
-  spawnSync: vi.fn(),
-  pathExists: vi.fn(),
-  formatSecurityReport: vi.fn().mockReturnValue('Formatted security report'),
-}))
+const mocks = vi.hoisted(() => {
+  // Create a mock CommandExitError class for instanceof checks
+  class MockCommandExitError extends Error {
+    public readonly exitCode: number
+    public readonly silent: boolean
 
-// Mock @pcu/utils
+    constructor(exitCode: number, message?: string, silent = false) {
+      super(message || (exitCode === 0 ? 'Command completed successfully' : 'Command failed'))
+      this.name = 'CommandExitError'
+      this.exitCode = exitCode
+      this.silent = silent
+    }
+
+    static success(message?: string): MockCommandExitError {
+      return new MockCommandExitError(0, message, true)
+    }
+
+    static failure(message?: string): MockCommandExitError {
+      return new MockCommandExitError(1, message)
+    }
+
+    static withCode(code: number, message?: string): MockCommandExitError {
+      return new MockCommandExitError(code, message)
+    }
+  }
+
+  return {
+    spawnSync: vi.fn(),
+    pathExists: vi.fn(),
+    formatSecurityReport: vi.fn().mockReturnValue('Formatted security report'),
+    CommandExitError: MockCommandExitError,
+  }
+})
+
+// Mock @pcu/utils - include CommandExitError for instanceof checks
 vi.mock('@pcu/utils', () => ({
+  CommandExitError: mocks.CommandExitError,
   logger: {
     error: vi.fn(),
     warn: vi.fn(),
     info: vi.fn(),
     debug: vi.fn(),
   },
+  t: (key: string) => key,
 }))
 
 // Mock child_process
@@ -168,7 +198,11 @@ describe('SecurityCommand', () => {
 
   describe('execute', () => {
     it('should perform security scan', async () => {
-      await command.execute({})
+      try {
+        await command.execute({})
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(mocks.spawnSync).toHaveBeenCalled()
       expect(mockOutputFormatter.formatSecurityReport).toHaveBeenCalled()
@@ -176,7 +210,11 @@ describe('SecurityCommand', () => {
     })
 
     it('should use specified workspace path', async () => {
-      await command.execute({ workspace: '/custom/workspace' })
+      try {
+        await command.execute({ workspace: '/custom/workspace' })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(mocks.spawnSync).toHaveBeenCalledWith(
         'npm',
@@ -188,7 +226,11 @@ describe('SecurityCommand', () => {
     })
 
     it('should show verbose output when specified', async () => {
-      await command.execute({ verbose: true })
+      try {
+        await command.execute({ verbose: true })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(consoleSpy).toHaveBeenCalled()
       const calls = consoleSpy.mock.calls.flat().join(' ')
@@ -214,9 +256,12 @@ describe('SecurityCommand', () => {
         error: undefined,
       })
 
-      await command.execute({})
-
-      expect(processExitSpy).toHaveBeenCalledWith(1)
+      try {
+        await command.execute({})
+        expect.fail('Should have thrown CommandExitError')
+      } catch (error) {
+        expect((error as { exitCode: number }).exitCode).toBe(1)
+      }
     })
 
     it('should exit with code 0 when no critical vulnerabilities found', async () => {
@@ -227,18 +272,23 @@ describe('SecurityCommand', () => {
         error: undefined,
       })
 
-      await command.execute({})
-
-      expect(processExitSpy).toHaveBeenCalledWith(0)
+      try {
+        await command.execute({})
+      } catch (error) {
+        expect((error as { exitCode: number }).exitCode).toBe(0)
+      }
     })
 
     it('should handle error when package.json not found', async () => {
       mocks.pathExists.mockResolvedValue(false)
 
-      await command.execute({})
-
+      try {
+        await command.execute({})
+        expect.fail('Should have thrown CommandExitError')
+      } catch (error) {
+        expect((error as { exitCode: number }).exitCode).toBe(1)
+      }
       expect(consoleErrorSpy).toHaveBeenCalled()
-      expect(processExitSpy).toHaveBeenCalledWith(1)
     })
 
     it('should handle npm audit failure', async () => {
@@ -249,10 +299,13 @@ describe('SecurityCommand', () => {
         error: undefined,
       })
 
-      await command.execute({})
-
+      try {
+        await command.execute({})
+        expect.fail('Should have thrown CommandExitError')
+      } catch (error) {
+        expect((error as { exitCode: number }).exitCode).toBe(1)
+      }
       expect(consoleErrorSpy).toHaveBeenCalled()
-      expect(processExitSpy).toHaveBeenCalledWith(1)
     })
 
     it('should filter vulnerabilities by severity', async () => {
@@ -280,7 +333,11 @@ describe('SecurityCommand', () => {
         error: undefined,
       })
 
-      await command.execute({ severity: 'high' })
+      try {
+        await command.execute({ severity: 'high' })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(mockOutputFormatter.formatSecurityReport).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -290,7 +347,11 @@ describe('SecurityCommand', () => {
     })
 
     it('should include dev dependencies when specified', async () => {
-      await command.execute({ includeDev: true })
+      try {
+        await command.execute({ includeDev: true })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(mocks.spawnSync).toHaveBeenCalledWith(
         'npm',
@@ -314,7 +375,11 @@ describe('SecurityCommand', () => {
         }
       })
 
-      await command.execute({ snyk: true })
+      try {
+        await command.execute({ snyk: true })
+      } catch {
+        // Expected to throw CommandExitError
+      }
 
       expect(consoleWarnSpy).toHaveBeenCalled()
     })

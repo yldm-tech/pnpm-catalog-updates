@@ -13,6 +13,7 @@ import type {
   WorkspaceStats,
   WorkspaceValidationReport,
 } from '@pcu/core'
+import { t } from '@pcu/utils'
 import chalk from 'chalk'
 import Table from 'cli-table3'
 import YAML from 'yaml'
@@ -840,29 +841,37 @@ export class OutputFormatter {
 
     lines.push('')
     lines.push(headerColor('═══════════════════════════════════════════════════════════════'))
-    lines.push(headerColor('                     🤖 AI Analysis Report'))
+    lines.push(headerColor(`                     ${t('aiReport.title')}`))
     lines.push(headerColor('═══════════════════════════════════════════════════════════════'))
     lines.push('')
 
     // Provider and analysis info
-    lines.push(`${infoColor('Provider:')}      ${providerColor(aiResult.provider)}`)
-    lines.push(`${infoColor('Analysis Type:')} ${aiResult.analysisType}`)
-    lines.push(`${infoColor('Confidence:')}    ${this.formatConfidence(aiResult.confidence)}`)
+    lines.push(`${infoColor(t('aiReport.provider'))}      ${providerColor(aiResult.provider)}`)
+    lines.push(`${infoColor(t('aiReport.analysisType'))} ${aiResult.analysisType}`)
+    lines.push(
+      `${infoColor(t('aiReport.confidence'))}    ${this.formatConfidence(aiResult.confidence)}`
+    )
     lines.push('')
 
     // Summary
-    lines.push(headerColor('📋 Summary'))
+    lines.push(headerColor(t('aiReport.summary')))
     lines.push(headerColor('───────────────────────────────────────────────────────────────'))
     lines.push(aiResult.summary)
     lines.push('')
 
     // Recommendations table
     if (aiResult.recommendations.length > 0) {
-      lines.push(headerColor('💡 Recommendations'))
+      lines.push(headerColor(t('aiReport.recommendations')))
       lines.push(headerColor('───────────────────────────────────────────────────────────────'))
 
       const table = new Table({
-        head: ['Package', 'Version Change', 'Action', 'Risk', 'Reason'],
+        head: [
+          t('aiReport.tablePackage'),
+          t('aiReport.tableVersionChange'),
+          t('aiReport.tableAction'),
+          t('aiReport.tableRisk'),
+          t('aiReport.tableReason'),
+        ],
         style: { head: this.useColor ? ['cyan'] : [] },
         colWidths: [20, 20, 10, 10, 35],
         wordWrap: true,
@@ -891,7 +900,7 @@ export class OutputFormatter {
       .flatMap((r) => r.breakingChanges || [])
 
     if (allBreakingChanges.length > 0) {
-      lines.push(errorColor('⚠️  Breaking Changes'))
+      lines.push(errorColor(t('aiReport.breakingChanges')))
       lines.push(headerColor('───────────────────────────────────────────────────────────────'))
       for (const change of allBreakingChanges) {
         lines.push(`  ${warningColor('•')} ${change}`)
@@ -905,7 +914,7 @@ export class OutputFormatter {
       .flatMap((r) => r.securityFixes || [])
 
     if (allSecurityFixes.length > 0) {
-      lines.push(successColor('🔒 Security Fixes'))
+      lines.push(successColor(t('aiReport.securityFixes')))
       lines.push(headerColor('───────────────────────────────────────────────────────────────'))
       for (const fix of allSecurityFixes) {
         lines.push(`  ${successColor('•')} ${fix}`)
@@ -915,7 +924,7 @@ export class OutputFormatter {
 
     // Warnings
     if (aiResult.warnings && aiResult.warnings.length > 0) {
-      lines.push(warningColor('⚡ Warnings'))
+      lines.push(warningColor(t('aiReport.warnings')))
       lines.push(headerColor('───────────────────────────────────────────────────────────────'))
       for (const warning of aiResult.warnings) {
         lines.push(`  ${warningColor('•')} ${warning}`)
@@ -925,7 +934,7 @@ export class OutputFormatter {
 
     // Details
     if (aiResult.details) {
-      lines.push(infoColor('📝 Details'))
+      lines.push(infoColor(t('aiReport.details')))
       lines.push(headerColor('───────────────────────────────────────────────────────────────'))
       lines.push(aiResult.details)
       lines.push('')
@@ -933,7 +942,7 @@ export class OutputFormatter {
 
     // Basic analysis info (if provided)
     if (basicAnalysis) {
-      lines.push(mutedColor('📦 Affected Packages'))
+      lines.push(mutedColor(t('aiReport.affectedPackages')))
       lines.push(headerColor('───────────────────────────────────────────────────────────────'))
       if (basicAnalysis.affectedPackages.length > 0) {
         for (const pkg of basicAnalysis.affectedPackages.slice(0, 10)) {
@@ -945,11 +954,11 @@ export class OutputFormatter {
         }
         if (basicAnalysis.affectedPackages.length > 10) {
           lines.push(
-            `  ${mutedColor(`  ... and ${basicAnalysis.affectedPackages.length - 10} more`)}`
+            `  ${mutedColor(`  ${t('aiReport.andMore', { count: basicAnalysis.affectedPackages.length - 10 })}`)}`
           )
         }
       } else {
-        lines.push(`  ${mutedColor('No packages directly affected')}`)
+        lines.push(`  ${mutedColor(t('aiReport.noPackagesAffected'))}`)
       }
       lines.push('')
     }
@@ -960,12 +969,12 @@ export class OutputFormatter {
       aiResult.timestamp instanceof Date
         ? aiResult.timestamp.toISOString()
         : String(aiResult.timestamp)
-    lines.push(mutedColor(`Generated at: ${timestamp}`))
+    lines.push(mutedColor(t('aiReport.generatedAt', { timestamp })))
     if (aiResult.processingTimeMs) {
-      lines.push(mutedColor(`Processing time: ${aiResult.processingTimeMs}ms`))
+      lines.push(mutedColor(t('aiReport.processingTime', { time: aiResult.processingTimeMs })))
     }
     if (aiResult.tokensUsed) {
-      lines.push(mutedColor(`Tokens used: ${aiResult.tokensUsed}`))
+      lines.push(mutedColor(t('aiReport.tokensUsed', { tokens: aiResult.tokensUsed })))
     }
     lines.push('')
 

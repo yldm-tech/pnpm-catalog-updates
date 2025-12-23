@@ -19,7 +19,7 @@ import {
   WorkspaceService,
 } from '@pcu/core'
 // CLI Commands
-import { ConfigLoader, isCommandExitError, logger, VersionChecker } from '@pcu/utils'
+import { ConfigLoader, isCommandExitError, logger, t, VersionChecker } from '@pcu/utils'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import { AiCommand } from './commands/aiCommand.js'
@@ -91,7 +91,7 @@ async function checkForUpdates(
         const didUpdate = await VersionChecker.promptAndUpdate(versionResult)
         if (didUpdate) {
           // Exit after successful update to allow user to restart with new version
-          console.log(chalk.blue('Please run your command again to use the updated version.'))
+          console.log(chalk.blue(t('cli.runAgain')))
           return true
         }
       }
@@ -101,7 +101,7 @@ async function checkForUpdates(
         error: error instanceof Error ? error.message : error,
       })
       if (process.argv.includes('-v') || process.argv.includes('--verbose')) {
-        console.warn(chalk.yellow('⚠️  Could not check for updates:'), error)
+        console.warn(chalk.yellow(`⚠️  ${t('cli.couldNotCheckUpdates')}`), error)
       }
     }
   }
@@ -116,17 +116,13 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
   program
     .command('check')
     .alias('chk')
-    .description('check for outdated catalog dependencies')
-    .option('--catalog <name>', 'check specific catalog only')
-    .option('-f, --format <type>', 'output format: table, json, yaml, minimal', 'table')
-    .option(
-      '-t, --target <type>',
-      'update target: latest, greatest, minor, patch, newest',
-      'latest'
-    )
-    .option('--prerelease', 'include prerelease versions')
-    .option('--include <pattern>', 'include packages matching pattern', [])
-    .option('--exclude <pattern>', 'exclude packages matching pattern', [])
+    .description(t('cli.description.check'))
+    .option('--catalog <name>', t('cli.option.catalog'))
+    .option('-f, --format <type>', t('cli.option.format'), 'table')
+    .option('-t, --target <type>', t('cli.option.target'), 'latest')
+    .option('--prerelease', t('cli.option.prerelease'))
+    .option('--include <pattern>', t('cli.option.include'), [])
+    .option('--exclude <pattern>', t('cli.option.exclude'), [])
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
@@ -154,7 +150,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         logger.error('Check command failed', error instanceof Error ? error : undefined, {
           command: 'check',
         })
-        console.error(chalk.red('❌ Error:'), error)
+        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
         process.exit(1)
       }
     })
@@ -163,29 +159,21 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
   program
     .command('update')
     .alias('u')
-    .description('update catalog dependencies')
-    .option('-i, --interactive', 'interactive mode to choose updates')
-    .option('-d, --dry-run', 'preview changes without writing files')
-    .option(
-      '-t, --target <type>',
-      'update target: latest, greatest, minor, patch, newest',
-      'latest'
-    )
-    .option('--catalog <name>', 'update specific catalog only')
-    .option('--include <pattern>', 'include packages matching pattern', [])
-    .option('--exclude <pattern>', 'exclude packages matching pattern', [])
-    .option('--force', 'force updates even if risky')
-    .option('--prerelease', 'include prerelease versions')
-    .option('-b, --create-backup', 'create backup files before updating')
-    .option('-f, --format <type>', 'output format: table, json, yaml, minimal', 'table')
-    .option('--ai', 'enable AI-powered batch analysis for all updates')
-    .option('--provider <name>', 'AI provider: auto, claude, gemini, codex', 'auto')
-    .option(
-      '--analysis-type <type>',
-      'AI analysis type: impact, security, compatibility, recommend',
-      'impact'
-    )
-    .option('--skip-cache', 'skip AI analysis cache')
+    .description(t('cli.description.update'))
+    .option('-i, --interactive', t('cli.option.interactive'))
+    .option('-d, --dry-run', t('cli.option.dryRun'))
+    .option('-t, --target <type>', t('cli.option.target'), 'latest')
+    .option('--catalog <name>', t('cli.option.catalog'))
+    .option('--include <pattern>', t('cli.option.include'), [])
+    .option('--exclude <pattern>', t('cli.option.exclude'), [])
+    .option('--force', t('cli.option.force'))
+    .option('--prerelease', t('cli.option.prerelease'))
+    .option('-b, --create-backup', t('cli.option.createBackup'))
+    .option('-f, --format <type>', t('cli.option.format'), 'table')
+    .option('--ai', t('cli.option.ai'))
+    .option('--provider <name>', t('cli.option.provider'), 'auto')
+    .option('--analysis-type <type>', t('cli.option.analysisType'), 'impact')
+    .option('--skip-cache', t('cli.option.skipCache'))
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
@@ -222,7 +210,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         logger.error('Update command failed', error instanceof Error ? error : undefined, {
           command: 'update',
         })
-        console.error(chalk.red('❌ Error:'), error)
+        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
         process.exit(1)
       }
     })
@@ -231,19 +219,15 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
   program
     .command('analyze')
     .alias('a')
-    .description('analyze the impact of updating a specific dependency')
-    .argument('<package>', 'package name')
-    .argument('[version]', 'new version (default: latest)')
-    .option('--catalog <name>', 'catalog name (auto-detected if not specified)')
-    .option('-f, --format <type>', 'output format: table, json, yaml, minimal', 'table')
-    .option('--no-ai', 'disable AI-powered analysis')
-    .option('--provider <name>', 'AI provider: auto, claude, gemini, codex', 'auto')
-    .option(
-      '--analysis-type <type>',
-      'AI analysis type: impact, security, compatibility, recommend',
-      'impact'
-    )
-    .option('--skip-cache', 'skip AI analysis cache')
+    .description(t('cli.description.analyze'))
+    .argument('<package>', t('cli.argument.package'))
+    .argument('[version]', t('cli.argument.version'))
+    .option('--catalog <name>', t('cli.option.catalog'))
+    .option('-f, --format <type>', t('cli.option.format'), 'table')
+    .option('--no-ai', t('cli.option.noAi'))
+    .option('--provider <name>', t('cli.option.provider'), 'auto')
+    .option('--analysis-type <type>', t('cli.option.analysisType'), 'impact')
+    .option('--skip-cache', t('cli.option.skipCache'))
     .action(async (packageName, version, options, command) => {
       try {
         const globalOptions = command.parent.opts()
@@ -270,7 +254,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         logger.error('Analyze command failed', error instanceof Error ? error : undefined, {
           command: 'analyze',
         })
-        console.error(chalk.red('❌ Error:'), error)
+        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
         process.exit(1)
       }
     })
@@ -279,10 +263,10 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
   program
     .command('workspace')
     .alias('w')
-    .description('workspace information and validation')
-    .option('--validate', 'validate workspace configuration')
-    .option('-s, --stats', 'show workspace statistics')
-    .option('-f, --format <type>', 'output format: table, json, yaml, minimal', 'table')
+    .description(t('cli.description.workspace'))
+    .option('--validate', t('cli.option.validate'))
+    .option('-s, --stats', t('cli.option.stats'))
+    .option('-f, --format <type>', t('cli.option.format'), 'table')
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
@@ -303,7 +287,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         logger.error('Workspace command failed', error instanceof Error ? error : undefined, {
           command: 'workspace',
         })
-        console.error(chalk.red('❌ Error:'), error)
+        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
         process.exit(1)
       }
     })
@@ -312,10 +296,10 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
   program
     .command('theme')
     .alias('t')
-    .description('configure color theme')
-    .option('-s, --set <theme>', 'set theme: default, modern, minimal, neon')
-    .option('-l, --list', 'list available themes')
-    .option('-i, --interactive', 'interactive theme selection')
+    .description(t('cli.description.theme'))
+    .option('-s, --set <theme>', t('cli.option.setTheme'))
+    .option('-l, --list', t('cli.option.listThemes'))
+    .option('-i, --interactive', t('cli.option.interactive'))
     .action(async (options) => {
       try {
         const themeCommand = new ThemeCommand()
@@ -331,7 +315,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         logger.error('Theme command failed', error instanceof Error ? error : undefined, {
           command: 'theme',
         })
-        console.error(chalk.red('❌ Error:'), error)
+        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
         process.exit(1)
       }
     })
@@ -340,13 +324,13 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
   program
     .command('security')
     .alias('sec')
-    .description('security vulnerability scanning and automated fixes')
-    .option('-f, --format <type>', 'output format: table, json, yaml, minimal', 'table')
-    .option('--audit', 'perform npm audit scan (default: true)', true)
-    .option('--fix-vulns', 'automatically fix vulnerabilities')
-    .option('--severity <level>', 'filter by severity: low, moderate, high, critical')
-    .option('--include-dev', 'include dev dependencies in scan')
-    .option('--snyk', 'include Snyk scan (requires snyk CLI)')
+    .description(t('cli.description.security'))
+    .option('-f, --format <type>', t('cli.option.format'), 'table')
+    .option('--audit', t('cli.option.audit'), true)
+    .option('--fix-vulns', t('cli.option.fixVulns'))
+    .option('--severity <level>', t('cli.option.severity'))
+    .option('--include-dev', t('cli.option.includeDev'))
+    .option('--snyk', t('cli.option.snyk'))
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
@@ -374,7 +358,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         logger.error('Security command failed', error instanceof Error ? error : undefined, {
           command: 'security',
         })
-        console.error(chalk.red('❌ Error:'), error)
+        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
         process.exit(1)
       }
     })
@@ -383,16 +367,12 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
   program
     .command('init')
     .alias('i')
-    .description('initialize PCU configuration and PNPM workspace')
-    .option('--force', 'overwrite existing configuration file')
-    .option('--full', 'generate full configuration with all options')
-    .option(
-      '--create-workspace',
-      'create PNPM workspace structure if missing (default: true)',
-      true
-    )
-    .option('--no-create-workspace', 'skip creating PNPM workspace structure')
-    .option('-f, --format <type>', 'output format: table, json, yaml, minimal', 'table')
+    .description(t('cli.description.init'))
+    .option('--force', t('cli.option.forceOverwrite'))
+    .option('--full', t('cli.option.full'))
+    .option('--create-workspace', t('cli.option.createWorkspace'), true)
+    .option('--no-create-workspace', t('cli.option.noCreateWorkspace'))
+    .option('-f, --format <type>', t('cli.option.format'), 'table')
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
@@ -413,7 +393,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         logger.error('Init command failed', error instanceof Error ? error : undefined, {
           command: 'init',
         })
-        console.error(chalk.red('❌ Error:'), error)
+        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
         process.exit(1)
       }
     })
@@ -421,11 +401,11 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
   // AI command
   program
     .command('ai')
-    .description('check AI provider status and availability')
-    .option('--status', 'show status of all AI providers (default)')
-    .option('--test', 'test AI analysis with a sample request')
-    .option('--cache-stats', 'show AI analysis cache statistics')
-    .option('--clear-cache', 'clear AI analysis cache')
+    .description(t('cli.description.ai'))
+    .option('--status', t('cli.option.status'))
+    .option('--test', t('cli.option.test'))
+    .option('--cache-stats', t('cli.option.cacheStats'))
+    .option('--clear-cache', t('cli.option.clearCache'))
     .action(async (options) => {
       try {
         const aiCommand = new AiCommand()
@@ -442,7 +422,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         logger.error('AI command failed', error instanceof Error ? error : undefined, {
           command: 'ai',
         })
-        console.error(chalk.red('❌ Error:'), error)
+        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
         process.exit(1)
       }
     })
@@ -450,9 +430,9 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
   // Cache command
   program
     .command('cache')
-    .description('manage PCU cache for registry and workspace data')
-    .option('--stats', 'show cache statistics (default)')
-    .option('--clear', 'clear all cache entries')
+    .description(t('cli.description.cache'))
+    .option('--stats', t('cli.option.stats'))
+    .option('--clear', t('cli.option.clear'))
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
@@ -471,7 +451,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         logger.error('Cache command failed', error instanceof Error ? error : undefined, {
           command: 'cache',
         })
-        console.error(chalk.red('❌ Error:'), error)
+        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
         process.exit(1)
       }
     })
@@ -480,15 +460,15 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
   program
     .command('help')
     .alias('h')
-    .argument('[command]', 'command to get help for')
-    .description('display help for command')
+    .argument('[command]', t('cli.argument.command'))
+    .description(t('cli.description.help'))
     .action((command) => {
       if (command) {
         const cmd = program.commands.find((c) => c.name() === command)
         if (cmd) {
           cmd.help()
         } else {
-          console.log(chalk.red(`Unknown command: ${command}`))
+          console.log(chalk.red(t('cli.unknownCommand', { command })))
         }
       } else {
         program.help()
@@ -566,7 +546,7 @@ async function handleVersionFlag(
   // Check for updates if not in CI and enabled in config
   if (VersionChecker.shouldCheckForUpdates() && config.advanced?.checkForUpdates !== false) {
     try {
-      console.log(chalk.gray('Checking for updates...'))
+      console.log(chalk.gray(t('cli.checkingUpdates')))
       const versionResult = await VersionChecker.checkVersion(packageJson.version, {
         skipPrompt: false,
         timeout: 5000, // Longer timeout for explicit version check
@@ -575,11 +555,11 @@ async function handleVersionFlag(
       if (versionResult.shouldPrompt) {
         const didUpdate = await VersionChecker.promptAndUpdate(versionResult)
         if (didUpdate) {
-          console.log(chalk.blue('Please run your command again to use the updated version.'))
+          console.log(chalk.blue(t('cli.runAgain')))
           process.exit(0)
         }
       } else if (versionResult.isLatest) {
-        console.log(chalk.green('You are using the latest version!'))
+        console.log(chalk.green(t('cli.latestVersion')))
       }
     } catch (error) {
       // Silently fail update check for version command
@@ -587,7 +567,7 @@ async function handleVersionFlag(
         error: error instanceof Error ? error.message : error,
       })
       if (args.includes('-v') || args.includes('--verbose')) {
-        console.warn(chalk.yellow('⚠️  Could not check for updates:'), error)
+        console.warn(chalk.yellow(`⚠️  ${t('cli.couldNotCheckUpdates')}`), error)
       }
     }
   }
@@ -625,18 +605,18 @@ export async function main(): Promise<void> {
   // Configure the main command
   program
     .name('pcu')
-    .description('A CLI tool to check and update pnpm workspace catalog dependencies')
-    .option('--version', 'show version information')
-    .option('-v, --verbose', 'enable verbose logging')
-    .option('-w, --workspace <path>', 'workspace directory path')
-    .option('--no-color', 'disable colored output')
-    .option('-u, --update', 'shorthand for update command')
-    .option('-c, --check', 'shorthand for check command')
-    .option('-a, --analyze', 'shorthand for analyze command')
-    .option('-s, --workspace-info', 'shorthand for workspace command')
-    .option('-t, --theme', 'shorthand for theme command')
-    .option('--security-audit', 'shorthand for security command')
-    .option('--security-fix', 'shorthand for security --fix-vulns command')
+    .description(t('cli.description.main'))
+    .option('--version', t('cli.option.version'))
+    .option('-v, --verbose', t('cli.option.verbose'))
+    .option('-w, --workspace <path>', t('cli.option.workspace'))
+    .option('--no-color', t('cli.option.noColor'))
+    .option('-u, --update', t('cli.option.updateShorthand'))
+    .option('-c, --check', t('cli.option.checkShorthand'))
+    .option('-a, --analyze', t('cli.option.analyzeShorthand'))
+    .option('-s, --workspace-info', t('cli.option.workspaceShorthand'))
+    .option('-t, --theme', t('cli.option.themeShorthand'))
+    .option('--security-audit', t('cli.option.securityAudit'))
+    .option('--security-fix', t('cli.option.securityFix'))
 
   // Register all commands
   registerCommands(program, services)
@@ -660,7 +640,7 @@ export async function main(): Promise<void> {
       process.exit(error.exitCode)
     }
     logger.error('CLI parse error', error instanceof Error ? error : undefined, { args })
-    console.error(chalk.red('❌ Unexpected error:'), error)
+    console.error(chalk.red(`❌ ${t('cli.unexpectedError')}`), error)
     if (error instanceof Error && error.stack) {
       console.error(chalk.gray(error.stack))
     }
@@ -675,7 +655,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       process.exit(error.exitCode)
     }
     logger.error('Fatal CLI error', error instanceof Error ? error : undefined)
-    console.error(chalk.red('❌ Fatal error:'), error)
+    console.error(chalk.red(`❌ ${t('cli.fatalError')}`), error)
     process.exit(1)
   })
 }

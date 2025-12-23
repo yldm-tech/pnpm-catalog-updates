@@ -16,7 +16,7 @@ import {
   type UpdateTarget,
   WorkspaceService,
 } from '@pcu/core'
-import { ConfigLoader, logger } from '@pcu/utils'
+import { ConfigLoader, logger, t } from '@pcu/utils'
 import chalk from 'chalk'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { ProgressBar } from '../formatters/progressBar.js'
@@ -63,10 +63,10 @@ export class UpdateCommand {
 
       // Create progress bar for the update process
       progressBar = new ProgressBar({
-        text: '正在规划更新...',
+        text: t('command.update.planningUpdates'),
         total: 4, // 4 main steps
       })
-      progressBar.start('正在加载工作区配置...')
+      progressBar.start(t('command.update.loadingConfig'))
 
       // Load configuration file first
       const config = ConfigLoader.loadConfig(options.workspace || process.cwd())
@@ -96,22 +96,20 @@ export class UpdateCommand {
       }
 
       // Step 1: Planning updates
-      progressBar.update('正在检查包版本...', 1, 4)
+      progressBar.update(t('command.update.checkingVersions'), 1, 4)
       const plan = await this.updateService.planUpdates(updateOptions)
 
       // Step 2: Check if any updates found
-      progressBar.update('正在分析更新...', 2, 4)
+      progressBar.update(t('command.update.analyzingUpdates'), 2, 4)
 
       if (!plan.updates.length) {
-        progressBar.succeed('所有依赖包都是最新的')
-        console.log(StyledText.iconSuccess('All dependencies are up to date!'))
+        progressBar.succeed(t('command.update.allUpToDate'))
+        console.log(StyledText.iconSuccess(t('command.update.allUpToDate')))
         return
       }
 
       console.log(
-        StyledText.iconPackage(
-          `Found ${plan.totalUpdates} update${plan.totalUpdates === 1 ? '' : 's'} available`
-        )
+        StyledText.iconPackage(t('command.update.foundUpdates', { count: plan.totalUpdates }))
       )
 
       // Interactive selection if enabled
@@ -119,40 +117,50 @@ export class UpdateCommand {
       if (options.interactive) {
         finalPlan = await this.interactiveSelection(plan)
         if (!finalPlan.updates.length) {
-          progressBar.warn('未选择任何更新')
-          console.log(StyledText.iconWarning('No updates selected'))
+          progressBar.warn(t('command.update.noUpdatesSelected'))
+          console.log(StyledText.iconWarning(t('command.update.noUpdatesSelected')))
           return
         }
       }
 
       // AI batch analysis if enabled - analyze ALL packages in one request
       if (options.ai) {
-        progressBar.update('🤖 正在进行 AI 批量分析...', 2.5, 4)
+        progressBar.update(
+          `🤖 ${t('command.update.runningBatchAI', { count: finalPlan.updates.length })}`,
+          2.5,
+          4
+        )
         progressBar.stop()
 
         console.log(
           chalk.blue(
-            `\n🤖 Running AI-powered batch analysis for ${finalPlan.updates.length} packages...`
+            `\n🤖 ${t('command.update.runningBatchAI', { count: finalPlan.updates.length })}`
           )
         )
-        console.log(chalk.gray('This analyzes all packages in a single request for efficiency.\n'))
+        console.log(chalk.gray(`${t('command.update.batchAIHint')}\n`))
 
         try {
           const aiResult = await this.performBatchAIAnalysis(finalPlan, options)
 
           // Display AI analysis results
-          console.log(chalk.blue('\n📊 AI Analysis Results:'))
+          console.log(chalk.blue(`\n📊 ${t('command.update.aiResults')}`))
           console.log(chalk.gray('─'.repeat(60)))
-          console.log(chalk.cyan(`Provider: ${aiResult.provider}`))
-          console.log(chalk.cyan(`Confidence: ${(aiResult.confidence * 100).toFixed(0)}%`))
-          console.log(chalk.cyan(`Processing time: ${aiResult.processingTimeMs}ms`))
+          console.log(chalk.cyan(t('command.update.provider', { provider: aiResult.provider })))
+          console.log(
+            chalk.cyan(
+              t('command.update.confidence', { confidence: (aiResult.confidence * 100).toFixed(0) })
+            )
+          )
+          console.log(
+            chalk.cyan(t('command.update.processingTime', { time: aiResult.processingTimeMs }))
+          )
           console.log(chalk.gray('─'.repeat(60)))
-          console.log(chalk.yellow('\n📝 Summary:'))
+          console.log(chalk.yellow(`\n📝 ${t('command.update.summary')}`))
           console.log(aiResult.summary)
 
           // Display recommendations for each package
           if (aiResult.recommendations.length > 0) {
-            console.log(chalk.yellow('\n📦 Package Recommendations:'))
+            console.log(chalk.yellow(`\n📦 ${t('command.update.packageRecommendations')}`))
             for (const rec of aiResult.recommendations) {
               const actionIcon = rec.action === 'update' ? '✅' : rec.action === 'skip' ? '❌' : '⚠️'
               const riskColor =
@@ -174,18 +182,24 @@ export class UpdateCommand {
 
               if (rec.breakingChanges && rec.breakingChanges.length > 0) {
                 console.log(
-                  chalk.red(`     ⚠️  Breaking changes: ${rec.breakingChanges.join(', ')}`)
+                  chalk.red(
+                    `     ⚠️  ${t('command.update.breakingChanges', { changes: rec.breakingChanges.join(', ') })}`
+                  )
                 )
               }
               if (rec.securityFixes && rec.securityFixes.length > 0) {
-                console.log(chalk.green(`     🔒 Security fixes: ${rec.securityFixes.join(', ')}`))
+                console.log(
+                  chalk.green(
+                    `     🔒 ${t('command.update.securityFixes', { fixes: rec.securityFixes.join(', ') })}`
+                  )
+                )
               }
             }
           }
 
           // Display warnings
           if (aiResult.warnings && aiResult.warnings.length > 0) {
-            console.log(chalk.yellow('\n⚠️  Warnings:'))
+            console.log(chalk.yellow(`\n⚠️  ${t('command.update.warnings')}`))
             for (const warning of aiResult.warnings) {
               console.log(chalk.yellow(`  - ${warning}`))
             }
@@ -198,10 +212,10 @@ export class UpdateCommand {
           if (skipRecommendations.length > 0 && !options.force) {
             console.log(
               chalk.red(
-                `\n⛔ AI recommends skipping ${skipRecommendations.length} package(s) due to risks.`
+                `\n⛔ ${t('command.update.aiSkipRecommend', { count: skipRecommendations.length })}`
               )
             )
-            console.log(chalk.yellow('Use --force to override AI recommendations.\n'))
+            console.log(chalk.yellow(t('command.update.useForce')))
           }
         } catch (aiError) {
           logger.warn('AI batch analysis failed', {
@@ -209,9 +223,7 @@ export class UpdateCommand {
             packageCount: finalPlan.updates.length,
             provider: options.provider,
           })
-          console.warn(
-            chalk.yellow('\n⚠️  AI batch analysis failed, continuing without AI insights:')
-          )
+          console.warn(chalk.yellow(`\n⚠️  ${t('command.update.aiBatchFailed')}`))
           if (options.verbose) {
             console.warn(chalk.gray(String(aiError)))
           }
@@ -219,46 +231,46 @@ export class UpdateCommand {
 
         // Restart progress bar
         progressBar = new ProgressBar({
-          text: '准备应用更新...',
+          text: t('command.update.preparingApply'),
           total: 4,
         })
-        progressBar.start('正在准备应用更新...')
+        progressBar.start(t('command.update.preparingApply'))
       }
 
       // Step 3: Apply updates
-      progressBar.update('正在准备应用更新...', 3, 4)
+      progressBar.update(t('command.update.preparingApply'), 3, 4)
 
       if (!options.dryRun) {
         // Replace the progress bar with one for applying updates
         progressBar.stop()
         progressBar = new ProgressBar({
-          text: 'Applying updates...',
+          text: t('command.update.applyingUpdates'),
           total: finalPlan.updates.length,
         })
-        progressBar.start('正在应用更新...')
+        progressBar.start(t('command.update.applyingUpdates'))
 
         const result = await this.updateService.executeUpdates(finalPlan, updateOptions)
-        progressBar.succeed(`Applied ${finalPlan.updates.length} updates`)
+        progressBar.succeed(t('command.update.appliedUpdates', { count: finalPlan.updates.length }))
 
         console.log(formatter.formatUpdateResult(result))
       } else {
-        progressBar.update('正在生成预览...', 4, 4)
-        progressBar.succeed('更新预览完成')
-        console.log(StyledText.iconInfo('Dry run - no changes made'))
+        progressBar.update(t('command.update.generatingPreview'), 4, 4)
+        progressBar.succeed(t('command.update.previewComplete'))
+        console.log(StyledText.iconInfo(t('command.update.dryRunHint')))
         console.log(JSON.stringify(finalPlan, null, 2))
       }
 
-      console.log(StyledText.iconComplete('Update process completed!'))
+      console.log(StyledText.iconComplete(t('command.update.processComplete')))
     } catch (error) {
       logger.error('Update command failed', error instanceof Error ? error : undefined, { options })
       if (progressBar) {
-        progressBar.fail('Operation failed')
+        progressBar.fail(t('progress.operationFailed'))
       }
 
       if (error instanceof Error) {
-        console.error(StyledText.iconError(`Error: ${error.message}`))
+        console.error(StyledText.iconError(`${t('cli.error')} ${error.message}`))
       } else {
-        console.error(StyledText.iconError('Unknown error occurred'))
+        console.error(StyledText.iconError(t('error.unknown')))
       }
       throw error
     }

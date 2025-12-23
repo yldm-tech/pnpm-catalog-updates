@@ -7,7 +7,7 @@
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { CommandExitError, logger, type PackageFilterConfig } from '@pcu/utils'
+import { CommandExitError, logger, type PackageFilterConfig, t } from '@pcu/utils'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
 
 export interface InitCommandOptions {
@@ -46,9 +46,9 @@ export class InitCommand {
       const workspaceYamlPath = join(workspacePath, 'pnpm-workspace.yaml')
 
       if (options.verbose) {
-        console.log(StyledText.iconInfo('Initializing PCU configuration'))
-        console.log(StyledText.muted(`Workspace: ${workspacePath}`))
-        console.log(StyledText.muted(`Config file: ${configPath}`))
+        console.log(StyledText.iconInfo(t('command.init.creating')))
+        console.log(StyledText.muted(`${t('command.workspace.title')}: ${workspacePath}`))
+        console.log(StyledText.muted(t('command.init.configFileLabel', { path: configPath })))
         console.log('')
       }
 
@@ -59,19 +59,19 @@ export class InitCommand {
 
       if (!isWorkspace && options.createWorkspace !== false) {
         if (options.verbose) {
-          console.log(StyledText.iconWarning('PNPM workspace structure not detected'))
+          console.log(StyledText.iconWarning(t('warning.workspaceNotDetected')))
           if (!hasPackageJson) {
-            console.log(StyledText.muted('Missing: package.json'))
+            console.log(StyledText.muted(t('command.init.missingPackageJson')))
           }
           if (!hasWorkspaceYaml) {
-            console.log(StyledText.muted('Missing: pnpm-workspace.yaml'))
+            console.log(StyledText.muted(t('command.init.missingWorkspaceYaml')))
           }
           console.log('')
         }
 
         // Create workspace structure
         if (options.verbose) {
-          console.log(StyledText.iconInfo('Creating PNPM workspace structure...'))
+          console.log(StyledText.iconInfo(t('command.init.creatingWorkspace')))
         }
 
         await this.createWorkspaceStructure(
@@ -82,16 +82,16 @@ export class InitCommand {
         )
 
         if (options.verbose) {
-          console.log(StyledText.iconSuccess('PNPM workspace structure created'))
+          console.log(StyledText.iconSuccess(t('command.init.workspaceCreated')))
           console.log('')
         }
       }
 
       // Check if config file already exists
       if (existsSync(configPath) && !options.force) {
-        console.log(StyledText.iconWarning('Configuration file already exists!'))
-        console.log(StyledText.muted(`Found: ${configPath}`))
-        console.log(StyledText.muted('Use --force to overwrite existing configuration'))
+        console.log(StyledText.iconWarning(t('warning.configExists')))
+        console.log(StyledText.muted(t('command.init.foundLabel', { path: configPath })))
+        console.log(StyledText.muted(t('command.init.useForceOverwrite')))
         throw CommandExitError.failure('Configuration file already exists')
       }
 
@@ -108,8 +108,8 @@ export class InitCommand {
       writeFileSync(configPath, JSON.stringify(basicConfig, null, 2), 'utf-8')
 
       // Success message
-      console.log(StyledText.iconSuccess('PCU configuration initialized successfully!'))
-      console.log(StyledText.muted(`Created: ${configPath}`))
+      console.log(StyledText.iconSuccess(t('command.init.success')))
+      console.log(StyledText.muted(t('command.init.createdLabel', { path: configPath })))
       console.log('')
 
       // Show next steps
@@ -123,12 +123,12 @@ export class InitCommand {
       }
 
       logger.error('Init command failed', error instanceof Error ? error : undefined, { options })
-      console.error(StyledText.iconError('Error initializing configuration:'))
+      console.error(StyledText.iconError(t('command.init.errorInitializing')))
       console.error(StyledText.error(String(error)))
 
       if (options.verbose && error instanceof Error) {
-        console.error(StyledText.muted('Stack trace:'))
-        console.error(StyledText.muted(error.stack || 'No stack trace available'))
+        console.error(StyledText.muted(t('common.stackTrace')))
+        console.error(StyledText.muted(error.stack || t('common.noStackTrace')))
       }
 
       throw CommandExitError.failure('Init command failed')
@@ -151,7 +151,7 @@ export class InitCommand {
       writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8')
 
       if (options.verbose) {
-        console.log(StyledText.muted('Created: package.json'))
+        console.log(StyledText.muted(t('command.init.createdPackageJson')))
       }
     }
 
@@ -162,7 +162,7 @@ export class InitCommand {
       writeFileSync(workspaceYamlPath, workspaceYaml, 'utf-8')
 
       if (options.verbose) {
-        console.log(StyledText.muted('Created: pnpm-workspace.yaml'))
+        console.log(StyledText.muted(t('command.init.createdWorkspaceYaml')))
       }
     }
 
@@ -172,7 +172,7 @@ export class InitCommand {
       mkdirSync(packagesDir, { recursive: true })
 
       if (options.verbose) {
-        console.log(StyledText.muted('Created: packages/ directory'))
+        console.log(StyledText.muted(t('command.init.createdPackagesDir')))
       }
     }
   }
@@ -321,23 +321,21 @@ catalogs:
   private showNextSteps(configPath: string): void {
     const lines: string[] = []
 
-    lines.push(StyledText.iconInfo('Next steps:'))
+    lines.push(StyledText.iconInfo(`${t('command.init.nextSteps')}:`))
     lines.push('')
-    lines.push(StyledText.muted('1. Review and customize the configuration:'))
+    lines.push(StyledText.muted(t('command.init.step1')))
     lines.push(StyledText.muted(`   ${configPath}`))
     lines.push('')
-    lines.push(StyledText.muted('2. Add packages to your workspace:'))
-    lines.push(StyledText.muted('   mkdir packages/my-app && cd packages/my-app'))
-    lines.push(StyledText.muted('   pnpm init'))
+    lines.push(StyledText.muted(t('command.init.step2')))
+    lines.push(StyledText.muted(`   ${t('command.init.step2Commands')}`))
     lines.push('')
-    lines.push(StyledText.muted('3. Install dependencies and check for updates:'))
-    lines.push(StyledText.muted('   pnpm install'))
-    lines.push(StyledText.muted('   pcu check'))
+    lines.push(StyledText.muted(t('command.init.step3')))
+    lines.push(StyledText.muted(`   ${t('command.init.step3Commands')}`))
     lines.push('')
-    lines.push(StyledText.muted('4. Update dependencies interactively:'))
-    lines.push(StyledText.muted('   pcu update --interactive'))
+    lines.push(StyledText.muted(t('command.init.step4')))
+    lines.push(StyledText.muted(`   ${t('command.init.step4Commands')}`))
     lines.push('')
-    lines.push(StyledText.muted('5. Learn more about PNPM workspace and PCU:'))
+    lines.push(StyledText.muted(t('command.init.step5')))
     lines.push(StyledText.muted('   https://pnpm.io/workspaces'))
     lines.push(StyledText.muted('   https://github.com/houko/pnpm-catalog-updates#configuration'))
 

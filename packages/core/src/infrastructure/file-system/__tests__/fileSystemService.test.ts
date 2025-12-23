@@ -19,6 +19,40 @@ const mocks = vi.hoisted(() => ({
   yamlStringify: vi.fn(),
 }))
 
+// Mock logger and error classes
+const mockUtils = vi.hoisted(() => {
+  const mockLogger = {
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+  }
+
+  // Mock FileSystemError class
+  class MockFileSystemError extends Error {
+    constructor(
+      public readonly path: string,
+      public readonly operation: string,
+      public readonly reason: string,
+      cause?: Error
+    ) {
+      super(`File system ${operation} failed for "${path}": ${reason}`, { cause })
+      this.name = 'FileSystemError'
+    }
+  }
+
+  return {
+    logger: mockLogger,
+    FileSystemError: MockFileSystemError,
+  }
+})
+
+// Mock @pcu/utils with logger and error classes
+vi.mock('@pcu/utils', () => ({
+  logger: mockUtils.logger,
+  FileSystemError: mockUtils.FileSystemError,
+}))
+
 // Mock fs/promises with default export
 vi.mock('node:fs/promises', () => ({
   default: {
@@ -278,16 +312,12 @@ catalog:
       mocks.writeFile.mockResolvedValue(undefined)
       mocks.yamlStringify.mockReturnValue('packages:\n  - "packages/*"\n')
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
       await service.writeYamlFilePreservingFormat('/path/to/file.yaml', {
         packages: ['packages/*'],
       })
 
-      expect(consoleSpy).toHaveBeenCalled()
+      expect(mockUtils.logger.warn).toHaveBeenCalled()
       expect(mocks.yamlStringify).toHaveBeenCalled()
-
-      consoleSpy.mockRestore()
     })
   })
 
@@ -388,7 +418,6 @@ catalog:
     })
 
     it('should continue on pattern failure', async () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       mocks.glob
         .mockRejectedValueOnce(new Error('Pattern error'))
         .mockResolvedValueOnce(['/workspace/apps/app/package.json'])
@@ -397,9 +426,7 @@ catalog:
       const result = await service.findPackageJsonFiles(workspacePath, ['invalid/**', 'apps/*'])
 
       expect(result).toContain('/workspace/apps/app/package.json')
-      expect(consoleSpy).toHaveBeenCalled()
-
-      consoleSpy.mockRestore()
+      expect(mockUtils.logger.warn).toHaveBeenCalled()
     })
   })
 

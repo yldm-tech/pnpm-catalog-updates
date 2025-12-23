@@ -4,7 +4,7 @@
  * CLI command to configure color themes.
  */
 
-import { logger } from '@pcu/utils'
+import { logger, t } from '@pcu/utils'
 import { InteractivePrompts } from '../interactive/interactivePrompts.js'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
 
@@ -21,7 +21,7 @@ export class ThemeCommand {
   async execute(options: ThemeCommandOptions = {}): Promise<void> {
     if (options.list) {
       const themes = ThemeManager.listThemes()
-      console.log(StyledText.iconInfo('Available themes:'))
+      console.log(StyledText.iconInfo(t('command.theme.availableThemes')))
       themes.forEach((theme) => {
         console.log(`  • ${theme}`)
       })
@@ -35,13 +35,13 @@ export class ThemeCommand {
           theme: options.set,
           availableThemes: themes,
         })
-        console.error(StyledText.iconError(`Invalid theme: ${options.set}`))
-        console.log(StyledText.muted(`Available themes: ${themes.join(', ')}`))
-        throw new Error(`Invalid theme: ${options.set}`)
+        console.error(StyledText.iconError(t('command.theme.invalidTheme', { theme: options.set })))
+        console.log(StyledText.muted(`${t('command.theme.availableThemes')} ${themes.join(', ')}`))
+        throw new Error(t('command.theme.invalidTheme', { theme: options.set }))
       }
 
       ThemeManager.setTheme(options.set as keyof typeof ThemeManager.themes)
-      console.log(StyledText.iconSuccess(`Theme set to: ${options.set}`))
+      console.log(StyledText.iconSuccess(t('command.theme.setTo', { theme: options.set })))
 
       // Show a preview
       this.showThemePreview()
@@ -56,7 +56,9 @@ export class ThemeCommand {
         const validThemes = ThemeManager.listThemes()
         if (validThemes.includes(config.theme)) {
           ThemeManager.setTheme(config.theme as keyof typeof ThemeManager.themes)
-          console.log(StyledText.iconSuccess(`Theme configured: ${config.theme}`))
+          console.log(
+            StyledText.iconSuccess(t('command.theme.configured', { theme: config.theme }))
+          )
         }
       }
       return
@@ -64,29 +66,29 @@ export class ThemeCommand {
 
     // Default: show current theme and list
     const currentTheme = ThemeManager.getTheme()
-    console.log(StyledText.iconInfo('Current theme settings:'))
-    console.log(`  Theme: ${currentTheme ? 'custom' : 'default'}`)
-    console.log('\nAvailable themes:')
+    console.log(StyledText.iconInfo(t('command.theme.currentSettings')))
+    console.log(
+      `  ${t('command.theme.themeLabel')} ${currentTheme ? t('command.theme.custom') : t('command.theme.default')}`
+    )
+    console.log(`\n${t('command.theme.availableThemes')}`)
     ThemeManager.listThemes().forEach((theme) => {
       console.log(`  • ${theme}`)
     })
-    console.log(
-      StyledText.muted('\nUse --set <theme> to change theme or --interactive for guided setup')
-    )
+    console.log(StyledText.muted(`\n${t('command.theme.useHint')}`))
   }
 
   /**
    * Show a preview of the current theme
    */
   private showThemePreview(): void {
-    console.log('\nTheme preview:')
+    console.log(`\n${t('command.theme.preview')}`)
     const theme = ThemeManager.getTheme()
-    console.log(`  ${theme.success('✓ Success message')}`)
-    console.log(`  ${theme.warning('⚠ Warning message')}`)
-    console.log(`  ${theme.error('✗ Error message')}`)
-    console.log(`  ${theme.info('ℹ Info message')}`)
+    console.log(`  ${theme.success(`✓ ${t('command.theme.previewSuccess')}`)}`)
+    console.log(`  ${theme.warning(`⚠ ${t('command.theme.previewWarning')}`)}`)
+    console.log(`  ${theme.error(`✗ ${t('command.theme.previewError')}`)}`)
+    console.log(`  ${theme.info(`ℹ ${t('command.theme.previewInfo')}`)}`)
     console.log(
-      `  ${theme.major('Major update')} | ${theme.minor('Minor update')} | ${theme.patch('Patch update')}`
+      `  ${theme.major(t('command.theme.previewMajor'))} | ${theme.minor(t('command.theme.previewMinor'))} | ${theme.patch(t('command.theme.previewPatch'))}`
     )
   }
 

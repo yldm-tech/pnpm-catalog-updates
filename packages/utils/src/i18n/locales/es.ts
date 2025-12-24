@@ -137,6 +137,46 @@ export const es: TranslationDictionary = {
   'command.update.processComplete': '¡Proceso de actualización completado!',
   'command.update.aiBatchFailed':
     'Análisis por lotes de IA fallido, continuando sin información de IA:',
+  'command.update.runningPnpmInstall':
+    'Ejecutando pnpm install para actualizar el archivo de bloqueo...',
+  'command.update.pnpmInstallSuccess': 'pnpm install completado exitosamente',
+  'command.update.pnpmInstallFailed':
+    'pnpm install falló (las actualizaciones del catálogo fueron exitosas)',
+  'command.update.fetchingChangelogs': 'Obteniendo registros de cambios...',
+  'command.update.changelogUnavailable': 'Registro de cambios no disponible',
+
+  // Rollback command
+  'command.rollback.noBackups': 'No se encontraron copias de seguridad',
+  'command.rollback.createBackupHint':
+    'Use "pcu update -b" para crear una copia de seguridad antes de actualizar',
+  'command.rollback.availableBackups': 'Copias de seguridad disponibles ({{count}})',
+  'command.rollback.restoreHint': 'Use "pcu rollback" para restaurar desde una copia de seguridad',
+  'command.rollback.restoringLatest': 'Restaurando desde la última copia de seguridad',
+  'command.rollback.from': 'Desde',
+  'command.rollback.confirmRestore': '¿Está seguro de que desea restaurar esta copia de seguridad?',
+  'command.rollback.cancelled': 'Reversión cancelada',
+  'command.rollback.success': '¡Reversión completada exitosamente!',
+  'command.rollback.runPnpmInstall':
+    'Ejecute "pnpm install" para sincronizar el archivo de bloqueo',
+  'command.rollback.selectBackup': 'Seleccione una copia de seguridad para restaurar',
+  'command.rollback.chooseBackup': 'Elegir copia de seguridad',
+  'command.rollback.warning': 'Advertencia: Esto sobrescribirá su pnpm-workspace.yaml actual',
+  'command.rollback.willRestore': 'Se restaurará desde: {{time}}',
+  'command.rollback.deleteWarning': 'Advertencia: Se eliminarán {{count}} copia(s) de seguridad',
+  'command.rollback.confirmDelete':
+    '¿Está seguro de que desea eliminar todas las copias de seguridad?',
+  'command.rollback.deletedBackups': 'Se eliminaron {{count}} copia(s) de seguridad',
+
+  // Watch command
+  'command.watch.starting': 'Iniciando modo de vigilancia...',
+  'command.watch.watching': 'Vigilando',
+  'command.watch.pressCtrlC': 'Presione Ctrl+C para detener',
+  'command.watch.stopping': 'Deteniendo modo de vigilancia...',
+  'command.watch.stopped': 'Modo de vigilancia detenido',
+  'command.watch.checkingUpdates': 'Verificando actualizaciones...',
+  'command.watch.foundOutdated': 'Se encontraron {{count}} paquete(s) desactualizado(s)',
+  'command.watch.waitingForChanges': 'Esperando cambios...',
+  'command.watch.runUpdateHint': 'Ejecute "pcu update" para aplicar actualizaciones',
 
   // AI command
   'command.ai.cacheCleared': 'Caché de análisis de IA limpiada',
@@ -300,6 +340,8 @@ export const es: TranslationDictionary = {
   'cli.description.init': 'inicializar configuración PCU y workspace PNPM',
   'cli.description.ai': 'verificar estado y disponibilidad del proveedor de IA',
   'cli.description.cache': 'gestionar caché de PCU para datos de registro y workspace',
+  'cli.description.rollback': 'revertir actualizaciones del catálogo a un estado anterior',
+  'cli.description.watch': 'vigilar cambios y verificar actualizaciones',
   'cli.description.help': 'mostrar ayuda para el comando',
 
   // CLI option descriptions
@@ -341,6 +383,10 @@ export const es: TranslationDictionary = {
   'cli.option.verbose': 'habilitar registro detallado',
   'cli.option.workspace': 'ruta del directorio del workspace',
   'cli.option.noColor': 'deshabilitar salida en color',
+  'cli.option.install': 'ejecutar pnpm install después de la actualización (por defecto: true)',
+  'cli.option.noInstall': 'omitir pnpm install después de la actualización',
+  'cli.option.changelog': 'mostrar registro de cambios para cada actualización',
+  'cli.option.noChangelog': 'ocultar salida del registro de cambios',
   'cli.option.updateShorthand': 'atajo para comando update',
   'cli.option.checkShorthand': 'atajo para comando check',
   'cli.option.analyzeShorthand': 'atajo para comando analyze',
@@ -348,6 +394,12 @@ export const es: TranslationDictionary = {
   'cli.option.themeShorthand': 'atajo para comando theme',
   'cli.option.securityAudit': 'atajo para comando security',
   'cli.option.securityFix': 'atajo para comando security --fix-vulns',
+  'cli.option.listBackups': 'listar copias de seguridad disponibles',
+  'cli.option.restoreLatest': 'restaurar desde la copia de seguridad más reciente',
+  'cli.option.deleteAllBackups': 'eliminar todas las copias de seguridad',
+  'cli.option.debounce': 'retraso de debounce en milisegundos',
+  'cli.option.clearConsole': 'limpiar consola antes de cada verificación',
+  'cli.option.exitCode': 'salir con código 1 si hay actualizaciones disponibles (para CI/CD)',
 
   // CLI argument descriptions
   'cli.argument.package': 'nombre del paquete',

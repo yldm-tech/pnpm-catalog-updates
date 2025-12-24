@@ -130,6 +130,42 @@ export const ko: TranslationDictionary = {
   'command.update.dryRunHint': '드라이런 - 변경 사항 없음',
   'command.update.processComplete': '업데이트 프로세스 완료!',
   'command.update.aiBatchFailed': 'AI 일괄 분석 실패, AI 인사이트 없이 계속:',
+  'command.update.runningPnpmInstall': 'pnpm install을 실행하여 잠금 파일을 업데이트하는 중...',
+  'command.update.pnpmInstallSuccess': 'pnpm install이 성공적으로 완료되었습니다',
+  'command.update.pnpmInstallFailed': 'pnpm install 실패 (카탈로그 업데이트는 성공했습니다)',
+  'command.update.fetchingChangelogs': '변경 로그를 가져오는 중...',
+  'command.update.changelogUnavailable': '변경 로그를 사용할 수 없습니다',
+
+  // Rollback command
+  'command.rollback.noBackups': '백업을 찾을 수 없습니다',
+  'command.rollback.createBackupHint':
+    '업데이트 전에 백업을 생성하려면 "pcu update -b"를 사용하세요',
+  'command.rollback.availableBackups': '사용 가능한 백업 ({{count}})',
+  'command.rollback.restoreHint': '백업에서 복원하려면 "pcu rollback"을 사용하세요',
+  'command.rollback.restoringLatest': '최신 백업에서 복원 중',
+  'command.rollback.from': '원본',
+  'command.rollback.confirmRestore': '이 백업을 복원하시겠습니까?',
+  'command.rollback.cancelled': '롤백이 취소되었습니다',
+  'command.rollback.success': '롤백이 성공적으로 완료되었습니다!',
+  'command.rollback.runPnpmInstall': '잠금 파일을 동기화하려면 "pnpm install"을 실행하세요',
+  'command.rollback.selectBackup': '복원할 백업 선택',
+  'command.rollback.chooseBackup': '백업 선택',
+  'command.rollback.warning': '경고: 현재 pnpm-workspace.yaml이 덮어쓰기됩니다',
+  'command.rollback.willRestore': '복원할 백업: {{time}}',
+  'command.rollback.deleteWarning': '경고: {{count}}개의 백업이 삭제됩니다',
+  'command.rollback.confirmDelete': '모든 백업을 삭제하시겠습니까?',
+  'command.rollback.deletedBackups': '{{count}}개의 백업을 삭제했습니다',
+
+  // Watch command
+  'command.watch.starting': '감시 모드를 시작하는 중...',
+  'command.watch.watching': '감시 중',
+  'command.watch.pressCtrlC': 'Ctrl+C를 눌러 중지',
+  'command.watch.stopping': '감시 모드를 중지하는 중...',
+  'command.watch.stopped': '감시 모드가 중지되었습니다',
+  'command.watch.checkingUpdates': '업데이트 확인 중...',
+  'command.watch.foundOutdated': '{{count}}개의 오래된 패키지를 발견했습니다',
+  'command.watch.waitingForChanges': '변경 사항을 기다리는 중...',
+  'command.watch.runUpdateHint': '"pcu update"를 실행하여 업데이트 적용',
 
   // AI command
   'command.ai.cacheCleared': 'AI 분석 캐시 삭제됨',
@@ -288,6 +324,8 @@ export const ko: TranslationDictionary = {
   'cli.description.init': 'PCU 구성 및 PNPM 워크스페이스 초기화',
   'cli.description.ai': 'AI 공급자 상태 및 가용성 확인',
   'cli.description.cache': 'PCU 레지스트리 및 워크스페이스 데이터 캐시 관리',
+  'cli.description.rollback': '카탈로그 업데이트를 이전 상태로 롤백',
+  'cli.description.watch': '변경 사항을 감시하고 업데이트 확인',
   'cli.description.help': '명령에 대한 도움말 표시',
 
   // CLI option descriptions
@@ -328,6 +366,10 @@ export const ko: TranslationDictionary = {
   'cli.option.verbose': '상세 로깅 활성화',
   'cli.option.workspace': '워크스페이스 디렉토리 경로',
   'cli.option.noColor': '색상 출력 비활성화',
+  'cli.option.install': '업데이트 후 pnpm install 실행 (기본값: true)',
+  'cli.option.noInstall': '업데이트 후 pnpm install 건너뛰기',
+  'cli.option.changelog': '각 업데이트의 변경 로그 표시',
+  'cli.option.noChangelog': '변경 로그 출력 숨기기',
   'cli.option.updateShorthand': 'update 명령의 약어',
   'cli.option.checkShorthand': 'check 명령의 약어',
   'cli.option.analyzeShorthand': 'analyze 명령의 약어',
@@ -335,6 +377,12 @@ export const ko: TranslationDictionary = {
   'cli.option.themeShorthand': 'theme 명령의 약어',
   'cli.option.securityAudit': 'security 명령의 약어',
   'cli.option.securityFix': 'security --fix-vulns 명령의 약어',
+  'cli.option.listBackups': '사용 가능한 백업 목록 표시',
+  'cli.option.restoreLatest': '최신 백업에서 복원',
+  'cli.option.deleteAllBackups': '모든 백업 삭제',
+  'cli.option.debounce': '디바운스 지연 시간 (밀리초)',
+  'cli.option.clearConsole': '각 확인 전 콘솔 지우기',
+  'cli.option.exitCode': '업데이트가 있으면 종료 코드 1 반환 (CI/CD용)',
 
   // CLI argument descriptions
   'cli.argument.package': '패키지 이름',

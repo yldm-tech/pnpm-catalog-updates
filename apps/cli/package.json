@@ -31,6 +31,8 @@
     "clean": "rimraf dist bin/*.js"
   },
   "dependencies": {
+    "@pcu/core": "workspace:*",
+    "@pcu/utils": "workspace:*",
     "chalk": "catalog:",
     "cli-table3": "catalog:",
     "commander": "catalog:",

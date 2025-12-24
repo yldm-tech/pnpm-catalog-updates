@@ -27,9 +27,11 @@ import { AnalyzeCommand } from './commands/analyzeCommand.js'
 import { CacheCommand } from './commands/cacheCommand.js'
 import { CheckCommand } from './commands/checkCommand.js'
 import { InitCommand } from './commands/initCommand.js'
+import { RollbackCommand } from './commands/rollbackCommand.js'
 import { SecurityCommand } from './commands/securityCommand.js'
 import { ThemeCommand } from './commands/themeCommand.js'
 import { UpdateCommand } from './commands/updateCommand.js'
+import { WatchCommand } from './commands/watchCommand.js'
 import { WorkspaceCommand } from './commands/workspaceCommand.js'
 import { type OutputFormat, OutputFormatter } from './formatters/outputFormatter.js'
 
@@ -123,6 +125,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
     .option('--prerelease', t('cli.option.prerelease'))
     .option('--include <pattern>', t('cli.option.include'), [])
     .option('--exclude <pattern>', t('cli.option.exclude'), [])
+    .option('--exit-code', t('cli.option.exitCode'))
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
@@ -142,6 +145,7 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
             : [options.exclude].filter(Boolean),
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
+          exitCode: options.exitCode,
         })
       } catch (error) {
         if (isCommandExitError(error)) {
@@ -174,6 +178,10 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
     .option('--provider <name>', t('cli.option.provider'), 'auto')
     .option('--analysis-type <type>', t('cli.option.analysisType'), 'impact')
     .option('--skip-cache', t('cli.option.skipCache'))
+    .option('--install', t('cli.option.install'), true)
+    .option('--no-install', t('cli.option.noInstall'))
+    .option('--changelog', t('cli.option.changelog'))
+    .option('--no-changelog', t('cli.option.noChangelog'))
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
@@ -202,6 +210,10 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
           provider: options.provider,
           analysisType: options.analysisType as AnalysisType,
           skipCache: parseBooleanFlag(options.skipCache),
+          // Auto install option
+          install: options.install,
+          // Changelog display option
+          changelog: options.changelog,
         })
       } catch (error) {
         if (isCommandExitError(error)) {
@@ -450,6 +462,86 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
         }
         logger.error('Cache command failed', error instanceof Error ? error : undefined, {
           command: 'cache',
+        })
+        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
+        process.exit(1)
+      }
+    })
+
+  // Rollback command
+  program
+    .command('rollback')
+    .alias('rb')
+    .description(t('cli.description.rollback'))
+    .option('-l, --list', t('cli.option.listBackups'))
+    .option('--latest', t('cli.option.restoreLatest'))
+    .option('--delete-all', t('cli.option.deleteAllBackups'))
+    .action(async (options, command) => {
+      try {
+        const globalOptions = command.parent.opts()
+        const rollbackCommand = new RollbackCommand()
+
+        await rollbackCommand.execute({
+          workspace: globalOptions.workspace,
+          list: options.list,
+          latest: options.latest,
+          deleteAll: options.deleteAll,
+          verbose: globalOptions.verbose,
+          color: !globalOptions.noColor,
+        })
+      } catch (error) {
+        if (isCommandExitError(error)) {
+          process.exit(error.exitCode)
+        }
+        logger.error('Rollback command failed', error instanceof Error ? error : undefined, {
+          command: 'rollback',
+        })
+        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
+        process.exit(1)
+      }
+    })
+
+  // Watch command
+  program
+    .command('watch')
+    .alias('wch')
+    .description(t('cli.description.watch'))
+    .option('--catalog <name>', t('cli.option.catalog'))
+    .option('-f, --format <type>', t('cli.option.format'), 'table')
+    .option('-t, --target <type>', t('cli.option.target'), 'latest')
+    .option('--prerelease', t('cli.option.prerelease'))
+    .option('--include <pattern>', t('cli.option.include'), [])
+    .option('--exclude <pattern>', t('cli.option.exclude'), [])
+    .option('--debounce <ms>', t('cli.option.debounce'), '300')
+    .option('--clear', t('cli.option.clearConsole'))
+    .action(async (options, command) => {
+      try {
+        const globalOptions = command.parent.opts()
+        const watchCommand = new WatchCommand(services.catalogUpdateService)
+
+        await watchCommand.execute({
+          workspace: globalOptions.workspace,
+          catalog: options.catalog,
+          format: options.format,
+          target: options.target,
+          prerelease: options.prerelease,
+          include: Array.isArray(options.include)
+            ? options.include
+            : [options.include].filter(Boolean),
+          exclude: Array.isArray(options.exclude)
+            ? options.exclude
+            : [options.exclude].filter(Boolean),
+          verbose: globalOptions.verbose,
+          color: !globalOptions.noColor,
+          debounce: parseInt(options.debounce, 10),
+          clear: options.clear,
+        })
+      } catch (error) {
+        if (isCommandExitError(error)) {
+          process.exit(error.exitCode)
+        }
+        logger.error('Watch command failed', error instanceof Error ? error : undefined, {
+          command: 'watch',
         })
         console.error(chalk.red(`❌ ${t('cli.error')}`), error)
         process.exit(1)

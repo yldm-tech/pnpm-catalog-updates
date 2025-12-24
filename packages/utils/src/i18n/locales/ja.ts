@@ -135,6 +135,43 @@ export const ja: TranslationDictionary = {
   'command.update.dryRunHint': 'ドライラン - 変更は行われていません',
   'command.update.processComplete': '更新プロセスが完了しました！',
   'command.update.aiBatchFailed': 'AI 一括分析に失敗しました。AI の洞察なしで続行します:',
+  'command.update.runningPnpmInstall': 'pnpm install を実行してロックファイルを更新しています...',
+  'command.update.pnpmInstallSuccess': 'pnpm install が正常に完了しました',
+  'command.update.pnpmInstallFailed': 'pnpm install が失敗しました（カタログの更新は成功しました）',
+  'command.update.fetchingChangelogs': '変更履歴を取得しています...',
+  'command.update.changelogUnavailable': '変更履歴は利用できません',
+
+  // Rollback command
+  'command.rollback.noBackups': 'バックアップが見つかりません',
+  'command.rollback.createBackupHint':
+    '更新前にバックアップを作成するには "pcu update -b" を使用してください',
+  'command.rollback.availableBackups': '利用可能なバックアップ ({{count}})',
+  'command.rollback.restoreHint': 'バックアップから復元するには "pcu rollback" を使用してください',
+  'command.rollback.restoringLatest': '最新のバックアップから復元中',
+  'command.rollback.from': '元',
+  'command.rollback.confirmRestore': 'このバックアップを復元してもよろしいですか？',
+  'command.rollback.cancelled': 'ロールバックがキャンセルされました',
+  'command.rollback.success': 'ロールバックが正常に完了しました！',
+  'command.rollback.runPnpmInstall':
+    'ロックファイルを同期するには "pnpm install" を実行してください',
+  'command.rollback.selectBackup': '復元するバックアップを選択',
+  'command.rollback.chooseBackup': 'バックアップを選択',
+  'command.rollback.warning': '警告：これにより現在の pnpm-workspace.yaml が上書きされます',
+  'command.rollback.willRestore': '復元元：{{time}}',
+  'command.rollback.deleteWarning': '警告：{{count}} 個のバックアップが削除されます',
+  'command.rollback.confirmDelete': 'すべてのバックアップを削除してもよろしいですか？',
+  'command.rollback.deletedBackups': '{{count}} 個のバックアップを削除しました',
+
+  // Watch command
+  'command.watch.starting': '監視モードを開始しています...',
+  'command.watch.watching': '監視中',
+  'command.watch.pressCtrlC': 'Ctrl+C で停止',
+  'command.watch.stopping': '監視モードを停止しています...',
+  'command.watch.stopped': '監視モードが停止しました',
+  'command.watch.checkingUpdates': '更新を確認しています...',
+  'command.watch.foundOutdated': '{{count}} 件の古いパッケージが見つかりました',
+  'command.watch.waitingForChanges': '変更を待機中...',
+  'command.watch.runUpdateHint': '"pcu update" を実行して更新を適用',
 
   // AI command
   'command.ai.cacheCleared': 'AI 分析キャッシュをクリアしました',
@@ -296,6 +333,8 @@ export const ja: TranslationDictionary = {
   'cli.description.init': 'PCU設定とPNPMワークスペースを初期化',
   'cli.description.ai': 'AIプロバイダーの状態と可用性を確認',
   'cli.description.cache': 'PCUレジストリとワークスペースデータのキャッシュを管理',
+  'cli.description.rollback': 'カタログの更新を以前の状態にロールバック',
+  'cli.description.watch': '変更を監視して更新を確認',
   'cli.description.help': 'コマンドのヘルプを表示',
 
   // CLI option descriptions
@@ -337,6 +376,10 @@ export const ja: TranslationDictionary = {
   'cli.option.verbose': '詳細ログを有効化',
   'cli.option.workspace': 'ワークスペースディレクトリパス',
   'cli.option.noColor': 'カラー出力を無効化',
+  'cli.option.install': '更新後に pnpm install を実行（デフォルト: true）',
+  'cli.option.noInstall': '更新後の pnpm install をスキップ',
+  'cli.option.changelog': '各更新の変更履歴を表示',
+  'cli.option.noChangelog': '変更履歴の出力を非表示',
   'cli.option.updateShorthand': 'updateコマンドの短縮形',
   'cli.option.checkShorthand': 'checkコマンドの短縮形',
   'cli.option.analyzeShorthand': 'analyzeコマンドの短縮形',
@@ -344,6 +387,12 @@ export const ja: TranslationDictionary = {
   'cli.option.themeShorthand': 'themeコマンドの短縮形',
   'cli.option.securityAudit': 'securityコマンドの短縮形',
   'cli.option.securityFix': 'security --fix-vulnsコマンドの短縮形',
+  'cli.option.listBackups': '利用可能なバックアップを一覧表示',
+  'cli.option.restoreLatest': '最新のバックアップから復元',
+  'cli.option.deleteAllBackups': 'すべてのバックアップを削除',
+  'cli.option.debounce': 'デバウンス遅延（ミリ秒）',
+  'cli.option.clearConsole': '各チェック前にコンソールをクリア',
+  'cli.option.exitCode': '更新がある場合にコード1で終了（CI/CD用）',
 
   // CLI argument descriptions
   'cli.argument.package': 'パッケージ名',

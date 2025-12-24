@@ -26,6 +26,7 @@ export interface CheckCommandOptions {
   exclude?: string[]
   verbose?: boolean
   color?: boolean
+  exitCode?: boolean
 }
 
 export class CheckCommand {
@@ -93,8 +94,12 @@ export class CheckCommand {
         this.showSummary(report, options)
       }
 
-      // Always exit with 0 since this is just a check command
-      // and finding updates is not an error condition
+      // Exit with code 1 if --exit-code is set and updates are available (for CI/CD)
+      if (options.exitCode && report.hasUpdates) {
+        throw CommandExitError.failure('Updates available')
+      }
+
+      // Otherwise exit with 0 since this is just a check command
       throw CommandExitError.success()
     } catch (error) {
       // Re-throw CommandExitError as-is

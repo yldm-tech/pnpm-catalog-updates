@@ -136,6 +136,46 @@ export const de: TranslationDictionary = {
   'command.update.dryRunHint': 'Testlauf - keine Änderungen vorgenommen',
   'command.update.processComplete': 'Aktualisierungsprozess abgeschlossen!',
   'command.update.aiBatchFailed': 'KI-Batch-Analyse fehlgeschlagen, fahre ohne KI-Einblicke fort:',
+  'command.update.runningPnpmInstall': 'Führe pnpm install aus, um Lock-Datei zu aktualisieren...',
+  'command.update.pnpmInstallSuccess': 'pnpm install erfolgreich abgeschlossen',
+  'command.update.pnpmInstallFailed':
+    'pnpm install fehlgeschlagen (Katalog-Updates waren erfolgreich)',
+  'command.update.fetchingChangelogs': 'Lade Änderungsprotokolle...',
+  'command.update.changelogUnavailable': 'Änderungsprotokoll nicht verfügbar',
+
+  // Rollback command
+  'command.rollback.noBackups': 'Keine Backups gefunden',
+  'command.rollback.createBackupHint':
+    'Verwenden Sie "pcu update -b" um vor dem Update ein Backup zu erstellen',
+  'command.rollback.availableBackups': 'Verfügbare Backups ({{count}})',
+  'command.rollback.restoreHint':
+    'Verwenden Sie "pcu rollback" um aus einem Backup wiederherzustellen',
+  'command.rollback.restoringLatest': 'Wiederherstellung vom neuesten Backup',
+  'command.rollback.from': 'Von',
+  'command.rollback.confirmRestore':
+    'Sind Sie sicher, dass Sie dieses Backup wiederherstellen möchten?',
+  'command.rollback.cancelled': 'Rollback abgebrochen',
+  'command.rollback.success': 'Rollback erfolgreich abgeschlossen!',
+  'command.rollback.runPnpmInstall':
+    'Führen Sie "pnpm install" aus, um die Lock-Datei zu synchronisieren',
+  'command.rollback.selectBackup': 'Backup zum Wiederherstellen auswählen',
+  'command.rollback.chooseBackup': 'Backup wählen',
+  'command.rollback.warning': 'Warnung: Dies wird Ihre aktuelle pnpm-workspace.yaml überschreiben',
+  'command.rollback.willRestore': 'Wiederherstellung von: {{time}}',
+  'command.rollback.deleteWarning': 'Warnung: {{count}} Backup(s) werden gelöscht',
+  'command.rollback.confirmDelete': 'Sind Sie sicher, dass Sie alle Backups löschen möchten?',
+  'command.rollback.deletedBackups': '{{count}} Backup(s) gelöscht',
+
+  // Watch command
+  'command.watch.starting': 'Überwachungsmodus wird gestartet...',
+  'command.watch.watching': 'Überwache',
+  'command.watch.pressCtrlC': 'Drücken Sie Strg+C zum Beenden',
+  'command.watch.stopping': 'Überwachungsmodus wird beendet...',
+  'command.watch.stopped': 'Überwachungsmodus beendet',
+  'command.watch.checkingUpdates': 'Suche nach Updates...',
+  'command.watch.foundOutdated': '{{count}} veraltete(s) Paket(e) gefunden',
+  'command.watch.waitingForChanges': 'Warte auf Änderungen...',
+  'command.watch.runUpdateHint': 'Führen Sie "pcu update" aus, um Updates anzuwenden',
 
   // AI command
   'command.ai.cacheCleared': 'KI-Analyse-Cache geleert',
@@ -301,6 +341,8 @@ export const de: TranslationDictionary = {
   'cli.description.init': 'PCU-Konfiguration und PNPM-Workspace initialisieren',
   'cli.description.ai': 'AI-Anbieter-Status und Verfügbarkeit prüfen',
   'cli.description.cache': 'PCU-Cache für Registry- und Workspace-Daten verwalten',
+  'cli.description.rollback': 'Katalog-Updates auf einen früheren Zustand zurücksetzen',
+  'cli.description.watch': 'Änderungen überwachen und auf Updates prüfen',
   'cli.description.help': 'Hilfe für Befehl anzeigen',
 
   // CLI option descriptions
@@ -341,6 +383,10 @@ export const de: TranslationDictionary = {
   'cli.option.verbose': 'Ausführliche Protokollierung aktivieren',
   'cli.option.workspace': 'Workspace-Verzeichnispfad',
   'cli.option.noColor': 'Farbausgabe deaktivieren',
+  'cli.option.install': 'pnpm install nach dem Update ausführen (Standard: true)',
+  'cli.option.noInstall': 'pnpm install nach dem Update überspringen',
+  'cli.option.changelog': 'Änderungsprotokoll für jedes Update anzeigen',
+  'cli.option.noChangelog': 'Änderungsprotokoll-Ausgabe ausblenden',
   'cli.option.updateShorthand': 'Kurzform für update-Befehl',
   'cli.option.checkShorthand': 'Kurzform für check-Befehl',
   'cli.option.analyzeShorthand': 'Kurzform für analyze-Befehl',
@@ -348,6 +394,12 @@ export const de: TranslationDictionary = {
   'cli.option.themeShorthand': 'Kurzform für theme-Befehl',
   'cli.option.securityAudit': 'Kurzform für security-Befehl',
   'cli.option.securityFix': 'Kurzform für security --fix-vulns-Befehl',
+  'cli.option.listBackups': 'verfügbare Backups auflisten',
+  'cli.option.restoreLatest': 'vom neuesten Backup wiederherstellen',
+  'cli.option.deleteAllBackups': 'alle Backups löschen',
+  'cli.option.debounce': 'Debounce-Verzögerung in Millisekunden',
+  'cli.option.clearConsole': 'Konsole vor jeder Prüfung leeren',
+  'cli.option.exitCode': 'mit Code 1 beenden, wenn Updates verfügbar sind (für CI/CD)',
 
   // CLI argument descriptions
   'cli.argument.package': 'Paketname',

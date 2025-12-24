@@ -12,7 +12,9 @@ export type {
 } from './application/services/aiAnalysisService'
 // Application Services
 export { AIAnalysisService } from './application/services/aiAnalysisService'
-
+// Backup Service
+export type { BackupInfo, BackupServiceOptions } from './application/services/backupService'
+export { BackupService } from './application/services/backupService'
 // Application Service Types
 export type {
   CatalogUpdateInfo,
@@ -26,6 +28,9 @@ export type {
   UpdateTarget,
 } from './application/services/catalogUpdateService'
 export { CatalogUpdateService } from './application/services/catalogUpdateService'
+// Watch Service
+export type { WatchCallbacks, WatchOptions } from './application/services/watchService'
+export { WatchService } from './application/services/watchService'
 export type {
   WorkspaceStats,
   WorkspaceValidationReport,
@@ -86,6 +91,12 @@ export {
   WorkspaceCache,
   workspaceCache,
 } from './infrastructure/cache/cache'
+// Changelog Service
+export type {
+  ChangelogEntry,
+  PackageChangelog,
+} from './infrastructure/external-services/changelogService'
+export { ChangelogService } from './infrastructure/external-services/changelogService'
 export { NpmRegistryService } from './infrastructure/external-services/npmRegistryService'
 // Security Advisory Types
 export type {

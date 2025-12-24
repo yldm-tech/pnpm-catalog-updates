@@ -5,12 +5,15 @@
  * Supports interactive mode, dry-run, and various update strategies.
  */
 
+import { spawn } from 'node:child_process'
 import {
   AIAnalysisService,
   type AnalysisType,
   type CatalogUpdateService,
+  ChangelogService,
   FileSystemService,
   FileWorkspaceRepository,
+  NpmRegistryService,
   type UpdateOptions,
   type UpdatePlan,
   type UpdateTarget,
@@ -42,6 +45,10 @@ export interface UpdateCommandOptions {
   provider?: string
   analysisType?: AnalysisType
   skipCache?: boolean
+  // Auto install after update
+  install?: boolean
+  // Show changelog for updates
+  changelog?: boolean
 }
 
 export class UpdateCommand {
@@ -111,6 +118,11 @@ export class UpdateCommand {
       console.log(
         StyledText.iconPackage(t('command.update.foundUpdates', { count: plan.totalUpdates }))
       )
+
+      // Display changelog if enabled
+      if (options.changelog) {
+        await this.displayChangelogs(plan, options.verbose)
+      }
 
       // Interactive selection if enabled
       let finalPlan = plan
@@ -253,6 +265,11 @@ export class UpdateCommand {
         progressBar.succeed(t('command.update.appliedUpdates', { count: finalPlan.updates.length }))
 
         console.log(formatter.formatUpdateResult(result))
+
+        // Run pnpm install if enabled (default: true)
+        if (options.install !== false) {
+          await this.runPnpmInstall(updateOptions.workspacePath || process.cwd(), options.verbose)
+        }
       } else {
         progressBar.update(t('command.update.generatingPreview'), 4, 4)
         progressBar.succeed(t('command.update.previewComplete'))
@@ -353,6 +370,114 @@ export class UpdateCommand {
   }
 
   /**
+   * Display changelogs for all planned updates
+   */
+  private async displayChangelogs(plan: UpdatePlan, verbose?: boolean): Promise<void> {
+    const changelogService = new ChangelogService({ cacheMinutes: 30 })
+    const npmRegistry = new NpmRegistryService()
+
+    console.log(chalk.blue(`\n📋 ${t('command.update.fetchingChangelogs')}`))
+
+    for (const update of plan.updates) {
+      try {
+        // Get package info to find repository URL
+        const packageInfo = await npmRegistry.getPackageInfo(update.packageName)
+        const repository = packageInfo.repository
+          ? {
+              type:
+                typeof packageInfo.repository === 'string'
+                  ? 'git'
+                  : packageInfo.repository.type || 'git',
+              url:
+                typeof packageInfo.repository === 'string'
+                  ? packageInfo.repository
+                  : packageInfo.repository.url || '',
+            }
+          : undefined
+
+        // Fetch changelog between versions
+        const changelog = await changelogService.getChangelog(
+          update.packageName,
+          update.currentVersion,
+          update.newVersion,
+          repository
+        )
+
+        // Display formatted changelog
+        console.log(chalk.yellow(`\n📦 ${update.packageName}`))
+        console.log(chalk.gray(`   ${update.currentVersion} → ${update.newVersion}`))
+        console.log(changelogService.formatChangelog(changelog, verbose))
+      } catch (error) {
+        logger.debug('Failed to fetch changelog', {
+          package: update.packageName,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        console.log(chalk.yellow(`\n📦 ${update.packageName}`))
+        console.log(chalk.gray(`   ${update.currentVersion} → ${update.newVersion}`))
+        console.log(
+          chalk.gray(
+            `   📋 ${t('command.update.changelogUnavailable')}: https://www.npmjs.com/package/${update.packageName}?activeTab=versions`
+          )
+        )
+      }
+    }
+
+    console.log(chalk.gray(`\n${'─'.repeat(60)}`))
+  }
+
+  /**
+   * Run pnpm install to update lock file after catalog updates
+   */
+  private async runPnpmInstall(workspacePath: string, verbose?: boolean): Promise<void> {
+    console.log(chalk.blue(`\n📦 ${t('command.update.runningPnpmInstall')}`))
+
+    return new Promise((resolve) => {
+      const pnpmProcess = spawn('pnpm', ['install'], {
+        cwd: workspacePath,
+        stdio: verbose ? 'inherit' : 'pipe',
+        shell: true,
+      })
+
+      let stdout = ''
+      let stderr = ''
+
+      if (!verbose && pnpmProcess.stdout) {
+        pnpmProcess.stdout.on('data', (data) => {
+          stdout += data.toString()
+        })
+      }
+
+      if (!verbose && pnpmProcess.stderr) {
+        pnpmProcess.stderr.on('data', (data) => {
+          stderr += data.toString()
+        })
+      }
+
+      pnpmProcess.on('close', (code) => {
+        if (code === 0) {
+          console.log(chalk.green(`✅ ${t('command.update.pnpmInstallSuccess')}`))
+          resolve()
+        } else {
+          console.error(chalk.red(`❌ ${t('command.update.pnpmInstallFailed')}`))
+          if (stderr) {
+            console.error(chalk.gray(stderr))
+          }
+          // Don't reject, just warn - the catalog update was successful
+          logger.warn('pnpm install failed', { code, stderr })
+          resolve()
+        }
+      })
+
+      pnpmProcess.on('error', (error) => {
+        console.error(chalk.red(`❌ ${t('command.update.pnpmInstallFailed')}`))
+        logger.error('pnpm install error', error)
+        // Don't reject, just warn
+        resolve()
+      })
+    })
+  }
+
+  /**
    * Validate command options
    */
   static validateOptions(options: UpdateCommandOptions): string[] {
@@ -401,13 +526,16 @@ Options:
   --include <pattern>    Include packages matching pattern (can be used multiple times)
   --exclude <pattern>    Exclude packages matching pattern (can be used multiple times)
   --create-backup        Create backup files before updating
+  --install              Run pnpm install after update (default: true)
+  --no-install           Skip pnpm install after update
   --verbose              Show detailed information
   --no-color             Disable colored output
 
 Examples:
-  pcu update                          # Update all catalogs
+  pcu update                          # Update all catalogs and run pnpm install
   pcu update --interactive            # Interactive update selection
   pcu update --dry-run               # Preview updates without applying
+  pcu update --no-install            # Update catalogs without running pnpm install
   pcu update --catalog react17       # Update specific catalog
   pcu update --target minor          # Update to latest minor versions only
   pcu update --force                 # Force updates despite conflicts

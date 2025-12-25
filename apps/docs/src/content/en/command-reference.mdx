@@ -18,11 +18,12 @@ PCU provides several main commands with both full names and convenient shortcuts
 | `pcu check`     | `pcu chk`, `pcu -c`, `pcu --check` | Check for outdated catalog dependencies         |
 | `pcu update`    | `pcu u`, `pcu -u`, `pcu --update`  | Update catalog dependencies                     |
 | `pcu analyze`   | `pcu a`, `pcu -a`, `pcu --analyze` | Analyze impact of dependency updates            |
-| `pcu ai`        | -                   | Check AI provider status and manage AI cache    |
 | `pcu workspace` | `pcu w`, `pcu -s`, `pcu --workspace-info` | Show workspace information and validation       |
 | `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | Configure color themes and UI settings          |
 | `pcu security`  | `pcu sec`           | Security vulnerability scanning and fixes       |
 | `pcu cache`     | -                   | Manage PCU cache (registry, workspace, AI)      |
+| `pcu rollback`  | -                   | Rollback catalog updates to a previous state    |
+| `pcu watch`     | -                   | Watch for changes and auto-check updates        |
 | `pcu help`      | `pcu h`, `pcu -h`   | Display help information                        |
 
 ### Special Shortcuts
@@ -32,6 +33,60 @@ PCU provides several main commands with both full names and convenient shortcuts
 | `pcu -i`               | `pcu update --interactive` | Interactive update mode                |
 | `pcu --security-audit` | `pcu security`             | Run security scan                      |
 | `pcu --security-fix`   | `pcu security --fix-vulns` | Run security scan with automatic fixes |
+
+---
+
+## Hybrid Mode
+
+PCU features **Hybrid Mode** - when you run any command without flags, it automatically enters interactive mode to guide you through the options. This provides a seamless experience where you can use flags for automation or skip flags for guided prompts.
+
+### How It Works
+
+<CodeGroup>
+
+```bash {{ title: 'No Flags = Interactive Prompts' }}
+# Running without flags triggers interactive prompts
+pcu check        # Prompts for format, target, filter options
+pcu update       # Prompts for catalog, format, target, backup, etc.
+pcu security     # Prompts for output format, severity filter
+pcu analyze      # Prompts for catalog selection and package
+pcu theme        # Prompts for theme selection
+```
+
+```bash {{ title: 'With Flags = Direct Execution' }}
+# Providing flags runs directly without prompts
+pcu check --format table
+pcu update --target minor --create-backup
+pcu security --severity high --format json
+pcu analyze default react
+pcu theme --set modern
+```
+
+</CodeGroup>
+
+### Supported Commands
+
+Hybrid Mode is available for all 10 main commands:
+
+| Command        | Interactive Options                                      |
+| -------------- | -------------------------------------------------------- |
+| `pcu check`    | format, target, catalog, filter patterns, prerelease     |
+| `pcu update`   | catalog, format, target, interactive, dry-run, force, backup, prerelease, AI |
+| `pcu analyze`  | catalog selection, package name, target version          |
+| `pcu workspace`| format, validation, statistics                           |
+| `pcu theme`    | theme selection, progress style, preview                 |
+| `pcu security` | format, severity filter, fix options, dev dependencies   |
+| `pcu init`     | template, framework options, workspace creation          |
+| `pcu cache`    | statistics view, clear options                           |
+| `pcu rollback` | backup selection, confirmation                           |
+| `pcu watch`    | catalog, format, target, debounce, clear options         |
+
+### Benefits
+
+- **Beginner-Friendly**: New users can explore options without reading documentation
+- **Automation-Ready**: Scripts and CI/CD can use flags for predictable behavior
+- **Discoverable**: Interactive prompts help users discover available options
+- **Flexible**: Choose your preferred workflow on a per-command basis
 
 ---
 
@@ -909,21 +964,21 @@ Launches a guided theme selection wizard that allows you to preview themes and c
 
 ---
 
-## `pcu ai` - AI Provider Management
+## `pcu rollback` - Backup Rollback
 
-Check AI provider status, test AI analysis, and manage AI cache.
+Rollback catalog updates to a previous state using backup files created during updates.
 
 <CodeGroup>
 
-```bash {{ title: 'Basic Status' }}
-pcu ai
-pcu ai --status
+```bash {{ title: 'List Backups' }}
+pcu rollback --list
+pcu rollback -l
 ```
 
-```bash {{ title: 'Test & Cache' }}
-pcu ai --test
-pcu ai --cache-stats
-pcu ai --clear-cache
+```bash {{ title: 'Rollback Operations' }}
+pcu rollback --latest
+pcu rollback --select
+pcu rollback --delete-all
 ```
 
 </CodeGroup>
@@ -931,72 +986,183 @@ pcu ai --clear-cache
 ### Options
 
 <Properties>
-  <Property name="--status" type="boolean">
-    Show status of all AI providers (default behavior)
+  <Property name="-l, --list" type="boolean">
+    List all available backup files with timestamps
   </Property>
-  <Property name="--test" type="boolean">
-    Test AI analysis with a sample request
+  <Property name="--latest" type="boolean">
+    Rollback to the most recent backup automatically
   </Property>
-  <Property name="--cache-stats" type="boolean">
-    Show AI analysis cache statistics
+  <Property name="--select" type="boolean">
+    Interactive selection of backup to restore
   </Property>
-  <Property name="--clear-cache" type="boolean">
-    Clear AI analysis cache
+  <Property name="--delete-all" type="boolean">
+    Delete all backup files (requires confirmation)
+  </Property>
+  <Property name="-w, --workspace" type="string">
+    Workspace directory path (default: current directory)
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    Show detailed information during rollback
   </Property>
 </Properties>
 
-### Provider Detection
+### Backup System
 
-PCU automatically detects and prioritizes available AI CLI tools:
+PCU creates backup files automatically when you use the `--create-backup` flag with the update command:
 
-| Provider | Priority | Detection Method |
-| -------- | -------- | ---------------- |
-| Claude   | 100      | `claude` CLI     |
-| Gemini   | 80       | `gemini` CLI     |
-| Codex    | 60       | `codex` CLI      |
+```bash
+pcu update --create-backup
+```
 
-### Status Output
-
-The status command shows:
-
-- **Available Providers**: Which AI CLI tools are installed
-- **Provider Details**: Path, version, and priority for each provider
-- **Best Provider**: The recommended provider based on priority
-- **Cache Statistics**: Hit rate and entry count (with `--cache-stats`)
+Backup files are stored with timestamps and contain the original `pnpm-workspace.yaml` state before updates.
 
 ### Usage Examples
 
-#### Check AI Provider Status
+#### List Available Backups
 
 ```bash
-pcu ai
+pcu rollback --list
 ```
 
-Shows all detected AI providers with their availability and priority.
+Shows all backup files with their creation timestamps and file sizes.
 
-#### Test AI Analysis
+#### Rollback to Latest Backup
 
 ```bash
-pcu ai --test
+pcu rollback --latest
 ```
 
-Runs a test analysis with a sample package update to verify AI integration is working.
+Automatically restores the most recent backup without prompting.
 
-#### View Cache Statistics
+#### Interactive Backup Selection
 
 ```bash
-pcu ai --cache-stats
+pcu rollback --select
 ```
 
-Displays cache statistics including total entries, hits, misses, and hit rate.
+Opens an interactive prompt to select which backup to restore.
 
-#### Clear AI Cache
+#### Clean Up Old Backups
 
 ```bash
-pcu ai --clear-cache
+pcu rollback --delete-all --verbose
 ```
 
-Clears all cached AI analysis results to force fresh analysis.
+Deletes all backup files with confirmation prompt and detailed output.
+
+---
+
+## `pcu watch` - Watch Mode
+
+Watch for changes in `pnpm-workspace.yaml` and automatically check for outdated dependencies when modifications are detected.
+
+<CodeGroup>
+
+```bash {{ title: 'Basic Watch' }}
+pcu watch
+```
+
+```bash {{ title: 'Advanced Watch' }}
+pcu watch --debounce 1000 --clear
+pcu watch --catalog default --target minor
+pcu watch --include "react*" --exclude "*-dev"
+```
+
+</CodeGroup>
+
+### Options
+
+<Properties>
+  <Property name="--catalog" type="string">
+    Check specific catalog only
+  </Property>
+  <Property name="-f, --format" type="enum" default="table">
+    Output format: table, json, markdown
+  </Property>
+  <Property name="-t, --target" type="enum" default="latest">
+    Update target: latest, minor, patch
+  </Property>
+  <Property name="--prerelease" type="boolean">
+    Include prerelease versions
+  </Property>
+  <Property name="--include" type="string">
+    Include packages matching pattern
+  </Property>
+  <Property name="--exclude" type="string">
+    Exclude packages matching pattern
+  </Property>
+  <Property name="--debounce" type="number" default="300">
+    Debounce delay in milliseconds before checking
+  </Property>
+  <Property name="--clear" type="boolean">
+    Clear console before each check
+  </Property>
+  <Property name="-w, --workspace" type="string">
+    Workspace directory path (default: current directory)
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    Show detailed information
+  </Property>
+</Properties>
+
+### Watch Behavior
+
+The watch command provides continuous monitoring with smart features:
+
+- **Initial Check**: Runs a check immediately when watch starts
+- **Debouncing**: Prevents rapid re-checks when files change quickly
+- **Graceful Shutdown**: Press `Ctrl+C` to stop watching cleanly
+- **Real-time Updates**: Shows outdated package counts as they're detected
+
+### Usage Examples
+
+#### Basic Watch Mode
+
+```bash
+pcu watch
+```
+
+Watches the current directory's `pnpm-workspace.yaml` for changes.
+
+#### Watch with Console Clear
+
+```bash
+pcu watch --clear
+```
+
+Clears the console before each check for a cleaner output.
+
+#### Watch with Custom Debounce
+
+```bash
+pcu watch --debounce 1000
+```
+
+Waits 1 second after file changes before running checks.
+
+#### Watch Specific Catalog
+
+```bash
+pcu watch --catalog default --target minor
+```
+
+Watches for changes and only checks the default catalog for minor updates.
+
+#### Watch with Filters
+
+```bash
+pcu watch --include "react*,@types/*" --exclude "*-dev"
+```
+
+Watches and filters results to specific package patterns.
+
+### Integration Tips
+
+Watch mode is ideal for:
+
+- **Development Workflows**: Keep dependency updates visible during active development
+- **CI/CD Monitoring**: Monitor for updates in long-running development environments
+- **Team Notifications**: Combine with notification tools to alert about updates
 
 ---
 

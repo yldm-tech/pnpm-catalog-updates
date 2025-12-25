@@ -143,7 +143,7 @@ export class InteractivePrompts {
   async confirmDangerousOperation(operation: string, details?: string): Promise<boolean> {
     console.log('')
     if (details) {
-      console.log(chalk.yellow(`⚠️  ${t('prompt.warning')}`), details)
+      console.log(chalk.yellow(`⚠️ ${t('prompt.warning')}`), details)
     }
 
     const answers = await inquirer.prompt([
@@ -192,7 +192,7 @@ export class InteractivePrompts {
       {
         type: 'list',
         name: 'path',
-        message: StyledText.icon('📁', t('prompt.selectWorkspace')),
+        message: t('prompt.selectWorkspace'),
         choices,
       },
     ])
@@ -213,7 +213,7 @@ export class InteractivePrompts {
       { name: t('prompt.parentDirectory'), value: '..' },
       { name: t('prompt.currentDirectory', { path: currentPath }), value: '.' },
       ...directoryNames.map((name: string) => ({
-        name: `📁 ${name}`,
+        name: `[dir] ${name}`,
         value: `${currentPath}/${name}`,
       })),
     ]
@@ -266,10 +266,31 @@ export class InteractivePrompts {
   }
 
   /**
+   * Simple theme selection with cancel option
+   */
+  async selectTheme(): Promise<string | null> {
+    const answers = await inquirer.prompt({
+      type: 'list',
+      name: 'theme',
+      message: t('prompt.selectTheme'),
+      choices: [
+        { name: t('prompt.themeDefault'), value: 'default' },
+        { name: t('prompt.themeModern'), value: 'modern' },
+        { name: t('prompt.themeMinimal'), value: 'minimal' },
+        { name: t('prompt.themeNeon'), value: 'neon' },
+        { name: t('prompt.cancel'), value: null },
+      ],
+      default: 'default',
+    })
+
+    return answers.theme
+  }
+
+  /**
    * Multi-step configuration wizard
    */
   async configurationWizard(): Promise<ConfigurationWizardResult> {
-    console.log(chalk.bold.blue(`\n🧙‍♂️ ${t('prompt.configWizard')}\n`))
+    console.log(chalk.bold.blue(`\n${t('prompt.configWizard')}\n`))
 
     const themeAnswer = await inquirer.prompt({
       type: 'list',
@@ -336,7 +357,7 @@ export class InteractivePrompts {
    * Impact preview before update
    */
   async previewImpact(impact: UpdateImpact): Promise<boolean> {
-    console.log(chalk.bold.blue(`\n📊 ${t('prompt.impactPreview')}\n`))
+    console.log(chalk.bold.blue(`\n${t('prompt.impactPreview')}\n`))
 
     // Display impact summary
     console.log(t('prompt.packagesToUpdate', { count: impact.totalUpdates }))

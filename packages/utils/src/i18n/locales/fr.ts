@@ -89,6 +89,7 @@ export const fr: TranslationDictionary = {
   'command.theme.invalidTheme': 'Thème invalide : {{theme}}',
   'command.theme.setTo': 'Thème défini sur : {{theme}}',
   'command.theme.configured': 'Thème configuré : {{theme}}',
+  'command.theme.cancelled': 'Sélection du thème annulée.',
   'command.theme.currentSettings': 'Paramètres actuels du thème :',
   'command.theme.preview': 'Aperçu du thème :',
   'command.theme.useHint':
@@ -141,6 +142,7 @@ export const fr: TranslationDictionary = {
     'pnpm install a échoué (les mises à jour du catalogue ont réussi)',
   'command.update.fetchingChangelogs': 'Récupération des journaux de modifications...',
   'command.update.changelogUnavailable': 'Journal des modifications non disponible',
+  'command.update.cancelled': 'Opération annulée',
 
   // Rollback command
   'command.rollback.noBackups': 'Aucune sauvegarde trouvée',
@@ -280,9 +282,18 @@ export const fr: TranslationDictionary = {
   'command.theme.previewWarning': "Message d'avertissement",
   'command.theme.previewError': "Message d'erreur",
   'command.theme.previewInfo': "Message d'information",
-  'command.theme.previewMajor': 'Mise à jour majeure',
-  'command.theme.previewMinor': 'Mise à jour mineure',
-  'command.theme.previewPatch': 'Mise à jour de correctif',
+  'command.theme.previewMajor': 'majeure',
+  'command.theme.previewMinor': 'mineure',
+  'command.theme.previewPatch': 'correctif',
+  'command.theme.previewPackageUpdates': 'Exemples de mises à jour',
+  'command.theme.previewStatusMessages': 'Messages de statut',
+  'command.theme.previewProgressBar': 'Barre de progression',
+  'command.theme.previewPrerelease': 'préversion',
+  'command.theme.previewCheckingDeps': 'Vérification des dépendances...',
+  'command.theme.previewUpdatesFound': '{{count}} mises à jour',
+  'command.theme.previewUpdateComplete': 'Mise à jour terminée',
+  'command.theme.previewPotentialIssue': 'Problème potentiel',
+  'command.theme.previewOperationFailed': 'Opération échouée',
 
   // Init command next steps
   'command.init.step1': '1. Examiner et personnaliser la configuration :',
@@ -303,6 +314,7 @@ export const fr: TranslationDictionary = {
   'cli.error': 'Erreur :',
   'cli.unexpectedError': 'Erreur inattendue :',
   'cli.fatalError': 'Erreur fatale :',
+  'cli.cancelled': 'Annulé.',
 
   // Progress bar messages
   'progress.securityAnalyzing': 'Analyse de sécurité en cours...',
@@ -379,6 +391,25 @@ export const fr: TranslationDictionary = {
   'cli.option.verbose': 'activer la journalisation détaillée',
   'cli.option.workspace': 'chemin du répertoire workspace',
   'cli.option.noColor': 'désactiver la sortie en couleur',
+  'cli.help.command': 'help [command]',
+  'cli.help.description': "afficher l'aide de la commande",
+  'cli.help.option': "afficher les informations d'aide",
+  // Libellés du texte d'aide Commander.js
+  'cli.help.usage': 'Utilisation :',
+  'cli.help.arguments': 'Arguments :',
+  'cli.help.optionsTitle': 'Options :',
+  'cli.help.commandsTitle': 'Commandes :',
+  // Texte d'aide personnalisé - Section Groupes d'options
+  'cli.help.optionGroupsTitle': "Groupes d'options :",
+  'cli.help.groupBasic': 'Base :',
+  'cli.help.groupFilter': 'Filtre :',
+  'cli.help.groupOutput': 'Sortie :',
+  'cli.help.groupAI': 'IA :',
+  'cli.help.groupInstall': 'Installation :',
+  // Texte d'aide personnalisé - Section Astuce
+  'cli.help.tipLabel': 'Astuce :',
+  'cli.help.tipContent':
+    "Utilisez .pcurc.json pour définir les valeurs par défaut et réduire les options de ligne de commande.\n     Exécutez 'pcu init' pour créer un fichier de configuration, ou visitez https://pcu-cli.dev/{{locale}}/configuration",
   'cli.option.install': 'exécuter pnpm install après la mise à jour (par défaut : true)',
   'cli.option.noInstall': 'ignorer pnpm install après la mise à jour',
   'cli.option.changelog': 'afficher le journal des modifications pour chaque mise à jour',
@@ -396,6 +427,7 @@ export const fr: TranslationDictionary = {
   'cli.option.debounce': 'délai de debounce en millisecondes',
   'cli.option.clearConsole': 'effacer la console avant chaque vérification',
   'cli.option.exitCode': 'sortir avec le code 1 si des mises à jour sont disponibles (pour CI/CD)',
+  'cli.option.noSecurity': 'ignorer les vérifications de vulnérabilités de sécurité',
 
   // CLI argument descriptions
   'cli.argument.package': 'nom du paquet',
@@ -462,6 +494,7 @@ export const fr: TranslationDictionary = {
   'prompt.browsePath': 'Parcourir : {{path}}',
   'prompt.securityUpdatesCount': '{{count}} mises à jour de sécurité',
   'prompt.errorMessage': 'Erreur : {{error}}',
+  'prompt.cancel': 'Annuler',
 
   // Severity labels
   'severity.critical': 'Critique',
@@ -673,4 +706,252 @@ export const fr: TranslationDictionary = {
   'option.validateWorkspace': 'valider la configuration du workspace',
   'option.showStats': 'afficher les statistiques du workspace',
   'option.showInfo': 'afficher les informations du workspace',
+
+  // Interactive mode titles
+  'interactive.check.title': 'Commande Check - Mode Interactif',
+  'interactive.update.title': 'Commande Update - Mode Interactif',
+  'interactive.analyze.title': 'Commande Analyze - Mode Interactif',
+  'interactive.workspace.title': 'Commande Workspace - Mode Interactif',
+  'interactive.theme.title': 'Commande Theme - Mode Interactif',
+  'interactive.security.title': 'Commande Security - Mode Interactif',
+  'interactive.init.title': 'Commande Init - Mode Interactif',
+  'interactive.ai.title': 'Commande AI - Mode Interactif',
+  'interactive.cache.title': 'Commande Cache - Mode Interactif',
+  'interactive.rollback.title': 'Commande Rollback - Mode Interactif',
+  'interactive.watch.title': 'Commande Watch - Mode Interactif',
+
+  // Interactive common choices - format
+  'interactive.choice.format.table': 'Tableau (par défaut)',
+  'interactive.choice.format.json': 'JSON',
+  'interactive.choice.format.yaml': 'YAML',
+  'interactive.choice.format.minimal': 'Minimal',
+
+  // Interactive common choices - target
+  'interactive.choice.target.latest': 'Dernière version (par défaut)',
+  'interactive.choice.target.greatest': 'Version maximale',
+  'interactive.choice.target.minor': 'Mise à jour mineure',
+  'interactive.choice.target.patch': 'Mise à jour de correctif',
+  'interactive.choice.target.newest': 'Dernière publication',
+
+  // Interactive common choices - severity
+  'interactive.choice.severity.low': 'Faible',
+  'interactive.choice.severity.medium': 'Moyenne et supérieure',
+  'interactive.choice.severity.high': 'Élevée',
+  'interactive.choice.severity.critical': 'Critique',
+  'interactive.choice.severity.all': 'Toutes les sévérités',
+
+  // Interactive common choices - analysis type
+  'interactive.choice.analysisType.impact': "Analyse d'impact",
+  'interactive.choice.analysisType.security': 'Analyse de sécurité',
+  'interactive.choice.analysisType.compatibility': 'Analyse de compatibilité',
+  'interactive.choice.analysisType.recommend': 'Analyse de recommandation',
+
+  // Interactive common choices - provider
+  'interactive.choice.provider.auto': 'Automatique (par défaut)',
+  'interactive.choice.provider.claude': 'Claude',
+  'interactive.choice.provider.gemini': 'Gemini',
+  'interactive.choice.provider.codex': 'Codex',
+
+  // Interactive common choices - theme
+  'interactive.choice.theme.default': 'Par défaut',
+  'interactive.choice.theme.modern': 'Moderne',
+  'interactive.choice.theme.minimal': 'Minimal',
+  'interactive.choice.theme.neon': 'Néon',
+  'interactive.choice.theme.ocean': 'Océan',
+  'interactive.choice.theme.forest': 'Forêt',
+
+  // Interactive prompts - check command
+  'interactive.check.catalogName': 'Nom du catalogue (vide pour tous) :',
+  'interactive.check.outputFormat': 'Format de sortie :',
+  'interactive.check.updateTarget': 'Cible de mise à jour :',
+  'interactive.check.includePrerelease': 'Inclure les préversions ?',
+  'interactive.check.includePatterns':
+    'Motifs à inclure (séparés par des virgules, vide pour tous) :',
+  'interactive.check.excludePatterns':
+    'Motifs à exclure (séparés par des virgules, vide pour aucun) :',
+  'interactive.check.exitCode':
+    'Quitter avec le code 1 si des mises à jour sont disponibles (pour CI) ?',
+
+  // Interactive prompts - update command
+  'interactive.update.catalogName': 'Nom du catalogue (vide pour tous) :',
+  'interactive.update.outputFormat': 'Format de sortie :',
+  'interactive.update.updateTarget': 'Cible de mise à jour :',
+  'interactive.update.includePrerelease': 'Inclure les préversions ?',
+  'interactive.update.includePatterns':
+    'Motifs à inclure (séparés par des virgules, vide pour tous) :',
+  'interactive.update.excludePatterns':
+    'Motifs à exclure (séparés par des virgules, vide pour aucun) :',
+  'interactive.update.dryRun': 'Simulation (sans modifications) ?',
+  'interactive.update.force': 'Forcer la mise à jour (même si risqué) ?',
+  'interactive.update.createBackup': 'Créer une sauvegarde avant la mise à jour ?',
+  'interactive.update.useAi': "Activer l'analyse IA ?",
+  'interactive.update.aiProvider': 'Fournisseur IA :',
+  'interactive.update.analysisType': "Type d'analyse :",
+  'interactive.update.runInstall': 'Exécuter pnpm install après la mise à jour ?',
+  'interactive.update.showChangelog': 'Afficher le changelog ?',
+
+  // Interactive prompts - analyze command
+  'interactive.analyze.packageName': 'Nom du paquet :',
+  'interactive.analyze.packageNameRequired': 'Le nom du paquet est requis',
+  'interactive.analyze.catalogName': 'Nom du catalogue (vide pour détection automatique) :',
+  'interactive.analyze.targetVersion': 'Nouvelle version (vide pour la dernière) :',
+  'interactive.analyze.outputFormat': 'Format de sortie :',
+  'interactive.analyze.useAi': "Activer l'analyse IA ?",
+  'interactive.analyze.aiProvider': 'Fournisseur IA :',
+  'interactive.analyze.analysisType': "Type d'analyse :",
+
+  // Interactive prompts - workspace command
+  'interactive.workspace.validate': 'Valider le workspace ?',
+  'interactive.workspace.stats': 'Afficher les statistiques ?',
+
+  // Interactive prompts - theme command
+  'interactive.theme.choose': 'Sélectionner le thème :',
+
+  // Interactive prompts - security command
+  'interactive.security.action': 'Exécuter npm audit ?',
+  'interactive.security.severity': 'Sévérité minimale :',
+  'interactive.security.includeDev': 'Inclure les dépendances de développement ?',
+  'interactive.security.useSnyk': 'Utiliser Snyk (CLI requis) ?',
+  'interactive.security.outputFormat': 'Format de sortie :',
+
+  // Interactive prompts - init command
+  'interactive.init.overwrite': 'Écraser la configuration existante ?',
+  'interactive.init.createWorkspace': 'Créer la structure du workspace PNPM ?',
+
+  // Interactive prompts - ai command
+
+  // Interactive prompts - cache command
+
+  // Interactive prompts - rollback command
+
+  // Interactive prompts - watch command
+  'interactive.watch.debounce': 'Délai anti-rebond (ms) :',
+  'interactive.watch.debouncePositive': 'Le délai anti-rebond doit être positif',
+  'interactive.watch.clearConsole': 'Effacer la console à chaque vérification ?',
+
+  // Missing interactive keys
+  'interactive.update.mode': 'Mode de mise à jour :',
+  'interactive.update.mode.interactive': 'Sélection interactive (choisir les paquets)',
+  'interactive.update.mode.dryRun': 'Simulation (aperçu uniquement)',
+  'interactive.update.mode.apply': 'Appliquer toutes les mises à jour',
+  'interactive.workspace.actions': 'Que souhaitez-vous faire ?',
+  'interactive.workspace.outputFormat': 'Format de sortie :',
+  'interactive.theme.action': 'Que souhaitez-vous faire ?',
+  'interactive.theme.action.set': 'Sélectionner et définir un thème',
+  'interactive.theme.action.list': 'Lister les thèmes disponibles',
+  'interactive.security.action.audit': 'Auditer les vulnérabilités',
+  'interactive.security.action.fix': 'Corriger les vulnérabilités',
+  'interactive.security.action.both': 'Auditer et corriger',
+  'interactive.init.mode': "Mode d'initialisation :",
+  'interactive.init.mode.quick': 'Configuration rapide (minimale)',
+  'interactive.init.mode.full': 'Configuration complète (toutes les options)',
+  'interactive.ai.action': 'Action de gestion IA :',
+  'interactive.ai.action.status': "Vérifier le statut de l'IA",
+  'interactive.ai.action.test': 'Tester la connexion IA',
+  'interactive.ai.action.cacheStats': 'Afficher les statistiques du cache',
+  'interactive.ai.action.clearCache': 'Vider le cache IA',
+  'interactive.cache.action': 'Action cache :',
+  'interactive.cache.action.stats': 'Afficher les statistiques du cache',
+  'interactive.cache.action.clear': 'Vider le cache',
+  'interactive.rollback.action': 'Action de restauration :',
+  'interactive.rollback.action.list': 'Lister les sauvegardes disponibles',
+  'interactive.rollback.action.latest': 'Restaurer la dernière sauvegarde',
+  'interactive.rollback.action.deleteAll': 'Supprimer toutes les sauvegardes',
+  'interactive.watch.catalogName': 'Nom du catalogue à surveiller (vide pour tous) :',
+  'interactive.watch.updateTarget': 'Cible de mise à jour :',
+  'interactive.watch.includePrerelease': 'Inclure les versions préliminaires ?',
+  'interactive.watch.outputFormat': 'Format de sortie :',
+
+  // Interactive cancelled message
+  'interactive.cancelled': 'Opération annulée',
+
+  // Interactive command subtitles, intros, and completion messages
+  'interactive.check.subtitle': 'Vérifier les versions obsolètes des dépendances du catalogue',
+  'interactive.check.intro': 'Veuillez configurer les options de vérification',
+  'interactive.check.ready': 'Configuration terminée ! Démarrage de la vérification...',
+  'interactive.check.catalogPlaceholder': 'ex. default, react',
+  'interactive.check.patternPlaceholder': 'ex. react*, @types/*',
+
+  'interactive.update.subtitle':
+    'Mettre à jour les dépendances du catalogue vers de nouvelles versions',
+  'interactive.update.intro': 'Veuillez configurer les options de mise à jour',
+  'interactive.update.ready': 'Configuration terminée ! Démarrage de la mise à jour...',
+  'interactive.update.catalogPlaceholder': 'ex. default, react',
+  'interactive.update.mode.interactiveHint':
+    'Sélectionner manuellement les paquets à mettre à jour',
+  'interactive.update.mode.dryRunHint': 'Aperçu des modifications sans modifier',
+  'interactive.update.mode.applyHint': 'Appliquer directement toutes les mises à jour disponibles',
+
+  'interactive.analyze.subtitle': "Analyser l'impact des mises à jour de paquets",
+  'interactive.analyze.intro': "Veuillez configurer les options d'analyse",
+  'interactive.analyze.ready': "Configuration terminée ! Démarrage de l'analyse...",
+  'interactive.analyze.packagePlaceholder': 'ex. lodash, react',
+  'interactive.analyze.versionPlaceholder': 'Vide pour la dernière version, ex. 18.2.0, ^19.0.0',
+  'interactive.analyze.catalogPlaceholder': 'Vide pour détection automatique',
+
+  'interactive.workspace.subtitle': 'Afficher et valider les informations du workspace',
+  'interactive.workspace.intro': 'Veuillez sélectionner une action',
+  'interactive.workspace.ready': "Configuration terminée ! Exécution de l'action...",
+  'interactive.workspace.validateHint': 'Valider la configuration du workspace',
+  'interactive.workspace.statsHint': 'Afficher les statistiques du workspace',
+
+  'interactive.theme.subtitle': 'Configurer le thème de couleurs du CLI',
+  'interactive.theme.intro': 'Veuillez sélectionner une action de thème',
+  'interactive.theme.ready': 'Configuration terminée ! Application du thème...',
+
+  'interactive.security.subtitle': 'Analyser et corriger les vulnérabilités de sécurité',
+  'interactive.security.intro': 'Veuillez configurer les options de sécurité',
+  'interactive.security.ready': "Configuration terminée ! Démarrage de l'analyse de sécurité...",
+
+  'interactive.init.subtitle': 'Initialiser la configuration PCU',
+  'interactive.init.intro': "Veuillez sélectionner le mode d'initialisation",
+  'interactive.init.ready': 'Configuration terminée ! Initialisation en cours...',
+
+  'interactive.cache.subtitle': 'Gérer le cache PCU',
+  'interactive.cache.intro': 'Veuillez sélectionner une action de cache',
+  'interactive.cache.ready': "Configuration terminée ! Exécution de l'action...",
+
+  'interactive.rollback.subtitle': 'Revenir à une version précédente',
+  'interactive.rollback.intro': 'Veuillez sélectionner une action de restauration',
+  'interactive.rollback.ready': 'Configuration terminée ! Démarrage de la restauration...',
+
+  'interactive.watch.subtitle': 'Surveiller et vérifier les mises à jour de dépendances',
+  'interactive.watch.intro': 'Veuillez configurer les options de surveillance',
+  'interactive.watch.ready': 'Configuration terminée ! Démarrage du mode surveillance...',
+  'interactive.watch.catalogPlaceholder': 'ex. default, react',
+
+  // Interactive choice hints - format
+  'interactive.choice.format.tableHint': 'Idéal pour la visualisation en terminal',
+  'interactive.choice.format.jsonHint': 'Idéal pour le traitement programmatique',
+  'interactive.choice.format.yamlHint': 'Idéal pour les fichiers de configuration',
+  'interactive.choice.format.minimalHint': 'Afficher uniquement les informations clés',
+
+  // Interactive choice hints - target
+  'interactive.choice.target.latestHint': 'Recommandé, dernière version stable',
+  'interactive.choice.target.greatestHint': 'Inclut les versions préliminaires',
+  'interactive.choice.target.minorHint': 'Sûr, rétrocompatible',
+  'interactive.choice.target.patchHint': 'Le plus sûr, corrections de bugs uniquement',
+  'interactive.choice.target.newestHint': 'Trié par date de publication',
+
+  // Interactive action hints
+  'interactive.workspace.action.validateHint':
+    'Vérifier les problèmes de configuration du workspace',
+  'interactive.workspace.action.statsHint': 'Afficher les statistiques détaillées du workspace',
+
+  'interactive.theme.action.setHint': 'Choisir et appliquer un nouveau thème',
+  'interactive.theme.action.listHint': 'Afficher tous les thèmes disponibles',
+
+  'interactive.security.action.auditHint': 'Analyser les vulnérabilités de sécurité',
+  'interactive.security.action.fixHint': 'Corriger automatiquement les vulnérabilités',
+  'interactive.security.action.bothHint': 'Analyser et corriger en une étape',
+
+  'interactive.init.mode.quickHint': 'Configuration rapide avec les valeurs par défaut',
+  'interactive.init.mode.fullHint': 'Configurer toutes les options disponibles',
+
+  'interactive.cache.action.statsHint': "Afficher les statistiques d'utilisation du cache",
+  'interactive.cache.action.clearHint': 'Effacer toutes les données en cache',
+
+  'interactive.rollback.action.listHint': 'Afficher toutes les sauvegardes disponibles',
+  'interactive.rollback.action.latestHint': 'Restaurer la sauvegarde la plus récente',
+  'interactive.rollback.action.deleteAllHint': 'Supprimer tous les fichiers de sauvegarde',
 }

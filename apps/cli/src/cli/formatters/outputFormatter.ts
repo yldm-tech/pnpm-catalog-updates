@@ -10,6 +10,7 @@ import type {
   ImpactAnalysis,
   OutdatedReport,
   UpdateResult,
+  WorkspaceInfo,
   WorkspaceStats,
   WorkspaceValidationReport,
 } from '@pcu/core'
@@ -96,6 +97,22 @@ export class OutputFormatter {
   }
 
   /**
+   * Format workspace information
+   */
+  formatWorkspaceInfo(info: WorkspaceInfo): string {
+    switch (this.format) {
+      case 'json':
+        return JSON.stringify(info, null, 2)
+      case 'yaml':
+        return YAML.stringify(info)
+      case 'minimal':
+        return this.formatWorkspaceInfoMinimal(info)
+      default:
+        return this.formatWorkspaceInfoTable(info)
+    }
+  }
+
+  /**
    * Format workspace statistics
    */
   formatWorkspaceStats(stats: WorkspaceStats): string {
@@ -154,7 +171,7 @@ export class OutputFormatter {
     const lines: string[] = []
 
     // Header
-    lines.push(this.colorize(chalk.bold, `\n📦 ${t('format.workspace')}: ${report.workspace.name}`))
+    lines.push(this.colorize(chalk.bold, `\n${t('format.workspace')}: ${report.workspace.name}`))
     lines.push(this.colorize(chalk.gray, `${t('format.path')}: ${report.workspace.path}`))
 
     if (!report.hasUpdates) {
@@ -165,14 +182,14 @@ export class OutputFormatter {
     lines.push(
       this.colorize(
         chalk.yellow,
-        `\n🔄 ${t('format.foundOutdated', { count: String(report.totalOutdated) })}\n`
+        `\n${t('format.foundOutdated', { count: String(report.totalOutdated) })}\n`
       )
     )
 
     for (const catalogInfo of report.catalogs) {
       if (catalogInfo.outdatedCount === 0) continue
 
-      lines.push(this.colorize(chalk.bold, `📋 ${t('format.catalog')}: ${catalogInfo.catalogName}`))
+      lines.push(this.colorize(chalk.bold, `${t('format.catalog')}: ${catalogInfo.catalogName}`))
 
       const table = new Table({
         head: this.colorizeHeaders([
@@ -188,7 +205,7 @@ export class OutputFormatter {
 
       for (const dep of catalogInfo.outdatedDependencies) {
         const typeColor = this.getUpdateTypeColor(dep.updateType)
-        const securityIcon = dep.isSecurityUpdate ? '🔒 ' : ''
+        const securityIcon = dep.isSecurityUpdate ? '[SEC] ' : ''
 
         // Colorize version differences
         const { currentColored, latestColored } = this.colorizeVersionDiff(
@@ -231,7 +248,7 @@ export class OutputFormatter {
 
     for (const catalogInfo of report.catalogs) {
       for (const dep of catalogInfo.outdatedDependencies) {
-        const securityIcon = dep.isSecurityUpdate ? '🔒 ' : ''
+        const securityIcon = dep.isSecurityUpdate ? '[SEC] ' : ''
         const { currentColored, latestColored } = this.colorizeVersionDiff(
           dep.currentVersion,
           dep.latestVersion,
@@ -279,7 +296,7 @@ export class OutputFormatter {
     const lines: string[] = []
 
     // Header
-    lines.push(this.colorize(chalk.bold, `\n📦 ${t('format.workspace')}: ${result.workspace.name}`))
+    lines.push(this.colorize(chalk.bold, `\n${t('format.workspace')}: ${result.workspace.name}`))
 
     if (result.success) {
       lines.push(this.colorize(chalk.green, `✅ ${t('format.updateCompleted')}`))
@@ -294,7 +311,7 @@ export class OutputFormatter {
       lines.push(
         this.colorize(
           chalk.green,
-          `🎉 ${t('format.updatedCount', { count: String(result.totalUpdated) })}:`
+          `${t('format.updatedCount', { count: String(result.totalUpdated) })}:`
         )
       )
 
@@ -336,7 +353,7 @@ export class OutputFormatter {
     // Skipped dependencies
     if (result.skippedDependencies.length > 0) {
       lines.push(
-        this.colorize(chalk.yellow, `⚠️  ${t('format.skippedDeps')} (${result.totalSkipped}):`)
+        this.colorize(chalk.yellow, `⚠️ ${t('format.skippedDeps')} (${result.totalSkipped}):`)
       )
 
       for (const dep of result.skippedDependencies) {
@@ -355,7 +372,7 @@ export class OutputFormatter {
       )
 
       for (const error of result.errors) {
-        const prefix = error.fatal ? '💥' : '⚠️ '
+        const prefix = error.fatal ? '!!' : '⚠️'
         lines.push(`  ${prefix} ${error.catalogName}:${error.packageName} - ${error.error}`)
       }
     }
@@ -421,7 +438,7 @@ export class OutputFormatter {
 
     // Header
     lines.push(
-      this.colorize(chalk.bold, `\n🔍 ${t('format.impactAnalysis')}: ${analysis.packageName}`)
+      this.colorize(chalk.bold, `\n${t('format.impactAnalysis')}: ${analysis.packageName}`)
     )
     lines.push(this.colorize(chalk.gray, `${t('format.catalog')}: ${analysis.catalogName}`))
     lines.push(
@@ -441,7 +458,7 @@ export class OutputFormatter {
 
     // Affected packages
     if (analysis.affectedPackages.length > 0) {
-      lines.push(this.colorize(chalk.bold, `📦 ${t('format.affectedPackages')}:`))
+      lines.push(this.colorize(chalk.bold, `${t('format.affectedPackages')}:`))
 
       const table = new Table({
         head: this.colorizeHeaders([
@@ -470,7 +487,7 @@ export class OutputFormatter {
 
     // Security impact
     if (analysis.securityImpact.hasVulnerabilities) {
-      lines.push(this.colorize(chalk.bold, `🔒 ${t('format.securityImpact')}:`))
+      lines.push(this.colorize(chalk.bold, `${t('format.securityImpact')}:`))
 
       if (analysis.securityImpact.fixedVulnerabilities > 0) {
         lines.push(
@@ -485,7 +502,7 @@ export class OutputFormatter {
         lines.push(
           this.colorize(
             chalk.red,
-            `  ⚠️  ${t('format.introducesVulns', { count: String(analysis.securityImpact.newVulnerabilities) })}`
+            `  ⚠️ ${t('format.introducesVulns', { count: String(analysis.securityImpact.newVulnerabilities) })}`
           )
         )
       }
@@ -495,7 +512,7 @@ export class OutputFormatter {
 
     // Recommendations
     if (analysis.recommendations.length > 0) {
-      lines.push(this.colorize(chalk.bold, `💡 ${t('format.recommendations')}:`))
+      lines.push(this.colorize(chalk.bold, `${t('format.recommendations')}:`))
       for (const rec of analysis.recommendations) {
         lines.push(`  ${rec}`)
       }
@@ -535,7 +552,7 @@ export class OutputFormatter {
     lines.push('')
 
     // Workspace info
-    lines.push(this.colorize(chalk.bold, `📦 ${t('format.workspaceInfo')}:`))
+    lines.push(this.colorize(chalk.bold, `${t('format.workspaceInfo')}:`))
     lines.push(`  ${t('format.path')}: ${report.workspace.path}`)
     lines.push(`  ${t('format.name')}: ${report.workspace.name}`)
     lines.push(`  ${t('format.packages')}: ${report.workspace.packageCount}`)
@@ -553,7 +570,7 @@ export class OutputFormatter {
 
     // Warnings
     if (report.warnings.length > 0) {
-      lines.push(this.colorize(chalk.yellow, `⚠️  ${t('format.warnings')}:`))
+      lines.push(this.colorize(chalk.yellow, `⚠️ ${t('format.warnings')}:`))
       for (const warning of report.warnings) {
         lines.push(`  • ${warning}`)
       }
@@ -562,7 +579,7 @@ export class OutputFormatter {
 
     // Recommendations
     if (report.recommendations.length > 0) {
-      lines.push(this.colorize(chalk.blue, `💡 ${t('format.recommendations')}:`))
+      lines.push(this.colorize(chalk.blue, `${t('format.recommendations')}:`))
       for (const rec of report.recommendations) {
         lines.push(`  • ${rec}`)
       }
@@ -583,12 +600,111 @@ export class OutputFormatter {
   }
 
   /**
+   * Format workspace information as beautiful table
+   */
+  private formatWorkspaceInfoTable(info: WorkspaceInfo): string {
+    const lines: string[] = []
+
+    // Use cli-table3 for reliable alignment
+    const table = new Table({
+      chars: {
+        top: '─',
+        'top-mid': '┬',
+        'top-left': '╭',
+        'top-right': '╮',
+        bottom: '─',
+        'bottom-mid': '┴',
+        'bottom-left': '╰',
+        'bottom-right': '╯',
+        left: '│',
+        'left-mid': '├',
+        mid: '─',
+        'mid-mid': '┼',
+        right: '│',
+        'right-mid': '┤',
+        middle: '│',
+      },
+      style: {
+        head: [],
+        border: this.useColor ? ['cyan'] : [],
+        'padding-left': 1,
+        'padding-right': 1,
+      },
+      colWidths: [20, 55],
+      wordWrap: true,
+    })
+
+    // Header row
+    table.push([
+      {
+        colSpan: 2,
+        content: this.colorize(chalk.bold.cyan, 'WORKSPACE'),
+        hAlign: 'center',
+      },
+    ])
+
+    // Status icon (default to valid if not specified)
+    const isValid = info.isValid ?? true
+    const statusIcon = isValid ? this.colorize(chalk.green, '✓') : this.colorize(chalk.red, '✗')
+    const statusText = isValid
+      ? this.colorize(chalk.green, 'Valid')
+      : this.colorize(chalk.red, 'Invalid')
+
+    // Data rows - clean, no emojis
+    table.push([this.colorize(chalk.gray, 'Name'), this.colorize(chalk.bold.white, info.name)])
+
+    table.push([this.colorize(chalk.gray, 'Path'), this.colorize(chalk.dim, info.path)])
+
+    table.push([this.colorize(chalk.gray, 'Status'), `${statusIcon} ${statusText}`])
+
+    table.push([
+      this.colorize(chalk.gray, 'Packages'),
+      this.colorize(info.packageCount > 0 ? chalk.green : chalk.yellow, String(info.packageCount)),
+    ])
+
+    table.push([
+      this.colorize(chalk.gray, 'Catalogs'),
+      this.colorize(info.catalogCount > 0 ? chalk.green : chalk.yellow, String(info.catalogCount)),
+    ])
+
+    const catalogNames = info.catalogNames ?? []
+    if (catalogNames.length > 0) {
+      const catalogTags = catalogNames
+        .map((name: string) => this.colorize(chalk.cyan, name))
+        .join(this.colorize(chalk.gray, ', '))
+
+      table.push([this.colorize(chalk.gray, 'Catalog Names'), catalogTags])
+    }
+
+    lines.push('')
+    lines.push(table.toString())
+    lines.push('')
+
+    return lines.join('\n')
+  }
+
+  /**
+   * Format workspace information minimally
+   */
+  private formatWorkspaceInfoMinimal(info: WorkspaceInfo): string {
+    const lines: string[] = []
+    lines.push(`${info.name} (${info.path})`)
+    lines.push(
+      `${t('command.workspace.packages')}: ${info.packageCount}, ${t('command.workspace.catalogs')}: ${info.catalogCount}`
+    )
+    if (info.catalogNames && info.catalogNames.length > 0) {
+      lines.push(`${t('command.workspace.catalogNames')}: ${info.catalogNames.join(', ')}`)
+    }
+    return lines.join('\n')
+  }
+
+  /**
    * Format workspace statistics as table
    */
   private formatStatsTable(stats: WorkspaceStats): string {
     const lines: string[] = []
 
-    lines.push(this.colorize(chalk.bold, `\n📊 ${t('format.workspaceStatistics')}`))
+    lines.push(this.colorize(chalk.bold, `\n${t('format.workspaceStatistics')}`))
     lines.push(this.colorize(chalk.gray, `${t('format.workspace')}: ${stats.workspace.name}`))
     lines.push('')
 
@@ -638,7 +754,7 @@ export class OutputFormatter {
     const lines: string[] = []
 
     // Header
-    lines.push(this.colorize(chalk.bold, `\n🔒 ${t('format.securityReport')}`))
+    lines.push(this.colorize(chalk.bold, `\n${t('format.securityReport')}`))
     lines.push(
       this.colorize(chalk.gray, `${t('format.workspace')}: ${report.metadata.workspacePath}`)
     )
@@ -654,7 +770,7 @@ export class OutputFormatter {
 
     // Summary
     lines.push('')
-    lines.push(this.colorize(chalk.bold, `📊 ${t('format.summary')}:`))
+    lines.push(this.colorize(chalk.bold, `${t('format.summary')}:`))
 
     const summaryTable = new Table({
       head: this.colorizeHeaders([t('table.header.severity'), t('table.header.count')]),
@@ -692,7 +808,7 @@ export class OutputFormatter {
     // Vulnerabilities
     if (report.vulnerabilities.length > 0) {
       lines.push('')
-      lines.push(this.colorize(chalk.bold, `🐛 ${t('format.vulnerabilities')}:`))
+      lines.push(this.colorize(chalk.bold, `${t('format.vulnerabilities')}:`))
 
       const vulnTable = new Table({
         head: this.colorizeHeaders([
@@ -727,7 +843,7 @@ export class OutputFormatter {
     // Recommendations
     if (report.recommendations.length > 0) {
       lines.push('')
-      lines.push(this.colorize(chalk.bold, `💡 ${t('format.recommendations')}:`))
+      lines.push(this.colorize(chalk.bold, `${t('format.recommendations')}:`))
 
       for (const rec of report.recommendations) {
         lines.push(`  ${rec.package}: ${rec.currentVersion} → ${rec.recommendedVersion}`)

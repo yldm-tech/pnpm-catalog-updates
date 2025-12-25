@@ -51,10 +51,16 @@ let currentLocale: Locale = DEFAULT_LOCALE
  */
 export class I18n {
   /**
-   * Detect system locale from environment
+   * Detect locale with priority: config > env > system
+   * @param configLocale - Locale from .pcurc config file (highest priority)
    */
-  static detectLocale(): Locale {
-    // Try LANG environment variable first (e.g., "zh_CN.UTF-8")
+  static detectLocale(configLocale?: string): Locale {
+    // 1. Config file locale (highest priority)
+    if (configLocale && I18n.isValidLocale(configLocale)) {
+      return configLocale as Locale
+    }
+
+    // 2. Environment variable (e.g., "zh_CN.UTF-8")
     const langEnv = process.env.LANG || process.env.LC_ALL || process.env.LC_MESSAGES || ''
     const langCode = langEnv.split('_')[0]?.toLowerCase()
 
@@ -62,7 +68,7 @@ export class I18n {
       return langCode as Locale
     }
 
-    // Try Intl API
+    // 3. System Intl API
     try {
       const systemLocale = Intl.DateTimeFormat().resolvedOptions().locale
       const localeCode = systemLocale.split('-')[0]?.toLowerCase()
@@ -85,14 +91,11 @@ export class I18n {
   }
 
   /**
-   * Initialize i18n with auto-detected or specified locale
+   * Initialize i18n with config locale, specified locale, or auto-detected
+   * @param configLocale - Locale from .pcurc config file (highest priority)
    */
-  static init(locale?: Locale): void {
-    if (locale && I18n.isValidLocale(locale)) {
-      currentLocale = locale
-    } else {
-      currentLocale = I18n.detectLocale()
-    }
+  static init(configLocale?: string): void {
+    currentLocale = I18n.detectLocale(configLocale)
   }
 
   /**

@@ -5,6 +5,9 @@ packages:
 catalog:
   "@algolia/autocomplete-core": 1.19.4
   "@changesets/cli": ^2.29.8
+  "@inquirer/core": 10.3.2
+  "@clack/prompts": 0.11.0
+  boxen: 8.0.1
   commander: 14.0.2
   inquirer: 12.11.1
   chalk: 5.6.2
@@ -47,21 +50,17 @@ catalog:
   "@tailwindcss/postcss": 4.1.18
   "@tailwindcss/typography": 0.5.19
   tsx: ^4.21.0
-  turbo: ^2.6.3
+  turbo: 2.7.2
   typescript: 5.8.3
   "@types/mdx": ^2.0.13
   zod: 3.25.76
   tsup: 8.5.1
   vitest: ^4.0.16
-  "@typescript-eslint/eslint-plugin": 8.50.0
-  "@typescript-eslint/parser": 8.50.0
   "@types/react-highlight-words": 0.20.1
   acorn: ^8.15.0
   unist-util-filter: ^5.0.1
   unist-util-visit: ^5.0.0
   zustand: 5.0.9
-  eslint: 9.39.2
-  "@eslint/js": 9.39.2
   prettier: 3.7.4
   "@types/fs-extra": ^11.0.4
   "@types/inquirer": ^9.0.9
@@ -72,10 +71,6 @@ catalog:
   "@types/semver": ^7.7.1
   "@vitest/coverage-v8": ^4.0.16
   "@vitest/ui": ^4.0.16
-  eslint-config-prettier: ^10.1.8
-  eslint-plugin-import: ^2.32.0
-  eslint-plugin-node: ^11.1.0
-  eslint-plugin-prettier: ^5.5.4
   # Frontend dependencies
   react: 19.2.3
   "react-dom": 19.2.3
@@ -83,7 +78,6 @@ catalog:
   tailwindcss: 4.1.18
   "@types/react": 19.2.7
   "@types/react-dom": 19.2.3
-  "eslint-config-next": 15.5.9
   sharp: 0.34.5
   clsx: ^2.1.1
   "prettier-plugin-tailwindcss": 0.7.2

@@ -50,16 +50,14 @@ export class ThemeCommand {
 
     if (options.interactive) {
       const interactivePrompts = new InteractivePrompts()
-      const config = await interactivePrompts.configurationWizard()
+      const selectedTheme = await interactivePrompts.selectTheme()
 
-      if (config.theme) {
-        const validThemes = ThemeManager.listThemes()
-        if (validThemes.includes(config.theme)) {
-          ThemeManager.setTheme(config.theme as keyof typeof ThemeManager.themes)
-          console.log(
-            StyledText.iconSuccess(t('command.theme.configured', { theme: config.theme }))
-          )
-        }
+      if (selectedTheme) {
+        ThemeManager.setTheme(selectedTheme as keyof typeof ThemeManager.themes)
+        console.log(StyledText.iconSuccess(t('command.theme.setTo', { theme: selectedTheme })))
+        this.showThemePreview()
+      } else {
+        console.log(StyledText.muted(t('command.theme.cancelled')))
       }
       return
     }
@@ -78,18 +76,44 @@ export class ThemeCommand {
   }
 
   /**
-   * Show a preview of the current theme
+   * Show a preview of the current theme with realistic examples
    */
   private showThemePreview(): void {
     console.log(`\n${t('command.theme.preview')}`)
     const theme = ThemeManager.getTheme()
-    console.log(`  ${theme.success(`✓ ${t('command.theme.previewSuccess')}`)}`)
-    console.log(`  ${theme.warning(`⚠ ${t('command.theme.previewWarning')}`)}`)
-    console.log(`  ${theme.error(`✗ ${t('command.theme.previewError')}`)}`)
-    console.log(`  ${theme.info(`ℹ ${t('command.theme.previewInfo')}`)}`)
+
+    // Package updates section
+    console.log(`\n  ${theme.primary(`📦 ${t('command.theme.previewPackageUpdates')}`)}`)
     console.log(
-      `  ${theme.major(t('command.theme.previewMajor'))} | ${theme.minor(t('command.theme.previewMinor'))} | ${theme.patch(t('command.theme.previewPatch'))}`
+      `     ${theme.text('react'.padEnd(14))} ${theme.muted('18.2.0')}  →  ${theme.major('19.0.0')}   ${theme.muted(`(${t('command.theme.previewMajor')})`)}`
     )
+    console.log(
+      `     ${theme.text('typescript'.padEnd(14))} ${theme.muted('5.3.0')}  →  ${theme.minor('5.4.0')}    ${theme.muted(`(${t('command.theme.previewMinor')})`)}`
+    )
+    console.log(
+      `     ${theme.text('lodash'.padEnd(14))} ${theme.muted('4.17.1')} →  ${theme.patch('4.17.2')}  ${theme.muted(`(${t('command.theme.previewPatch')})`)}`
+    )
+    console.log(
+      `     ${theme.text('next'.padEnd(14))} ${theme.muted('14.2.0')}  →  ${theme.prerelease('15.0.0-rc.1')} ${theme.muted(`(${t('command.theme.previewPrerelease')})`)}`
+    )
+
+    // Status messages section
+    console.log(`\n  ${theme.primary(`💬 ${t('command.theme.previewStatusMessages')}`)}`)
+    console.log(`     ${theme.success(`✓ ${t('command.theme.previewUpdateComplete')}`)}`)
+    console.log(`     ${theme.warning(`⚠ ${t('command.theme.previewPotentialIssue')}`)}`)
+    console.log(`     ${theme.error(`✗ ${t('command.theme.previewOperationFailed')}`)}`)
+    console.log(`     ${theme.info(`ℹ ${t('command.theme.previewUpdatesFound', { count: 3 })}`)}`)
+
+    // Progress bar section
+    console.log(`\n  ${theme.primary(`📊 ${t('command.theme.previewProgressBar')}`)}`)
+    const progressFilled = 24
+    const progressEmpty = 16
+    const progressBar =
+      theme.success('█'.repeat(progressFilled)) + theme.muted('░'.repeat(progressEmpty))
+    console.log(
+      `     [${progressBar}] ${theme.info('60%')} ${theme.muted(t('command.theme.previewCheckingDeps'))}`
+    )
+    console.log('')
   }
 
   /**

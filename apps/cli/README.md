@@ -41,6 +41,21 @@ pcu -i
 pcu update
 # or
 pcu -u
+```
+
+### Hybrid Mode
+
+PCU features **Hybrid Mode** - when you run any command without flags, it automatically enters interactive mode to guide you through the options:
+
+```bash
+# No flags = Interactive prompts
+pcu check        # Prompts for format, target, filter options
+pcu update       # Prompts for catalog, format, target, etc.
+pcu security     # Prompts for output format, severity filter
+
+# With flags = Direct execution
+pcu check --format table    # Runs directly with specified options
+pcu update --target minor   # Runs directly with specified options
 
 # Analyze impact of updates
 pcu analyze

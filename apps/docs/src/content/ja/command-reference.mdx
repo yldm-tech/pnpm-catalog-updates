@@ -18,11 +18,12 @@ PCU はいくつかの主要なコマンドを提供し、完全名と便利な�
 | `pcu check`     | `pcu chk`, `pcu -c`, `pcu --check`        | 古いカタログ依存関係をチェック         |
 | `pcu update`    | `pcu u`, `pcu -u`, `pcu --update`         | カタログ依存関係を更新                 |
 | `pcu analyze`   | `pcu a`, `pcu -a`, `pcu --analyze`        | 依存関係更新の影響を分析               |
-| `pcu ai`        | -                                         | AI プロバイダー管理と分析テスト        |
 | `pcu workspace` | `pcu w`, `pcu -s`, `pcu --workspace-info` | ワークスペース情報と検証を表示         |
 | `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | カラーテーマと UI 設定を構成           |
 | `pcu security`  | `pcu sec`                                 | セキュリティ脆弱性スキャンと修復       |
 | `pcu cache`     | -                                         | キャッシュ管理（統計とクリア）         |
+| `pcu rollback`  | -                                         | カタログ更新を以前の状態にロールバック |
+| `pcu watch`     | -                                         | 変更を監視して自動的に更新をチェック   |
 | `pcu help`      | `pcu h`, `pcu -h`                         | ヘルプ情報を表示                       |
 
 ### 特別なショートカット
@@ -32,6 +33,60 @@ PCU はいくつかの主要なコマンドを提供し、完全名と便利な�
 | `pcu -i`               | `pcu update --interactive` | インタラクティブ更新モード                     |
 | `pcu --security-audit` | `pcu security`             | セキュリティスキャンを実行                     |
 | `pcu --security-fix`   | `pcu security --fix-vulns` | セキュリティスキャンを実行し、脆弱性を自動修復 |
+
+---
+
+## ハイブリッドモード
+
+PCU には**ハイブリッドモード**機能があります - フラグなしでコマンドを実行すると、自動的にインタラクティブモードに入り、各オプションを案内します。これにより、フラグを使用して自動化したり、フラグを省略してガイド付きプロンプトを受けたりできるシームレスな体験を提供します。
+
+### 動作の仕組み
+
+<CodeGroup>
+
+```bash {{ title: 'フラグなし = インタラクティブプロンプト' }}
+# フラグなしで実行するとインタラクティブプロンプトがトリガーされます
+pcu check        # フォーマット、ターゲット、フィルターオプションのプロンプト
+pcu update       # カタログ、フォーマット、ターゲット、バックアップなどのプロンプト
+pcu security     # 出力フォーマット、重大度フィルターのプロンプト
+pcu analyze      # カタログ選択とパッケージのプロンプト
+pcu theme        # テーマ選択のプロンプト
+```
+
+```bash {{ title: 'フラグあり = 直接実行' }}
+# フラグを指定すると、プロンプトなしで直接実行されます
+pcu check --format table
+pcu update --target minor --create-backup
+pcu security --severity high --format json
+pcu analyze default react
+pcu theme --set modern
+```
+
+</CodeGroup>
+
+### サポートされているコマンド
+
+ハイブリッドモードは 10 個すべての主要コマンドで利用可能です：
+
+| コマンド       | インタラクティブオプション                               |
+| -------------- | -------------------------------------------------------- |
+| `pcu check`    | フォーマット、ターゲット、カタログ、フィルターパターン、プレリリース |
+| `pcu update`   | カタログ、フォーマット、ターゲット、インタラクティブ、ドライラン、強制、バックアップ、プレリリース、AI |
+| `pcu analyze`  | カタログ選択、パッケージ名、ターゲットバージョン         |
+| `pcu workspace`| フォーマット、検証、統計                                 |
+| `pcu theme`    | テーマ選択、プログレススタイル、プレビュー               |
+| `pcu security` | フォーマット、重大度フィルター、修復オプション、開発依存関係 |
+| `pcu init`     | テンプレート、フレームワークオプション、ワークスペース作成 |
+| `pcu cache`    | 統計表示、クリアオプション                               |
+| `pcu rollback` | バックアップ選択、確認                                   |
+| `pcu watch`    | カタログ、フォーマット、ターゲット、デバウンス、クリアオプション |
+
+### メリット
+
+- **初心者に優しい**：新しいユーザーはドキュメントを読まずにオプションを探索できます
+- **自動化対応**：スクリプトと CI/CD はフラグを使用して予測可能な動作を実現できます
+- **発見しやすい**：インタラクティブプロンプトで利用可能なオプションを発見できます
+- **柔軟性**：コマンドごとに好みのワークフローを選択できます
 
 ---
 
@@ -669,24 +724,21 @@ pcu -t -i
 
 ---
 
-## `pcu ai` - AI プロバイダー管理
+## `pcu rollback` - バックアップロールバック
 
-AI プロバイダーのステータスを確認し、AI 分析キャッシュを管理します。
+更新時に作成されたバックアップファイルを使用して、カタログ更新を以前の状態にロールバックします。
 
 <CodeGroup>
 
-```bash {{ title: 'ステータス確認' }}
-pcu ai
-pcu ai --status
+```bash {{ title: 'バックアップ一覧' }}
+pcu rollback --list
+pcu rollback -l
 ```
 
-```bash {{ title: '分析テスト' }}
-pcu ai --test
-```
-
-```bash {{ title: 'キャッシュ管理' }}
-pcu ai --cache-stats
-pcu ai --clear-cache
+```bash {{ title: 'ロールバック操作' }}
+pcu rollback --latest
+pcu rollback --select
+pcu rollback --delete-all
 ```
 
 </CodeGroup>
@@ -694,47 +746,183 @@ pcu ai --clear-cache
 ### オプション
 
 <Properties>
-  <Property name="--status" type="boolean">
-    すべての AI プロバイダーのステータスを表示（デフォルト）
+  <Property name="-l, --list" type="boolean">
+    タイムスタンプ付きで利用可能なすべてのバックアップファイルを一覧表示
   </Property>
-  <Property name="--test" type="boolean">
-    サンプルリクエストで AI 分析をテスト
+  <Property name="--latest" type="boolean">
+    最新のバックアップに自動的にロールバック
   </Property>
-  <Property name="--cache-stats" type="boolean">
-    AI 分析キャッシュの統計を表示
+  <Property name="--select" type="boolean">
+    復元するバックアップをインタラクティブに選択
   </Property>
-  <Property name="--clear-cache" type="boolean">
-    AI 分析キャッシュをクリア
+  <Property name="--delete-all" type="boolean">
+    すべてのバックアップファイルを削除（確認が必要）
+  </Property>
+  <Property name="-w, --workspace" type="string">
+    ワークスペースディレクトリのパス（デフォルト：現在のディレクトリ）
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    ロールバック中に詳細情報を表示
   </Property>
 </Properties>
 
-### サポートされている AI プロバイダー
+### バックアップシステム
 
-PCU は利用可能な AI CLI ツールを自動的に検出して使用します：
+PCU は update コマンドで `--create-backup` フラグを使用すると、自動的にバックアップファイルを作成します：
 
-| プロバイダー | CLI ツール | 検出方法                    |
-| ------------ | ---------- | --------------------------- |
-| Claude       | `claude`   | PATH 検索とバージョン出力   |
-| Gemini       | `gemini`   | PATH 検索とバージョン出力   |
-| OpenAI       | `codex`    | PATH 検索とバージョン出力   |
+```bash
+pcu update --create-backup
+```
+
+バックアップファイルはタイムスタンプ付きで保存され、更新前の `pnpm-workspace.yaml` の元の状態を含みます。
 
 ### 使用例
 
-#### プロバイダーステータスの表示
+#### 利用可能なバックアップの一覧
 
 ```bash
-pcu ai
+pcu rollback --list
 ```
 
-検出されたすべての AI プロバイダーを、利用可能状況、パス、バージョンとともに表示します。
+作成日時とファイルサイズとともにすべてのバックアップファイルを表示します。
 
-#### AI 分析のテスト
+#### 最新のバックアップにロールバック
 
 ```bash
-pcu ai --test
+pcu rollback --latest
 ```
 
-サンプルの依存関係更新でテスト実行し、AI 分析が機能することを確認します。
+確認なしで最新のバックアップを自動的に復元します。
+
+#### インタラクティブなバックアップ選択
+
+```bash
+pcu rollback --select
+```
+
+復元するバックアップを選択するためのインタラクティブプロンプトを開きます。
+
+#### 古いバックアップのクリーンアップ
+
+```bash
+pcu rollback --delete-all --verbose
+```
+
+確認プロンプトと詳細出力でバックアップファイルをすべて削除します。
+
+---
+
+## `pcu watch` - ウォッチモード
+
+`pnpm-workspace.yaml` の変更を監視し、変更が検出されたときに自動的に古い依存関係をチェックします。
+
+<CodeGroup>
+
+```bash {{ title: '基本的なウォッチ' }}
+pcu watch
+```
+
+```bash {{ title: '詳細なウォッチ' }}
+pcu watch --debounce 1000 --clear
+pcu watch --catalog default --target minor
+pcu watch --include "react*" --exclude "*-dev"
+```
+
+</CodeGroup>
+
+### オプション
+
+<Properties>
+  <Property name="--catalog" type="string">
+    特定のカタログのみをチェック
+  </Property>
+  <Property name="-f, --format" type="enum" default="table">
+    出力フォーマット：table、json、markdown
+  </Property>
+  <Property name="-t, --target" type="enum" default="latest">
+    更新ターゲット：latest、minor、patch
+  </Property>
+  <Property name="--prerelease" type="boolean">
+    プレリリースバージョンを含める
+  </Property>
+  <Property name="--include" type="string">
+    パターンに一致するパッケージを含める
+  </Property>
+  <Property name="--exclude" type="string">
+    パターンに一致するパッケージを除外
+  </Property>
+  <Property name="--debounce" type="number" default="300">
+    チェック前のデバウンス遅延（ミリ秒）
+  </Property>
+  <Property name="--clear" type="boolean">
+    各チェック前にコンソールをクリア
+  </Property>
+  <Property name="-w, --workspace" type="string">
+    ワークスペースディレクトリのパス（デフォルト：現在のディレクトリ）
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    詳細情報を表示
+  </Property>
+</Properties>
+
+### ウォッチ動作
+
+watch コマンドはスマートな機能を備えた継続的な監視を提供します：
+
+- **初期チェック**：ウォッチ開始時にすぐにチェックを実行
+- **デバウンス**：ファイルが急速に変更されるときの再チェックを防止
+- **グレースフルシャットダウン**：`Ctrl+C` を押してクリーンに監視を停止
+- **リアルタイム更新**：検出された古いパッケージ数を表示
+
+### 使用例
+
+#### 基本的なウォッチモード
+
+```bash
+pcu watch
+```
+
+現在のディレクトリの `pnpm-workspace.yaml` の変更を監視します。
+
+#### コンソールクリア付きウォッチ
+
+```bash
+pcu watch --clear
+```
+
+各チェック前にコンソールをクリアして、より見やすい出力を提供します。
+
+#### カスタムデバウンス付きウォッチ
+
+```bash
+pcu watch --debounce 1000
+```
+
+ファイル変更後 1 秒待ってからチェックを実行します。
+
+#### 特定のカタログを監視
+
+```bash
+pcu watch --catalog default --target minor
+```
+
+変更を監視し、default カタログのマイナー更新のみをチェックします。
+
+#### フィルター付きウォッチ
+
+```bash
+pcu watch --include "react*,@types/*" --exclude "*-dev"
+```
+
+監視し、特定のパッケージパターンに結果をフィルタリングします。
+
+### 統合のヒント
+
+ウォッチモードは以下に最適です：
+
+- **開発ワークフロー**：アクティブな開発中に依存関係の更新を可視化
+- **CI/CD 監視**：長時間稼働する開発環境での更新を監視
+- **チーム通知**：通知ツールと組み合わせて更新をアラート
 
 ---
 

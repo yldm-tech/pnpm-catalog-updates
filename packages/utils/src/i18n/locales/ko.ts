@@ -88,6 +88,7 @@ export const ko: TranslationDictionary = {
   'command.theme.invalidTheme': '잘못된 테마: {{theme}}',
   'command.theme.setTo': '테마 설정됨: {{theme}}',
   'command.theme.configured': '테마 설정됨: {{theme}}',
+  'command.theme.cancelled': '테마 선택이 취소되었습니다.',
   'command.theme.currentSettings': '현재 테마 설정:',
   'command.theme.preview': '테마 미리보기:',
   'command.theme.useHint': '--set <theme>으로 테마를 변경하거나 --interactive로 가이드 설정',
@@ -135,6 +136,7 @@ export const ko: TranslationDictionary = {
   'command.update.pnpmInstallFailed': 'pnpm install 실패 (카탈로그 업데이트는 성공했습니다)',
   'command.update.fetchingChangelogs': '변경 로그를 가져오는 중...',
   'command.update.changelogUnavailable': '변경 로그를 사용할 수 없습니다',
+  'command.update.cancelled': '작업이 취소되었습니다',
 
   // Rollback command
   'command.rollback.noBackups': '백업을 찾을 수 없습니다',
@@ -269,9 +271,18 @@ export const ko: TranslationDictionary = {
   'command.theme.previewWarning': '경고 메시지',
   'command.theme.previewError': '오류 메시지',
   'command.theme.previewInfo': '정보 메시지',
-  'command.theme.previewMajor': '메이저 업데이트',
-  'command.theme.previewMinor': '마이너 업데이트',
-  'command.theme.previewPatch': '패치 업데이트',
+  'command.theme.previewMajor': '메이저',
+  'command.theme.previewMinor': '마이너',
+  'command.theme.previewPatch': '패치',
+  'command.theme.previewPackageUpdates': '패키지 업데이트 예시',
+  'command.theme.previewStatusMessages': '상태 메시지',
+  'command.theme.previewProgressBar': '진행률 바',
+  'command.theme.previewPrerelease': '프리릴리스',
+  'command.theme.previewCheckingDeps': '종속성 확인 중...',
+  'command.theme.previewUpdatesFound': '{{count}}개 업데이트',
+  'command.theme.previewUpdateComplete': '업데이트 완료',
+  'command.theme.previewPotentialIssue': '잠재적 문제 발견',
+  'command.theme.previewOperationFailed': '작업 실패',
 
   // Init command next steps
   'command.init.step1': '1. 구성을 검토하고 사용자 정의:',
@@ -292,6 +303,7 @@ export const ko: TranslationDictionary = {
   'cli.error': '오류:',
   'cli.unexpectedError': '예기치 않은 오류:',
   'cli.fatalError': '치명적인 오류:',
+  'cli.cancelled': '취소되었습니다.',
 
   // Progress bar messages
   'progress.securityAnalyzing': '보안 분석 수행 중...',
@@ -366,6 +378,25 @@ export const ko: TranslationDictionary = {
   'cli.option.verbose': '상세 로깅 활성화',
   'cli.option.workspace': '워크스페이스 디렉토리 경로',
   'cli.option.noColor': '색상 출력 비활성화',
+  'cli.help.command': 'help [command]',
+  'cli.help.description': '명령어 도움말 표시',
+  'cli.help.option': '도움말 정보 표시',
+  // Commander.js 도움말 텍스트 레이블
+  'cli.help.usage': '사용법:',
+  'cli.help.arguments': '인자:',
+  'cli.help.optionsTitle': '옵션:',
+  'cli.help.commandsTitle': '명령어:',
+  // 사용자 정의 도움말 텍스트 - 옵션 그룹 섹션
+  'cli.help.optionGroupsTitle': '옵션 그룹:',
+  'cli.help.groupBasic': '기본:',
+  'cli.help.groupFilter': '필터:',
+  'cli.help.groupOutput': '출력:',
+  'cli.help.groupAI': 'AI:',
+  'cli.help.groupInstall': '설치:',
+  // 사용자 정의 도움말 텍스트 - 팁 섹션
+  'cli.help.tipLabel': '팁:',
+  'cli.help.tipContent':
+    ".pcurc.json을 사용하여 기본값을 설정하고 명령줄 옵션을 줄이세요.\n     'pcu init'을 실행하여 설정 파일을 생성하거나 https://pcu-cli.dev/{{locale}}/configuration을 방문하세요",
   'cli.option.install': '업데이트 후 pnpm install 실행 (기본값: true)',
   'cli.option.noInstall': '업데이트 후 pnpm install 건너뛰기',
   'cli.option.changelog': '각 업데이트의 변경 로그 표시',
@@ -383,6 +414,7 @@ export const ko: TranslationDictionary = {
   'cli.option.debounce': '디바운스 지연 시간 (밀리초)',
   'cli.option.clearConsole': '각 확인 전 콘솔 지우기',
   'cli.option.exitCode': '업데이트가 있으면 종료 코드 1 반환 (CI/CD용)',
+  'cli.option.noSecurity': '보안 취약점 검사 건너뛰기',
 
   // CLI argument descriptions
   'cli.argument.package': '패키지 이름',
@@ -449,6 +481,7 @@ export const ko: TranslationDictionary = {
   'prompt.browsePath': '찾아보기: {{path}}',
   'prompt.securityUpdatesCount': '{{count}}개의 보안 업데이트',
   'prompt.errorMessage': '오류: {{error}}',
+  'prompt.cancel': '취소',
 
   // Severity labels
   'severity.critical': '심각',
@@ -653,4 +686,244 @@ export const ko: TranslationDictionary = {
   'option.validateWorkspace': '워크스페이스 구성 검증',
   'option.showStats': '워크스페이스 통계 표시',
   'option.showInfo': '워크스페이스 정보 표시',
+
+  // Interactive mode titles
+  'interactive.check.title': '검사 명령 - 대화형 모드',
+  'interactive.update.title': '업데이트 명령 - 대화형 모드',
+  'interactive.analyze.title': '분석 명령 - 대화형 모드',
+  'interactive.workspace.title': '워크스페이스 명령 - 대화형 모드',
+  'interactive.theme.title': '테마 명령 - 대화형 모드',
+  'interactive.security.title': '보안 명령 - 대화형 모드',
+  'interactive.init.title': '초기화 명령 - 대화형 모드',
+  'interactive.ai.title': 'AI 명령 - 대화형 모드',
+  'interactive.cache.title': '캐시 명령 - 대화형 모드',
+  'interactive.rollback.title': '롤백 명령 - 대화형 모드',
+  'interactive.watch.title': '감시 명령 - 대화형 모드',
+
+  // Interactive common choices - format
+  'interactive.choice.format.table': '테이블 (기본값)',
+  'interactive.choice.format.json': 'JSON',
+  'interactive.choice.format.yaml': 'YAML',
+  'interactive.choice.format.minimal': '간결',
+
+  // Interactive common choices - target
+  'interactive.choice.target.latest': '최신 버전 (기본값)',
+  'interactive.choice.target.greatest': '최대 버전',
+  'interactive.choice.target.minor': '마이너 업데이트',
+  'interactive.choice.target.patch': '패치 업데이트',
+  'interactive.choice.target.newest': '최신 릴리스',
+
+  // Interactive common choices - severity
+  'interactive.choice.severity.low': '낮음',
+  'interactive.choice.severity.medium': '보통 이상',
+  'interactive.choice.severity.high': '높음',
+  'interactive.choice.severity.critical': '치명적',
+  'interactive.choice.severity.all': '모든 심각도',
+
+  // Interactive common choices - analysis type
+  'interactive.choice.analysisType.impact': '영향 분석',
+  'interactive.choice.analysisType.security': '보안 분석',
+  'interactive.choice.analysisType.compatibility': '호환성 분석',
+  'interactive.choice.analysisType.recommend': '권장 분석',
+
+  // Interactive common choices - provider
+  'interactive.choice.provider.auto': '자동 (기본값)',
+  'interactive.choice.provider.claude': 'Claude',
+  'interactive.choice.provider.gemini': 'Gemini',
+  'interactive.choice.provider.codex': 'Codex',
+
+  // Interactive common choices - theme
+  'interactive.choice.theme.default': '기본',
+  'interactive.choice.theme.modern': '모던',
+  'interactive.choice.theme.minimal': '미니멀',
+  'interactive.choice.theme.neon': '네온',
+  'interactive.choice.theme.ocean': '오션',
+  'interactive.choice.theme.forest': '포레스트',
+
+  // Interactive prompts - check command
+  'interactive.check.catalogName': '카탈로그 이름 (비어 있으면 전체):',
+  'interactive.check.outputFormat': '출력 형식:',
+  'interactive.check.updateTarget': '업데이트 대상:',
+  'interactive.check.includePrerelease': '프리릴리스 버전 포함?',
+  'interactive.check.includePatterns': '포함 패턴 (쉼표로 구분, 비어 있으면 전체):',
+  'interactive.check.excludePatterns': '제외 패턴 (쉼표로 구분, 비어 있으면 없음):',
+  'interactive.check.exitCode': '업데이트가 있으면 코드 1로 종료 (CI용)?',
+
+  // Interactive prompts - update command
+  'interactive.update.catalogName': '카탈로그 이름 (비어 있으면 전체):',
+  'interactive.update.outputFormat': '출력 형식:',
+  'interactive.update.updateTarget': '업데이트 대상:',
+  'interactive.update.includePrerelease': '프리릴리스 버전 포함?',
+  'interactive.update.includePatterns': '포함 패턴 (쉼표로 구분, 비어 있으면 전체):',
+  'interactive.update.excludePatterns': '제외 패턴 (쉼표로 구분, 비어 있으면 없음):',
+  'interactive.update.dryRun': '드라이 런 (변경 없음)?',
+  'interactive.update.force': '강제 업데이트 (위험해도)?',
+  'interactive.update.createBackup': '업데이트 전 백업 생성?',
+  'interactive.update.useAi': 'AI 분석 활성화?',
+  'interactive.update.aiProvider': 'AI 제공자:',
+  'interactive.update.analysisType': '분석 유형:',
+  'interactive.update.runInstall': '업데이트 후 pnpm install 실행?',
+  'interactive.update.showChangelog': '변경 로그 표시?',
+
+  // Interactive prompts - analyze command
+  'interactive.analyze.packageName': '패키지 이름:',
+  'interactive.analyze.packageNameRequired': '패키지 이름은 필수입니다',
+  'interactive.analyze.catalogName': '카탈로그 이름 (비어 있으면 자동 감지):',
+  'interactive.analyze.targetVersion': '새 버전 (비어 있으면 최신):',
+  'interactive.analyze.outputFormat': '출력 형식:',
+  'interactive.analyze.useAi': 'AI 분석 활성화?',
+  'interactive.analyze.aiProvider': 'AI 제공자:',
+  'interactive.analyze.analysisType': '분석 유형:',
+
+  // Interactive prompts - workspace command
+  'interactive.workspace.validate': '워크스페이스 검증?',
+  'interactive.workspace.stats': '통계 표시?',
+
+  // Interactive prompts - theme command
+  'interactive.theme.choose': '테마 선택:',
+
+  // Interactive prompts - security command
+  'interactive.security.action': 'npm audit 실행?',
+  'interactive.security.severity': '최소 심각도:',
+  'interactive.security.includeDev': '개발 의존성 포함?',
+  'interactive.security.useSnyk': 'Snyk 사용 (CLI 필요)?',
+  'interactive.security.outputFormat': '출력 형식:',
+
+  // Interactive prompts - init command
+  'interactive.init.overwrite': '기존 구성 덮어쓰기?',
+  'interactive.init.createWorkspace': 'PNPM 워크스페이스 구조 생성?',
+
+  // Interactive prompts - ai command
+
+  // Interactive prompts - cache command
+
+  // Interactive prompts - rollback command
+
+  // Interactive prompts - watch command
+  'interactive.watch.debounce': '디바운스 지연 (밀리초):',
+  'interactive.watch.debouncePositive': '디바운스 지연은 양수여야 합니다',
+  'interactive.watch.clearConsole': '검사마다 콘솔 지우기?',
+
+  // Missing interactive keys
+  'interactive.update.mode': '업데이트 모드:',
+  'interactive.update.mode.interactive': '대화형 선택 (패키지 선택)',
+  'interactive.update.mode.dryRun': '드라이 런 (미리보기만)',
+  'interactive.update.mode.apply': '모든 업데이트 적용',
+  'interactive.workspace.actions': '무엇을 하시겠습니까?',
+  'interactive.workspace.outputFormat': '출력 형식:',
+  'interactive.theme.action': '무엇을 하시겠습니까?',
+  'interactive.theme.action.set': '테마 선택 및 설정',
+  'interactive.theme.action.list': '사용 가능한 테마 목록',
+  'interactive.security.action.audit': '취약점 감사',
+  'interactive.security.action.fix': '취약점 수정',
+  'interactive.security.action.both': '감사 및 수정 모두',
+  'interactive.init.mode': '초기화 모드:',
+  'interactive.init.mode.quick': '빠른 설정 (최소 구성)',
+  'interactive.init.mode.full': '전체 설정 (모든 옵션)',
+  'interactive.ai.action': 'AI 관리 작업:',
+  'interactive.ai.action.status': 'AI 상태 확인',
+  'interactive.ai.action.test': 'AI 연결 테스트',
+  'interactive.ai.action.cacheStats': '캐시 통계 표시',
+  'interactive.ai.action.clearCache': 'AI 캐시 지우기',
+  'interactive.cache.action': '캐시 작업:',
+  'interactive.cache.action.stats': '캐시 통계 표시',
+  'interactive.cache.action.clear': '캐시 지우기',
+  'interactive.rollback.action': '롤백 작업:',
+  'interactive.rollback.action.list': '사용 가능한 백업 목록',
+  'interactive.rollback.action.latest': '최신 백업 복원',
+  'interactive.rollback.action.deleteAll': '모든 백업 삭제',
+  'interactive.watch.catalogName': '감시할 카탈로그 이름 (비어 있으면 전체):',
+  'interactive.watch.updateTarget': '업데이트 대상:',
+  'interactive.watch.includePrerelease': '프리릴리스 버전 포함?',
+  'interactive.watch.outputFormat': '출력 형식:',
+
+  // Interactive cancelled message
+  'interactive.cancelled': '작업이 취소되었습니다',
+
+  // Interactive command subtitles, intros, and completion messages
+  'interactive.check.subtitle': '카탈로그 의존성의 오래된 버전 확인',
+  'interactive.check.intro': '확인 옵션을 설정해 주세요',
+  'interactive.check.ready': '설정 완료! 확인을 시작합니다...',
+  'interactive.check.catalogPlaceholder': '예: default, react',
+  'interactive.check.patternPlaceholder': '예: react*, @types/*',
+
+  'interactive.update.subtitle': '카탈로그 의존성을 새 버전으로 업데이트',
+  'interactive.update.intro': '업데이트 옵션을 설정해 주세요',
+  'interactive.update.ready': '설정 완료! 업데이트를 시작합니다...',
+  'interactive.update.catalogPlaceholder': '예: default, react',
+  'interactive.update.mode.interactiveHint': '업데이트할 패키지를 수동으로 선택',
+  'interactive.update.mode.dryRunHint': '수정 없이 변경 사항 미리보기',
+  'interactive.update.mode.applyHint': '사용 가능한 모든 업데이트를 바로 적용',
+
+  'interactive.analyze.subtitle': '패키지 업데이트의 영향 분석',
+  'interactive.analyze.intro': '분석 옵션을 설정해 주세요',
+  'interactive.analyze.ready': '설정 완료! 분석을 시작합니다...',
+  'interactive.analyze.packagePlaceholder': '예: lodash, react',
+  'interactive.analyze.versionPlaceholder': '최신 버전은 비워두세요, 예: 18.2.0, ^19.0.0',
+  'interactive.analyze.catalogPlaceholder': '자동 감지는 비워두세요',
+
+  'interactive.workspace.subtitle': '워크스페이스 정보 보기 및 검증',
+  'interactive.workspace.intro': '작업을 선택해 주세요',
+  'interactive.workspace.ready': '설정 완료! 작업을 실행합니다...',
+  'interactive.workspace.validateHint': '워크스페이스 설정 검증',
+  'interactive.workspace.statsHint': '워크스페이스 통계 표시',
+
+  'interactive.theme.subtitle': 'CLI 색상 테마 설정',
+  'interactive.theme.intro': '테마 작업을 선택해 주세요',
+  'interactive.theme.ready': '설정 완료! 테마를 적용합니다...',
+
+  'interactive.security.subtitle': '보안 취약점 스캔 및 수정',
+  'interactive.security.intro': '보안 옵션을 설정해 주세요',
+  'interactive.security.ready': '설정 완료! 보안 스캔을 시작합니다...',
+
+  'interactive.init.subtitle': 'PCU 구성 초기화',
+  'interactive.init.intro': '초기화 모드를 선택해 주세요',
+  'interactive.init.ready': '설정 완료! 초기화 중...',
+
+  'interactive.cache.subtitle': 'PCU 캐시 관리',
+  'interactive.cache.intro': '캐시 작업을 선택해 주세요',
+  'interactive.cache.ready': '설정 완료! 작업을 실행합니다...',
+
+  'interactive.rollback.subtitle': '이전 버전으로 롤백',
+  'interactive.rollback.intro': '롤백 작업을 선택해 주세요',
+  'interactive.rollback.ready': '설정 완료! 롤백을 시작합니다...',
+
+  'interactive.watch.subtitle': '의존성 업데이트 감시',
+  'interactive.watch.intro': '감시 옵션을 설정해 주세요',
+  'interactive.watch.ready': '설정 완료! 감시 모드를 시작합니다...',
+  'interactive.watch.catalogPlaceholder': '예: default, react',
+
+  // Interactive choice hints - format
+  'interactive.choice.format.tableHint': '터미널 보기에 적합',
+  'interactive.choice.format.jsonHint': '프로그램 처리에 적합',
+  'interactive.choice.format.yamlHint': '구성 파일에 적합',
+  'interactive.choice.format.minimalHint': '핵심 정보만 표시',
+
+  // Interactive choice hints - target
+  'interactive.choice.target.latestHint': '권장, 최신 안정 버전',
+  'interactive.choice.target.greatestHint': '프리릴리스 버전 포함',
+  'interactive.choice.target.minorHint': '안전, 이전 버전 호환',
+  'interactive.choice.target.patchHint': '가장 안전, 버그 수정만',
+  'interactive.choice.target.newestHint': '출시일 순으로 정렬',
+
+  // Interactive action hints
+  'interactive.workspace.action.validateHint': '워크스페이스 구성 문제 확인',
+  'interactive.workspace.action.statsHint': '자세한 워크스페이스 통계 표시',
+
+  'interactive.theme.action.setHint': '새 테마 선택 및 적용',
+  'interactive.theme.action.listHint': '사용 가능한 모든 테마 표시',
+
+  'interactive.security.action.auditHint': '보안 취약점 스캔',
+  'interactive.security.action.fixHint': '취약점 자동 수정',
+  'interactive.security.action.bothHint': '스캔과 수정을 한 번에',
+
+  'interactive.init.mode.quickHint': '기본값으로 빠른 설정',
+  'interactive.init.mode.fullHint': '모든 옵션 구성',
+
+  'interactive.cache.action.statsHint': '캐시 사용 통계 표시',
+  'interactive.cache.action.clearHint': '모든 캐시 데이터 지우기',
+
+  'interactive.rollback.action.listHint': '사용 가능한 모든 백업 표시',
+  'interactive.rollback.action.latestHint': '가장 최근 백업 복원',
+  'interactive.rollback.action.deleteAllHint': '모든 백업 파일 삭제',
 }

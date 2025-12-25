@@ -12,6 +12,7 @@ import {
   ConfigLoader,
   type PackageFilterConfig,
   PackageNotFoundError,
+  parallelLimit,
   UserFriendlyErrorHandler,
   WorkspaceNotFoundError,
 } from '@pcu/utils'
@@ -22,6 +23,11 @@ import { Version, type VersionRange } from '../../domain/value-objects/version.j
 import { WorkspacePath } from '../../domain/value-objects/workspacePath.js'
 import { NpmRegistryService } from '../../infrastructure/external-services/npmRegistryService.js'
 import type { ProgressReporter } from '../interfaces/progressReporter.js'
+import {
+  ImpactAnalysisService,
+  type PackageImpact,
+  type SecurityImpact,
+} from './impactAnalysisService.js'
 
 export interface CheckOptions {
   workspacePath?: string | undefined
@@ -31,6 +37,8 @@ export interface CheckOptions {
   exclude?: string[] | undefined
   include?: string[] | undefined
   progressReporter?: ProgressReporter | null
+  /** Skip security vulnerability checks (default: false) */
+  noSecurity?: boolean | undefined
 }
 
 export interface UpdateOptions extends CheckOptions {
@@ -149,28 +157,20 @@ export interface ImpactAnalysis {
   recommendations: string[]
 }
 
-export interface PackageImpact {
-  packageName: string
-  packagePath: string
-  dependencyType: 'dependencies' | 'devDependencies' | 'peerDependencies' | 'optionalDependencies'
-  isBreakingChange: boolean
-  compatibilityRisk: 'low' | 'medium' | 'high'
-}
-
-export interface SecurityImpact {
-  hasVulnerabilities: boolean
-  fixedVulnerabilities: number
-  newVulnerabilities: number
-  severityChange: 'better' | 'worse' | 'same'
-}
+// PackageImpact and SecurityImpact types are re-exported from ImpactAnalysisService
+export type { PackageImpact, SecurityImpact } from './impactAnalysisService.js'
 
 export type UpdateTarget = 'latest' | 'greatest' | 'minor' | 'patch' | 'newest'
 
 export class CatalogUpdateService {
+  private readonly impactAnalysisService: ImpactAnalysisService
+
   constructor(
     private readonly workspaceRepository: WorkspaceRepository,
     private readonly registryService: NpmRegistryService
-  ) {}
+  ) {
+    this.impactAnalysisService = new ImpactAnalysisService(registryService)
+  }
 
   /**
    * Create a new CatalogUpdateService with advanced configuration
@@ -179,7 +179,7 @@ export class CatalogUpdateService {
     workspaceRepository: WorkspaceRepository,
     workspacePath?: string
   ): CatalogUpdateService {
-    const config = ConfigLoader.loadConfig(workspacePath || process.cwd())
+    const config = ConfigLoader.loadConfigSync(workspacePath || process.cwd())
 
     // Create registry service with advanced configuration
     const advancedConfig: AdvancedConfig = {}
@@ -213,7 +213,7 @@ export class CatalogUpdateService {
     const workspacePath = WorkspacePath.fromString(options.workspacePath || process.cwd())
 
     // Load configuration
-    const config = ConfigLoader.loadConfig(workspacePath.toString())
+    const config = await ConfigLoader.loadConfig(workspacePath.toString())
 
     // Load workspace
     const workspace = await this.workspaceRepository.findByPath(workspacePath)
@@ -344,7 +344,7 @@ export class CatalogUpdateService {
 
     // Load configuration for package rules and monorepo settings
     const workspacePath = options.workspacePath || process.cwd()
-    const config = ConfigLoader.loadConfig(workspacePath)
+    const config = await ConfigLoader.loadConfig(workspacePath)
 
     // Convert outdated dependencies to planned updates
     for (const catalogInfo of outdatedReport.catalogs) {
@@ -425,7 +425,7 @@ export class CatalogUpdateService {
     const workspacePath = WorkspacePath.fromString(plan.workspace.path)
 
     // Load configuration for security settings
-    const config = ConfigLoader.loadConfig(workspacePath.toString())
+    const config = await ConfigLoader.loadConfig(workspacePath.toString())
 
     // Load workspace
     const workspace = await this.workspaceRepository.findByPath(workspacePath)
@@ -659,7 +659,7 @@ export class CatalogUpdateService {
 
       for (const ref of catalogRefs) {
         const isBreakingChange = updateType === 'major'
-        const compatibilityRisk = this.assessCompatibilityRisk(updateType)
+        const compatibilityRisk = this.impactAnalysisService.assessCompatibilityRisk(updateType)
 
         packageImpacts.push({
           packageName: pkg.getName(),
@@ -672,13 +672,25 @@ export class CatalogUpdateService {
     }
 
     // Check security impact
-    const securityImpact = await this.analyzeSecurityImpact(packageName, currentVersion, newVersion)
+    const securityImpact = await this.impactAnalysisService.analyzeSecurityImpact(
+      packageName,
+      currentVersion,
+      newVersion
+    )
 
     // Assess overall risk
-    const riskLevel = this.assessOverallRisk(updateType, packageImpacts, securityImpact)
+    const riskLevel = this.impactAnalysisService.assessOverallRisk(
+      updateType,
+      packageImpacts,
+      securityImpact
+    )
 
     // Generate recommendations
-    const recommendations = this.generateRecommendations(updateType, securityImpact, packageImpacts)
+    const recommendations = this.impactAnalysisService.generateRecommendations(
+      updateType,
+      securityImpact,
+      packageImpacts
+    )
 
     return {
       packageName,
@@ -710,51 +722,43 @@ export class CatalogUpdateService {
     const outdatedDependencies: OutdatedDependencyInfo[] = []
     let completed = startingCompleted
 
-    // Process packages in chunks with true parallelism within each chunk
-    const chunks = this.chunkArray(packagesToCheck, concurrency)
+    // Process packages with parallelLimit for controlled concurrency
+    await parallelLimit(
+      packagesToCheck,
+      async ([packageName, currentRange]) => {
+        try {
+          const result = await this.processPackageCheck(
+            packageName,
+            currentRange,
+            catalog,
+            workspace,
+            config,
+            options
+          )
 
-    for (const chunk of chunks) {
-      const chunkResults = await Promise.all(
-        chunk.map(async ([packageName, currentRange]) => {
-          try {
-            const result = await this.processPackageCheck(
-              packageName,
-              currentRange,
-              catalog,
-              workspace,
-              config,
-              options
-            )
-
-            // Update progress for successful package
-            completed++
-            if (progressReporter && totalPackages > 0) {
-              progressReporter.update(completed, `正在检查依赖包: ${packageName}`)
-            }
-
-            return result
-          } catch (error) {
-            // Update progress even for failed packages
-            completed++
-            if (progressReporter && totalPackages > 0) {
-              progressReporter.update(completed, `跳过包 ${packageName} (检查失败)`)
-            }
-
-            UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error, {
-              operation: 'check',
-            })
-            return null
+          // Update progress for successful package
+          completed++
+          if (progressReporter && totalPackages > 0) {
+            progressReporter.update(completed, `正在检查依赖包: ${packageName}`)
           }
-        })
-      )
 
-      // Add successful results to the array
-      chunkResults.forEach((result) => {
-        if (result) {
-          outdatedDependencies.push(result)
+          if (result) {
+            outdatedDependencies.push(result)
+          }
+        } catch (error) {
+          // Update progress even for failed packages
+          completed++
+          if (progressReporter && totalPackages > 0) {
+            progressReporter.update(completed, `跳过包 ${packageName} (检查失败)`)
+          }
+
+          UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error, {
+            operation: 'check',
+          })
         }
-      })
-    }
+      },
+      concurrency
+    )
 
     return outdatedDependencies
   }
@@ -787,8 +791,10 @@ export class CatalogUpdateService {
     }
 
     // Now check for security vulnerabilities only for packages that need updating
+    // Skip security checks if noSecurity option is set or security check is disabled in config
+    const skipSecurityCheck = options.noSecurity || config.security?.enableCheck === false
     let hasSecurityVulnerabilities = false
-    if (config.security?.autoFixVulnerabilities) {
+    if (!skipSecurityCheck && config.security?.autoFixVulnerabilities) {
       try {
         const currentVersion = currentRange.getMinVersion()?.toString()
         if (currentVersion) {
@@ -805,7 +811,8 @@ export class CatalogUpdateService {
               packageName,
               currentRange,
               'latest',
-              options.includePrerelease || config.defaults?.includePrerelease || false
+              options.includePrerelease || config.defaults?.includePrerelease || false,
+              skipSecurityCheck
             )
             if (securityFixInfo) {
               Object.assign(outdatedInfo, securityFixInfo)
@@ -837,24 +844,14 @@ export class CatalogUpdateService {
   }
 
   /**
-   * Split array into chunks for parallel processing
-   */
-  private chunkArray<T>(array: T[], chunkSize: number): T[][] {
-    const chunks: T[][] = []
-    for (let i = 0; i < array.length; i += chunkSize) {
-      chunks.push(array.slice(i, i + chunkSize))
-    }
-    return chunks
-  }
-
-  /**
    * Check if a package needs updating
    */
   private async checkPackageUpdate(
     packageName: string,
     currentRange: VersionRange,
     target: UpdateTarget,
-    includePrerelease: boolean
+    includePrerelease: boolean,
+    skipSecurityCheck = false
   ): Promise<OutdatedDependencyInfo | null> {
     try {
       // Use lightweight version API for better performance
@@ -902,11 +899,20 @@ export class CatalogUpdateService {
 
       const updateType = currentVersion.getDifferenceType(targetVersion)
 
-      // Check for security vulnerabilities
-      const securityReport = await this.registryService.checkSecurityVulnerabilities(
-        packageName,
-        currentVersion.toString()
-      )
+      // Check for security vulnerabilities (skip if disabled)
+      let isSecurityUpdate = false
+      if (!skipSecurityCheck) {
+        try {
+          const securityReport = await this.registryService.checkSecurityVulnerabilities(
+            packageName,
+            currentVersion.toString()
+          )
+          isSecurityUpdate = securityReport.hasVulnerabilities
+        } catch (error) {
+          // Log but don't fail the update check
+          UserFriendlyErrorHandler.handleSecurityCheckFailure(packageName, error as Error)
+        }
+      }
 
       return {
         packageName,
@@ -914,7 +920,7 @@ export class CatalogUpdateService {
         latestVersion: targetVersion.toString(),
         wantedVersion: targetVersion.toString(),
         updateType: updateType as 'major' | 'minor' | 'patch',
-        isSecurityUpdate: securityReport.hasVulnerabilities,
+        isSecurityUpdate,
         affectedPackages: [], // Will be filled by caller
       }
     } catch (error) {
@@ -987,135 +993,6 @@ export class CatalogUpdateService {
       default:
         return 'Update available'
     }
-  }
-
-  /**
-   * Analyze security impact of version change
-   */
-  private async analyzeSecurityImpact(
-    packageName: string,
-    currentVersion: string,
-    newVersion: string
-  ): Promise<SecurityImpact> {
-    try {
-      const [currentSecurity, newSecurity] = await Promise.all([
-        this.registryService.checkSecurityVulnerabilities(packageName, currentVersion),
-        this.registryService.checkSecurityVulnerabilities(packageName, newVersion),
-      ])
-
-      const fixedVulnerabilities =
-        currentSecurity.vulnerabilities.length - newSecurity.vulnerabilities.length
-      const newVulnerabilities = Math.max(
-        0,
-        newSecurity.vulnerabilities.length - currentSecurity.vulnerabilities.length
-      )
-
-      let severityChange: SecurityImpact['severityChange'] = 'same'
-      if (fixedVulnerabilities > 0) {
-        severityChange = 'better'
-      } else if (newVulnerabilities > 0) {
-        severityChange = 'worse'
-      }
-
-      return {
-        hasVulnerabilities: currentSecurity.hasVulnerabilities || newSecurity.hasVulnerabilities,
-        fixedVulnerabilities: Math.max(0, fixedVulnerabilities),
-        newVulnerabilities,
-        severityChange,
-      }
-    } catch {
-      return {
-        hasVulnerabilities: false,
-        fixedVulnerabilities: 0,
-        newVulnerabilities: 0,
-        severityChange: 'same',
-      }
-    }
-  }
-
-  /**
-   * Assess compatibility risk for update type
-   */
-  private assessCompatibilityRisk(updateType: string): 'low' | 'medium' | 'high' {
-    switch (updateType) {
-      case 'patch':
-        return 'low'
-      case 'minor':
-        return 'medium'
-      case 'major':
-        return 'high'
-      default:
-        return 'medium'
-    }
-  }
-
-  /**
-   * Assess overall risk level
-   */
-  private assessOverallRisk(
-    updateType: string,
-    packageImpacts: PackageImpact[],
-    securityImpact: SecurityImpact
-  ): 'low' | 'medium' | 'high' {
-    // Security fixes reduce risk
-    if (securityImpact.fixedVulnerabilities > 0) {
-      return updateType === 'major' ? 'medium' : 'low'
-    }
-
-    // New vulnerabilities increase risk
-    if (securityImpact.newVulnerabilities > 0) {
-      return 'high'
-    }
-
-    // Base risk on update type and number of affected packages
-    const affectedPackageCount = packageImpacts.length
-
-    if (updateType === 'major') {
-      return affectedPackageCount > 5 ? 'high' : 'medium'
-    } else if (updateType === 'minor') {
-      return affectedPackageCount > 10 ? 'medium' : 'low'
-    } else {
-      return 'low'
-    }
-  }
-
-  /**
-   * Generate recommendations based on analysis
-   */
-  private generateRecommendations(
-    updateType: string,
-    securityImpact: SecurityImpact,
-    packageImpacts: PackageImpact[]
-  ): string[] {
-    const recommendations: string[] = []
-
-    if (securityImpact.fixedVulnerabilities > 0) {
-      recommendations.push('🔒 Security update recommended - fixes known vulnerabilities')
-    }
-
-    if (securityImpact.newVulnerabilities > 0) {
-      recommendations.push('⚠️  New vulnerabilities detected - review carefully before updating')
-    }
-
-    if (updateType === 'major') {
-      recommendations.push('📖 Review changelog for breaking changes before updating')
-      recommendations.push('🧪 Test thoroughly in development environment')
-    }
-
-    const breakingChangePackages = packageImpacts.filter((p) => p.isBreakingChange)
-    if (breakingChangePackages.length > 0) {
-      recommendations.push(`🔧 ${breakingChangePackages.length} package(s) may need code changes`)
-    }
-
-    if (packageImpacts.length > 5) {
-      recommendations.push('📦 Many packages affected - consider updating in batches')
-    }
-
-    if (recommendations.length === 0) {
-      recommendations.push('✅ Low risk update - safe to proceed')
-    }
-
-    return recommendations
   }
 
   /**

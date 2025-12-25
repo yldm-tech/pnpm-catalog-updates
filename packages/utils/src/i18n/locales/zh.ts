@@ -86,6 +86,7 @@ export const zh: TranslationDictionary = {
   'command.theme.invalidTheme': '无效的主题：{{theme}}',
   'command.theme.setTo': '主题已设置为：{{theme}}',
   'command.theme.configured': '主题已配置：{{theme}}',
+  'command.theme.cancelled': '主题选择已取消。',
   'command.theme.currentSettings': '当前主题设置：',
   'command.theme.preview': '主题预览：',
   'command.theme.useHint': '使用 --set <theme> 更换主题，或使用 --interactive 进行引导设置',
@@ -106,6 +107,7 @@ export const zh: TranslationDictionary = {
   'command.update.allUpToDate': '所有依赖包都是最新的！',
   'command.update.foundUpdates': '发现 {{count}} 个可用更新',
   'command.update.noUpdatesSelected': '未选择任何更新',
+  'command.update.cancelled': '操作已取消',
   'command.update.runningBatchAI': '正在对 {{count}} 个包进行 AI 批量分析...',
   'command.update.batchAIHint': '这将在单个请求中分析所有包以提高效率。',
   'command.update.aiResults': 'AI 分析结果：',
@@ -265,9 +267,18 @@ export const zh: TranslationDictionary = {
   'command.theme.previewWarning': '警告消息',
   'command.theme.previewError': '错误消息',
   'command.theme.previewInfo': '信息消息',
-  'command.theme.previewMajor': '主版本更新',
-  'command.theme.previewMinor': '次版本更新',
-  'command.theme.previewPatch': '补丁更新',
+  'command.theme.previewMajor': '主版本',
+  'command.theme.previewMinor': '次版本',
+  'command.theme.previewPatch': '补丁',
+  'command.theme.previewPackageUpdates': '依赖更新示例',
+  'command.theme.previewStatusMessages': '状态消息',
+  'command.theme.previewProgressBar': '进度条',
+  'command.theme.previewPrerelease': '预发布',
+  'command.theme.previewCheckingDeps': '正在检查依赖...',
+  'command.theme.previewUpdatesFound': '发现 {{count}} 个更新',
+  'command.theme.previewUpdateComplete': '更新完成',
+  'command.theme.previewPotentialIssue': '发现潜在问题',
+  'command.theme.previewOperationFailed': '操作失败',
 
   // Init command next steps
   'command.init.step1': '1. 查看并自定义配置：',
@@ -288,6 +299,7 @@ export const zh: TranslationDictionary = {
   'cli.error': '错误：',
   'cli.unexpectedError': '意外错误：',
   'cli.fatalError': '致命错误：',
+  'cli.cancelled': '已取消。',
 
   // Progress bar messages
   'progress.securityAnalyzing': '正在执行安全分析...',
@@ -366,19 +378,39 @@ export const zh: TranslationDictionary = {
   'cli.option.verbose': '启用详细日志',
   'cli.option.workspace': '工作区目录路径',
   'cli.option.noColor': '禁用彩色输出',
-  'cli.option.updateShorthand': 'update 命令的简写',
-  'cli.option.checkShorthand': 'check 命令的简写',
-  'cli.option.analyzeShorthand': 'analyze 命令的简写',
-  'cli.option.workspaceShorthand': 'workspace 命令的简写',
-  'cli.option.themeShorthand': 'theme 命令的简写',
-  'cli.option.securityAudit': 'security 命令的简写',
-  'cli.option.securityFix': 'security --fix-vulns 命令的简写',
+  'cli.help.command': 'help [command]',
+  'cli.help.description': '显示命令帮助',
+  'cli.help.option': '显示帮助信息',
+  // Commander.js 帮助文本标签
+  'cli.help.usage': '用法:',
+  'cli.help.arguments': '参数:',
+  'cli.help.optionsTitle': '选项:',
+  'cli.help.commandsTitle': '命令:',
+  // 自定义帮助文本 - 选项分组部分
+  'cli.help.optionGroupsTitle': '选项分组:',
+  'cli.help.groupBasic': '基础:',
+  'cli.help.groupFilter': '过滤:',
+  'cli.help.groupOutput': '输出:',
+  'cli.help.groupAI': 'AI:',
+  'cli.help.groupInstall': '安装:',
+  // 自定义帮助文本 - 提示部分
+  'cli.help.tipLabel': '提示:',
+  'cli.help.tipContent':
+    "使用 .pcurc.json 设置默认值以减少命令行选项。\n     运行 'pcu init' 创建配置文件，或访问 https://pcu-cli.dev/{{locale}}/configuration",
+  'cli.option.updateShorthand': '更新目录依赖',
+  'cli.option.checkShorthand': '检查过时的目录依赖',
+  'cli.option.analyzeShorthand': '分析更新特定依赖的影响',
+  'cli.option.workspaceShorthand': '工作区信息和验证',
+  'cli.option.themeShorthand': '配置颜色主题',
+  'cli.option.securityAudit': '安全漏洞扫描',
+  'cli.option.securityFix': '自动修复安全漏洞',
   'cli.option.listBackups': '列出可用的备份',
   'cli.option.restoreLatest': '从最近的备份恢复',
   'cli.option.deleteAllBackups': '删除所有备份',
   'cli.option.debounce': '防抖延迟（毫秒）',
   'cli.option.clearConsole': '每次检查前清空控制台',
   'cli.option.exitCode': '有更新时返回退出码 1（用于 CI/CD）',
+  'cli.option.noSecurity': '跳过安全漏洞检查',
 
   // CLI argument descriptions
   'cli.argument.package': '包名称',
@@ -445,6 +477,7 @@ export const zh: TranslationDictionary = {
   'prompt.browsePath': '浏览：{{path}}',
   'prompt.securityUpdatesCount': '{{count}} 个安全更新',
   'prompt.errorMessage': '错误：{{error}}',
+  'prompt.cancel': '取消',
 
   // Severity labels
   'severity.critical': '严重',
@@ -643,4 +676,234 @@ export const zh: TranslationDictionary = {
   'option.validateWorkspace': '验证工作区配置',
   'option.showStats': '显示工作区统计信息',
   'option.showInfo': '显示工作区信息',
+
+  // Interactive mode titles
+  'interactive.check.title': '检查命令 - 交互模式',
+  'interactive.update.title': '更新命令 - 交互模式',
+  'interactive.analyze.title': '分析命令 - 交互模式',
+  'interactive.workspace.title': '工作区命令 - 交互模式',
+  'interactive.theme.title': '主题命令 - 交互模式',
+  'interactive.security.title': '安全命令 - 交互模式',
+  'interactive.init.title': '初始化命令 - 交互模式',
+  'interactive.ai.title': 'AI 命令 - 交互模式',
+  'interactive.cache.title': '缓存命令 - 交互模式',
+  'interactive.rollback.title': '回滚命令 - 交互模式',
+  'interactive.watch.title': '监视命令 - 交互模式',
+
+  // Interactive common choices - format
+  'interactive.choice.format.table': '表格（默认）',
+  'interactive.choice.format.json': 'JSON',
+  'interactive.choice.format.yaml': 'YAML',
+  'interactive.choice.format.minimal': '简洁',
+
+  // Interactive common choices - target
+  'interactive.choice.target.latest': '最新版本（默认）',
+  'interactive.choice.target.greatest': '最高版本',
+  'interactive.choice.target.minor': '次版本更新',
+  'interactive.choice.target.patch': '补丁更新',
+  'interactive.choice.target.newest': '最新发布',
+
+  // Interactive common choices - severity
+  'interactive.choice.severity.low': '低',
+  'interactive.choice.severity.medium': '中等以上',
+  'interactive.choice.severity.high': '高',
+  'interactive.choice.severity.critical': '严重',
+  'interactive.choice.severity.all': '所有严重程度',
+
+  // Interactive common choices - analysis type
+  'interactive.choice.analysisType.impact': '影响分析',
+  'interactive.choice.analysisType.security': '安全分析',
+  'interactive.choice.analysisType.compatibility': '兼容性分析',
+  'interactive.choice.analysisType.recommend': '建议分析',
+
+  // Interactive common choices - provider
+  'interactive.choice.provider.auto': '自动（默认）',
+  'interactive.choice.provider.claude': 'Claude',
+  'interactive.choice.provider.gemini': 'Gemini',
+  'interactive.choice.provider.codex': 'Codex',
+
+  // Interactive common choices - theme
+  'interactive.choice.theme.default': '默认',
+  'interactive.choice.theme.modern': '现代',
+  'interactive.choice.theme.minimal': '简约',
+  'interactive.choice.theme.neon': '霓虹',
+  'interactive.choice.theme.ocean': '海洋',
+  'interactive.choice.theme.forest': '森林',
+
+  // Interactive prompts - check command
+  'interactive.check.catalogName': '目录名称（留空表示全部）：',
+  'interactive.check.outputFormat': '输出格式：',
+  'interactive.check.updateTarget': '更新目标：',
+  'interactive.check.includePrerelease': '包含预发布版本？',
+  'interactive.check.includePatterns': '包含模式（逗号分隔，留空表示全部）：',
+  'interactive.check.excludePatterns': '排除模式（逗号分隔，留空表示无）：',
+  'interactive.check.exitCode': '如有更新返回退出码1（用于CI）？',
+
+  // Interactive prompts - update command
+  'interactive.update.mode': '更新模式：',
+  'interactive.update.mode.interactive': '交互式选择（选择包）',
+  'interactive.update.mode.dryRun': '试运行（仅预览）',
+  'interactive.update.mode.apply': '应用所有更新',
+  'interactive.update.catalogName': '目录名称（留空表示全部）：',
+  'interactive.update.outputFormat': '输出格式：',
+  'interactive.update.updateTarget': '更新目标：',
+  'interactive.update.includePrerelease': '包含预发布版本？',
+  'interactive.update.includePatterns': '包含模式（逗号分隔，留空表示全部）：',
+  'interactive.update.excludePatterns': '排除模式（逗号分隔，留空表示无）：',
+  'interactive.update.dryRun': '试运行（不做更改）？',
+  'interactive.update.force': '强制更新（即使有风险）？',
+  'interactive.update.createBackup': '更新前创建备份？',
+  'interactive.update.useAi': '启用 AI 分析？',
+  'interactive.update.aiProvider': 'AI 提供商：',
+  'interactive.update.analysisType': '分析类型：',
+  'interactive.update.runInstall': '更新后运行 pnpm install？',
+  'interactive.update.showChangelog': '显示变更日志？',
+
+  // Interactive prompts - analyze command
+  'interactive.analyze.packageName': '包名称：',
+  'interactive.analyze.packageNameRequired': '包名称是必需的',
+  'interactive.analyze.catalogName': '目录名称（留空自动检测）：',
+  'interactive.analyze.targetVersion': '新版本（留空表示最新版）：',
+  'interactive.analyze.outputFormat': '输出格式：',
+  'interactive.analyze.useAi': '启用 AI 分析？',
+  'interactive.analyze.aiProvider': 'AI 提供商：',
+  'interactive.analyze.analysisType': '分析类型：',
+
+  // Interactive prompts - workspace command
+  'interactive.workspace.actions': '您想做什么？',
+  'interactive.workspace.validate': '验证工作区？',
+  'interactive.workspace.stats': '显示统计信息？',
+  'interactive.workspace.outputFormat': '输出格式：',
+
+  // Interactive prompts - theme command
+  'interactive.theme.action': '您想做什么？',
+  'interactive.theme.action.set': '选择并设置主题',
+  'interactive.theme.action.list': '列出可用主题',
+  'interactive.theme.choose': '选择主题：',
+
+  // Interactive prompts - security command
+  'interactive.security.action': '安全操作：',
+  'interactive.security.action.audit': '审核漏洞',
+  'interactive.security.action.fix': '修复漏洞',
+  'interactive.security.action.both': '审核并修复',
+  'interactive.security.severity': '最低严重程度：',
+  'interactive.security.includeDev': '包含开发依赖？',
+  'interactive.security.useSnyk': '使用 Snyk（需要安装 CLI）？',
+  'interactive.security.outputFormat': '输出格式：',
+
+  // Interactive prompts - init command
+  'interactive.init.mode': '初始化模式：',
+  'interactive.init.mode.quick': '快速设置（最小配置）',
+  'interactive.init.mode.full': '完整设置（所有选项）',
+  'interactive.init.createWorkspace': '如果不存在则创建 pnpm-workspace.yaml？',
+  'interactive.init.overwrite': '覆盖现有配置？',
+
+  // Interactive prompts - ai command
+  'interactive.ai.action': 'AI 管理操作：',
+  'interactive.ai.action.status': '检查 AI 状态',
+  'interactive.ai.action.test': '测试 AI 连接',
+  'interactive.ai.action.cacheStats': '显示缓存统计',
+  'interactive.ai.action.clearCache': '清除 AI 缓存',
+
+  // Interactive prompts - cache command
+  'interactive.cache.action': '缓存操作：',
+  'interactive.cache.action.stats': '显示缓存统计',
+  'interactive.cache.action.clear': '清除缓存',
+
+  // Interactive prompts - rollback command
+  'interactive.rollback.action': '回滚操作：',
+  'interactive.rollback.action.list': '列出可用备份',
+  'interactive.rollback.action.latest': '恢复最新备份',
+  'interactive.rollback.action.deleteAll': '删除所有备份',
+
+  // Interactive prompts - watch command
+  'interactive.watch.catalogName': '要监视的目录名称（留空表示全部）：',
+  'interactive.watch.updateTarget': '更新目标：',
+  'interactive.watch.includePrerelease': '包含预发布版本？',
+  'interactive.watch.outputFormat': '输出格式：',
+  'interactive.watch.debounce': '防抖延迟（毫秒）：',
+  'interactive.watch.debouncePositive': '防抖延迟必须为正数',
+  'interactive.watch.clearConsole': '每次检查前清空控制台？',
+
+  // Interactive cancelled message
+  'interactive.cancelled': '操作已取消',
+
+  // Interactive command subtitles, intros, and completion messages
+  'interactive.check.subtitle': '检查 catalog 依赖的过时版本',
+  'interactive.check.intro': '请配置检查选项',
+  'interactive.check.ready': '配置完成！正在开始检查...',
+  'interactive.check.catalogPlaceholder': '留空表示全部，如：default, react',
+  'interactive.check.patternPlaceholder': '留空表示全部，如：react*, @types/*',
+
+  'interactive.update.subtitle': '更新 catalog 依赖到新版本',
+  'interactive.update.intro': '请配置更新选项',
+  'interactive.update.ready': '配置完成！正在开始更新...',
+  'interactive.update.catalogPlaceholder': '留空表示全部，如：default, react',
+  'interactive.update.mode.interactiveHint': '手动选择要更新的包',
+  'interactive.update.mode.dryRunHint': '预览变更但不实际修改',
+  'interactive.update.mode.applyHint': '直接应用所有可用更新',
+
+  'interactive.analyze.subtitle': '分析包更新的影响和风险',
+  'interactive.analyze.intro': '请配置分析选项',
+  'interactive.analyze.ready': '配置完成！正在开始分析...',
+  'interactive.analyze.packagePlaceholder': '如：react, lodash',
+  'interactive.analyze.versionPlaceholder': '留空表示最新版，如：18.2.0, ^19.0.0',
+  'interactive.analyze.catalogPlaceholder': '留空自动检测',
+
+  'interactive.workspace.subtitle': '查看和验证工作区信息',
+  'interactive.workspace.intro': '请选择要执行的操作',
+  'interactive.workspace.ready': '配置完成！正在获取工作区信息...',
+  'interactive.workspace.validateHint': '验证工作区配置是否正确',
+  'interactive.workspace.statsHint': '显示工作区统计信息',
+  'interactive.workspace.action.validateHint': '验证工作区配置是否正确',
+  'interactive.workspace.action.statsHint': '显示工作区统计信息',
+
+  'interactive.theme.subtitle': '自定义 CLI 颜色主题',
+  'interactive.theme.intro': '请选择主题操作',
+  'interactive.theme.ready': '主题配置完成！',
+  'interactive.theme.action.setHint': '选择并应用新主题',
+  'interactive.theme.action.listHint': '查看所有可用主题',
+
+  'interactive.security.subtitle': '扫描和修复安全漏洞',
+  'interactive.security.intro': '请配置安全扫描选项',
+  'interactive.security.ready': '配置完成！正在开始安全扫描...',
+  'interactive.security.action.auditHint': '扫描但不自动修复',
+  'interactive.security.action.fixHint': '尝试自动修复漏洞',
+  'interactive.security.action.bothHint': '扫描并尝试修复',
+
+  'interactive.init.subtitle': '初始化 PCU 配置文件',
+  'interactive.init.intro': '请选择初始化模式',
+  'interactive.init.ready': '配置完成！正在初始化...',
+  'interactive.init.mode.quickHint': '最小配置，快速开始',
+  'interactive.init.mode.fullHint': '完整配置，包含所有选项',
+
+  'interactive.cache.subtitle': '管理 PCU 缓存数据',
+  'interactive.cache.intro': '请选择缓存操作',
+  'interactive.cache.ready': '操作完成！',
+  'interactive.cache.action.statsHint': '查看缓存使用统计',
+  'interactive.cache.action.clearHint': '清除所有缓存数据',
+
+  'interactive.rollback.subtitle': '回滚到之前的版本',
+  'interactive.rollback.intro': '请选择回滚操作',
+  'interactive.rollback.ready': '操作完成！',
+  'interactive.rollback.action.listHint': '查看所有可用备份',
+  'interactive.rollback.action.latestHint': '恢复到最近的备份',
+  'interactive.rollback.action.deleteAllHint': '删除所有备份文件',
+
+  'interactive.watch.subtitle': '监视文件变更并检查更新',
+  'interactive.watch.intro': '请配置监视选项',
+  'interactive.watch.ready': '配置完成！正在启动监视模式...',
+  'interactive.watch.catalogPlaceholder': '留空表示全部，如：default, react',
+
+  // Interactive choice hints
+  'interactive.choice.format.tableHint': '适合终端查看',
+  'interactive.choice.format.jsonHint': '适合程序处理',
+  'interactive.choice.format.yamlHint': '适合配置文件',
+  'interactive.choice.format.minimalHint': '仅显示关键信息',
+
+  'interactive.choice.target.latestHint': '推荐，最新稳定版',
+  'interactive.choice.target.greatestHint': '包含预发布版本',
+  'interactive.choice.target.minorHint': '安全，向后兼容',
+  'interactive.choice.target.patchHint': '最安全，仅 bug 修复',
+  'interactive.choice.target.newestHint': '按发布时间排序',
 }

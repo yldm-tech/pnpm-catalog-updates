@@ -120,7 +120,7 @@ export class WatchCommand {
 
     try {
       // Load configuration
-      const config = ConfigLoader.loadConfig(options.workspace || process.cwd())
+      const config = await ConfigLoader.loadConfig(options.workspace || process.cwd())
 
       // Build check options
       const checkOptions: CheckOptions = {

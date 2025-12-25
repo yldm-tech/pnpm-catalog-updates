@@ -8,6 +8,7 @@
 import {
   type AdvancedConfig,
   InvalidVersionRangeError,
+  parallelLimit,
   RegistryError,
   UserFriendlyErrorHandler,
 } from '@pcu/utils'
@@ -15,6 +16,7 @@ import npmRegistryFetch from 'npm-registry-fetch'
 import pacote from 'pacote'
 import semver from 'semver'
 import { Version, type VersionRange } from '../../domain/value-objects/version.js'
+import { registryCache } from '../cache/cache.js'
 import { type NpmrcConfig, NpmrcParser } from '../utils/npmrcParser.js'
 
 export interface PackageInfo {
@@ -113,14 +115,6 @@ interface NpmDownloadStats {
 }
 
 /**
- * Cache entry structure
- */
-interface CacheEntry<T> {
-  data: T
-  timestamp: number
-}
-
-/**
  * Author type used in package manifests
  */
 type PackageAuthor = string | { name: string; email?: string } | undefined
@@ -137,12 +131,10 @@ interface PackageVersionsData {
 }
 
 export class NpmRegistryService {
-  private readonly cache: Map<string, CacheEntry<unknown>> = new Map()
-
-  // Differentiated cache timeouts for different data types
-  private readonly versionCacheTimeout: number
-  private readonly packageInfoCacheTimeout: number
-  private readonly securityCacheTimeout: number
+  // Differentiated cache timeouts for different data types (in milliseconds)
+  private readonly versionCacheTtl: number
+  private readonly packageInfoCacheTtl: number
+  private readonly securityCacheTtl: number
 
   // Advanced configuration with defaults
   private readonly concurrency: number
@@ -174,11 +166,11 @@ export class NpmRegistryService {
     this.timeout = options.timeout ?? 15000 // Reduced from 30s to 15s for faster failure detection
     this.retries = options.retries ?? 2 // Reduced from 3 to 2 for faster overall performance
 
-    // Optimized cache timeouts for different data types
+    // Optimized cache TTLs for different data types (in milliseconds)
     const baseCacheMinutes = options.cacheValidityMinutes ?? 10 // Reduced from 60 to 10 minutes
-    this.versionCacheTimeout = baseCacheMinutes * 60 * 1000 // Version info: 10 minutes (frequently checked)
-    this.packageInfoCacheTimeout = baseCacheMinutes * 2 * 60 * 1000 // Package info: 20 minutes
-    this.securityCacheTimeout = baseCacheMinutes * 6 * 60 * 1000 // Security info: 60 minutes (changes less frequently)
+    this.versionCacheTtl = baseCacheMinutes * 60 * 1000 // Version info: 10 minutes (frequently checked)
+    this.packageInfoCacheTtl = baseCacheMinutes * 2 * 60 * 1000 // Package info: 20 minutes
+    this.securityCacheTtl = baseCacheMinutes * 6 * 60 * 1000 // Security info: 60 minutes (changes less frequently)
 
     this.cachingEnabled = baseCacheMinutes > 0 // Disable caching if set to 0
   }
@@ -259,11 +251,11 @@ export class NpmRegistryService {
    */
   async getPackageVersions(packageName: string): Promise<PackageVersionsData> {
     const registryUrl = this.getRegistryForPackage(packageName)
-    const cacheKey = `package-versions:${registryUrl}:${packageName}`
+    const cacheKey = `versions:${registryUrl}:${packageName}`
 
-    // Check cache first if caching is enabled
+    // Check persistent cache first if caching is enabled
     if (this.cachingEnabled) {
-      const cached = this.getFromCache<PackageVersionsData>(cacheKey)
+      const cached = registryCache.get(cacheKey) as PackageVersionsData | undefined
       if (cached) {
         return cached
       }
@@ -292,9 +284,9 @@ export class NpmRegistryService {
       }
     }, `Fetching package versions for ${packageName}`)
 
-    // Cache the result if caching is enabled
+    // Cache the result to persistent storage if caching is enabled
     if (this.cachingEnabled) {
-      this.setCache(cacheKey, packageVersions)
+      registryCache.set(cacheKey, packageVersions, this.versionCacheTtl)
     }
 
     return packageVersions
@@ -306,11 +298,11 @@ export class NpmRegistryService {
    */
   async getPackageInfo(packageName: string): Promise<PackageInfo> {
     const registryUrl = this.getRegistryForPackage(packageName)
-    const cacheKey = `package-info:${registryUrl}:${packageName}`
+    const cacheKey = `package:${registryUrl}:${packageName}`
 
-    // Check cache first if caching is enabled
+    // Check persistent cache first if caching is enabled
     if (this.cachingEnabled) {
-      const cached = this.getFromCache<PackageInfo>(cacheKey)
+      const cached = registryCache.get(cacheKey) as PackageInfo | undefined
       if (cached) {
         return cached
       }
@@ -346,9 +338,9 @@ export class NpmRegistryService {
       }
     }, `Fetching package info for ${packageName}`)
 
-    // Cache the result if caching is enabled
+    // Cache the result to persistent storage if caching is enabled
     if (this.cachingEnabled) {
-      this.setCache(cacheKey, packageInfo)
+      registryCache.set(cacheKey, packageInfo, this.packageInfoCacheTtl)
     }
 
     return packageInfo
@@ -454,10 +446,12 @@ export class NpmRegistryService {
     const registryUrl = this.getRegistryForPackage(packageName)
     const cacheKey = `security:${registryUrl}:${packageName}@${version}`
 
-    // Check cache first
-    const cached = this.getFromCache<SecurityReport>(cacheKey)
-    if (cached) {
-      return cached
+    // Check persistent cache first (security data has longer TTL)
+    if (this.cachingEnabled) {
+      const cached = registryCache.get(cacheKey) as SecurityReport | undefined
+      if (cached) {
+        return cached
+      }
     }
 
     try {
@@ -507,8 +501,10 @@ export class NpmRegistryService {
         hasVulnerabilities: vulnerabilities.length > 0,
       }
 
-      // Cache the result
-      this.setCache(cacheKey, securityReport)
+      // Cache the result to persistent storage with longer TTL for security data
+      if (this.cachingEnabled) {
+        registryCache.set(cacheKey, securityReport, this.securityCacheTtl)
+      }
 
       return securityReport
     } catch (error) {
@@ -537,32 +533,25 @@ export class NpmRegistryService {
     let completed = 0
     const total = packages.length
 
-    // Process packages in parallel with configurable concurrency
-    const chunks = this.chunkArray(packages, this.concurrency)
-
-    for (const chunk of chunks) {
-      const promises = chunk.map(async (packageName) => {
+    // Process packages in parallel with configurable concurrency using parallelLimit
+    await parallelLimit(
+      packages,
+      async (packageName) => {
         try {
           const info = await this.getPackageInfo(packageName)
           results.set(packageName, info)
-
-          // Update progress
-          completed++
-          if (progressCallback) {
-            progressCallback(completed, total, packageName)
-          }
         } catch (error) {
-          // Still count failed packages in progress
+          UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error)
+        } finally {
+          // Update progress for both success and failure
           completed++
           if (progressCallback) {
             progressCallback(completed, total, packageName)
           }
-          UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error)
         }
-      })
-
-      await Promise.all(promises)
-    }
+      },
+      this.concurrency
+    )
 
     return results
   }
@@ -633,127 +622,23 @@ export class NpmRegistryService {
   }
 
   /**
-   * Clear all cache
+   * Clear all cache (delegates to shared registryCache)
    */
   clearCache(): void {
-    this.cache.clear()
+    registryCache.clear()
   }
 
   /**
-   * Clear cache by type
-   */
-  clearCacheByType(type: 'versions' | 'package-info' | 'security' | 'all' = 'all'): void {
-    if (type === 'all') {
-      this.clearCache()
-      return
-    }
-
-    const prefix =
-      type === 'versions'
-        ? 'package-versions:'
-        : type === 'package-info'
-          ? 'package-info:'
-          : 'security:'
-
-    const keysToDelete: string[] = []
-    for (const key of this.cache.keys()) {
-      if (key.startsWith(prefix)) {
-        keysToDelete.push(key)
-      }
-    }
-
-    keysToDelete.forEach((key) => this.cache.delete(key))
-  }
-
-  /**
-   * Get cache statistics
+   * Get cache statistics (delegates to shared registryCache)
    */
   getCacheStats(): {
-    total: number
-    versions: number
-    packageInfo: number
-    security: number
-    expired: number
+    totalEntries: number
+    totalSize: number
+    hitRate: number
+    hits: number
+    misses: number
   } {
-    const stats = { total: 0, versions: 0, packageInfo: 0, security: 0, expired: 0 }
-    const now = Date.now()
-
-    for (const [key, cached] of this.cache.entries()) {
-      stats.total++
-
-      const timeout = this.getCacheTimeout(key)
-      if (now - cached.timestamp > timeout) {
-        stats.expired++
-        continue
-      }
-
-      if (key.startsWith('package-versions:')) {
-        stats.versions++
-      } else if (key.startsWith('package-info:')) {
-        stats.packageInfo++
-      } else if (key.startsWith('security:')) {
-        stats.security++
-      }
-    }
-
-    return stats
-  }
-
-  /**
-   * Get item from cache if not expired
-   */
-  private getFromCache<T>(key: string): T | null {
-    const cached = this.cache.get(key)
-    if (!cached) {
-      return null
-    }
-
-    // Determine timeout based on cache key type
-    const timeout = this.getCacheTimeout(key)
-
-    if (Date.now() - cached.timestamp > timeout) {
-      this.cache.delete(key)
-      return null
-    }
-
-    return cached.data as T
-  }
-
-  /**
-   * Get appropriate cache timeout based on key type
-   */
-  private getCacheTimeout(key: string): number {
-    if (key.startsWith('package-versions:')) {
-      return this.versionCacheTimeout
-    } else if (key.startsWith('security:')) {
-      return this.securityCacheTimeout
-    } else if (key.startsWith('package-info:')) {
-      return this.packageInfoCacheTimeout
-    }
-
-    // Default to version cache timeout for unknown keys
-    return this.versionCacheTimeout
-  }
-
-  /**
-   * Set item in cache
-   */
-  private setCache<T>(key: string, data: T): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-    })
-  }
-
-  /**
-   * Split array into chunks
-   */
-  private chunkArray<T>(array: T[], size: number): T[][] {
-    const chunks: T[][] = []
-    for (let i = 0; i < array.length; i += size) {
-      chunks.push(array.slice(i, i + size))
-    }
-    return chunks
+    return registryCache.getStats()
   }
 
   /**

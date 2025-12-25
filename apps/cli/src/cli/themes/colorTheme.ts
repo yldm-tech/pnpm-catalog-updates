@@ -290,27 +290,27 @@ export class StyledText {
   }
 
   static iconInfo(text?: string): string {
-    return StyledText.icon('ℹ️', text)
+    return StyledText.icon('[i]', text)
   }
 
   static iconPackage(text?: string): string {
-    return StyledText.icon('📦', text)
+    return StyledText.icon('[PKG]', text)
   }
 
   static iconCatalog(text?: string): string {
-    return StyledText.icon('📋', text)
+    return StyledText.icon('[CAT]', text)
   }
 
   static iconUpdate(text?: string): string {
-    return StyledText.icon('🔄', text)
+    return StyledText.icon('[UPD]', text)
   }
 
   static iconSecurity(text?: string): string {
-    return StyledText.icon('🔒', text)
+    return StyledText.icon('[SEC]', text)
   }
 
   static iconAnalysis(text?: string): string {
-    return StyledText.icon('🔍', text)
+    return StyledText.icon('[*]', text)
   }
 
   static iconCheck(text?: string): string {
@@ -318,11 +318,11 @@ export class StyledText {
   }
 
   static iconProgress(text?: string): string {
-    return StyledText.icon('⏳', text)
+    return StyledText.icon('[...]', text)
   }
 
   static iconComplete(text?: string): string {
-    return StyledText.icon('🎉', text)
+    return StyledText.icon('[OK]', text)
   }
 
   // Text formatting

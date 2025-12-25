@@ -91,6 +91,7 @@ export const ja: TranslationDictionary = {
   'command.theme.invalidTheme': '無効なテーマ: {{theme}}',
   'command.theme.setTo': 'テーマを設定しました: {{theme}}',
   'command.theme.configured': 'テーマを設定しました: {{theme}}',
+  'command.theme.cancelled': 'テーマ選択がキャンセルされました。',
   'command.theme.currentSettings': '現在のテーマ設定:',
   'command.theme.preview': 'テーマプレビュー:',
   'command.theme.useHint': '--set <theme> でテーマを変更、または --interactive でガイド付き設定',
@@ -140,6 +141,7 @@ export const ja: TranslationDictionary = {
   'command.update.pnpmInstallFailed': 'pnpm install が失敗しました（カタログの更新は成功しました）',
   'command.update.fetchingChangelogs': '変更履歴を取得しています...',
   'command.update.changelogUnavailable': '変更履歴は利用できません',
+  'command.update.cancelled': '操作がキャンセルされました',
 
   // Rollback command
   'command.rollback.noBackups': 'バックアップが見つかりません',
@@ -278,9 +280,18 @@ export const ja: TranslationDictionary = {
   'command.theme.previewWarning': '警告メッセージ',
   'command.theme.previewError': 'エラーメッセージ',
   'command.theme.previewInfo': '情報メッセージ',
-  'command.theme.previewMajor': 'メジャーアップデート',
-  'command.theme.previewMinor': 'マイナーアップデート',
-  'command.theme.previewPatch': 'パッチアップデート',
+  'command.theme.previewMajor': 'メジャー',
+  'command.theme.previewMinor': 'マイナー',
+  'command.theme.previewPatch': 'パッチ',
+  'command.theme.previewPackageUpdates': 'パッケージ更新例',
+  'command.theme.previewStatusMessages': 'ステータスメッセージ',
+  'command.theme.previewProgressBar': 'プログレスバー',
+  'command.theme.previewPrerelease': 'プレリリース',
+  'command.theme.previewCheckingDeps': '依存関係を確認中...',
+  'command.theme.previewUpdatesFound': '{{count}} 件の更新',
+  'command.theme.previewUpdateComplete': '更新完了',
+  'command.theme.previewPotentialIssue': '潜在的な問題',
+  'command.theme.previewOperationFailed': '操作失敗',
 
   // Init command next steps
   'command.init.step1': '1. 設定を確認してカスタマイズ：',
@@ -301,6 +312,7 @@ export const ja: TranslationDictionary = {
   'cli.error': 'エラー:',
   'cli.unexpectedError': '予期しないエラー:',
   'cli.fatalError': '致命的なエラー:',
+  'cli.cancelled': 'キャンセルされました。',
 
   // Progress bar messages
   'progress.securityAnalyzing': 'セキュリティ分析を実行中...',
@@ -376,6 +388,25 @@ export const ja: TranslationDictionary = {
   'cli.option.verbose': '詳細ログを有効化',
   'cli.option.workspace': 'ワークスペースディレクトリパス',
   'cli.option.noColor': 'カラー出力を無効化',
+  'cli.help.command': 'help [command]',
+  'cli.help.description': 'コマンドのヘルプを表示',
+  'cli.help.option': 'ヘルプ情報を表示',
+  // Commander.js ヘルプテキストラベル
+  'cli.help.usage': '使用法:',
+  'cli.help.arguments': '引数:',
+  'cli.help.optionsTitle': 'オプション:',
+  'cli.help.commandsTitle': 'コマンド:',
+  // カスタムヘルプテキスト - オプショングループセクション
+  'cli.help.optionGroupsTitle': 'オプショングループ:',
+  'cli.help.groupBasic': '基本:',
+  'cli.help.groupFilter': 'フィルター:',
+  'cli.help.groupOutput': '出力:',
+  'cli.help.groupAI': 'AI:',
+  'cli.help.groupInstall': 'インストール:',
+  // カスタムヘルプテキスト - ヒントセクション
+  'cli.help.tipLabel': 'ヒント:',
+  'cli.help.tipContent':
+    ".pcurc.json を使用してデフォルト値を設定し、コマンドラインオプションを減らしましょう。\n     'pcu init' を実行して設定ファイルを作成するか、https://pcu-cli.dev/{{locale}}/configuration にアクセスしてください",
   'cli.option.install': '更新後に pnpm install を実行（デフォルト: true）',
   'cli.option.noInstall': '更新後の pnpm install をスキップ',
   'cli.option.changelog': '各更新の変更履歴を表示',
@@ -393,6 +424,7 @@ export const ja: TranslationDictionary = {
   'cli.option.debounce': 'デバウンス遅延（ミリ秒）',
   'cli.option.clearConsole': '各チェック前にコンソールをクリア',
   'cli.option.exitCode': '更新がある場合にコード1で終了（CI/CD用）',
+  'cli.option.noSecurity': 'セキュリティ脆弱性チェックをスキップ',
 
   // CLI argument descriptions
   'cli.argument.package': 'パッケージ名',
@@ -459,6 +491,7 @@ export const ja: TranslationDictionary = {
   'prompt.browsePath': '参照：{{path}}',
   'prompt.securityUpdatesCount': '{{count}} 件のセキュリティ更新',
   'prompt.errorMessage': 'エラー：{{error}}',
+  'prompt.cancel': 'キャンセル',
 
   // Severity labels
   'severity.critical': '重大',
@@ -665,4 +698,244 @@ export const ja: TranslationDictionary = {
   'option.validateWorkspace': 'ワークスペース設定を検証',
   'option.showStats': 'ワークスペース統計を表示',
   'option.showInfo': 'ワークスペース情報を表示',
+
+  // Interactive mode titles
+  'interactive.check.title': 'チェックコマンド - インタラクティブモード',
+  'interactive.update.title': '更新コマンド - インタラクティブモード',
+  'interactive.analyze.title': '分析コマンド - インタラクティブモード',
+  'interactive.workspace.title': 'ワークスペースコマンド - インタラクティブモード',
+  'interactive.theme.title': 'テーマコマンド - インタラクティブモード',
+  'interactive.security.title': 'セキュリティコマンド - インタラクティブモード',
+  'interactive.init.title': '初期化コマンド - インタラクティブモード',
+  'interactive.ai.title': 'AIコマンド - インタラクティブモード',
+  'interactive.cache.title': 'キャッシュコマンド - インタラクティブモード',
+  'interactive.rollback.title': 'ロールバックコマンド - インタラクティブモード',
+  'interactive.watch.title': '監視コマンド - インタラクティブモード',
+
+  // Interactive common choices - format
+  'interactive.choice.format.table': 'テーブル（デフォルト）',
+  'interactive.choice.format.json': 'JSON',
+  'interactive.choice.format.yaml': 'YAML',
+  'interactive.choice.format.minimal': 'ミニマル',
+
+  // Interactive common choices - target
+  'interactive.choice.target.latest': '最新版（デフォルト）',
+  'interactive.choice.target.greatest': '最大バージョン',
+  'interactive.choice.target.minor': 'マイナー更新',
+  'interactive.choice.target.patch': 'パッチ更新',
+  'interactive.choice.target.newest': '最新リリース',
+
+  // Interactive common choices - severity
+  'interactive.choice.severity.low': '低',
+  'interactive.choice.severity.medium': '中以上',
+  'interactive.choice.severity.high': '高',
+  'interactive.choice.severity.critical': '重大',
+  'interactive.choice.severity.all': 'すべての重大度',
+
+  // Interactive common choices - analysis type
+  'interactive.choice.analysisType.impact': '影響分析',
+  'interactive.choice.analysisType.security': 'セキュリティ分析',
+  'interactive.choice.analysisType.compatibility': '互換性分析',
+  'interactive.choice.analysisType.recommend': '推奨分析',
+
+  // Interactive common choices - provider
+  'interactive.choice.provider.auto': '自動（デフォルト）',
+  'interactive.choice.provider.claude': 'Claude',
+  'interactive.choice.provider.gemini': 'Gemini',
+  'interactive.choice.provider.codex': 'Codex',
+
+  // Interactive common choices - theme
+  'interactive.choice.theme.default': 'デフォルト',
+  'interactive.choice.theme.modern': 'モダン',
+  'interactive.choice.theme.minimal': 'ミニマル',
+  'interactive.choice.theme.neon': 'ネオン',
+  'interactive.choice.theme.ocean': 'オーシャン',
+  'interactive.choice.theme.forest': 'フォレスト',
+
+  // Interactive prompts - check command
+  'interactive.check.catalogName': 'カタログ名（空欄で全て）：',
+  'interactive.check.outputFormat': '出力形式：',
+  'interactive.check.updateTarget': '更新ターゲット：',
+  'interactive.check.includePrerelease': 'プレリリースバージョンを含めますか？',
+  'interactive.check.includePatterns': '含めるパターン（カンマ区切り、空欄で全て）：',
+  'interactive.check.excludePatterns': '除外パターン（カンマ区切り、空欄でなし）：',
+  'interactive.check.exitCode': '更新がある場合はコード1で終了（CI用）？',
+
+  // Interactive prompts - update command
+  'interactive.update.catalogName': 'カタログ名（空欄で全て）：',
+  'interactive.update.outputFormat': '出力形式：',
+  'interactive.update.updateTarget': '更新ターゲット：',
+  'interactive.update.includePrerelease': 'プレリリースバージョンを含めますか？',
+  'interactive.update.includePatterns': '含めるパターン（カンマ区切り、空欄で全て）：',
+  'interactive.update.excludePatterns': '除外パターン（カンマ区切り、空欄でなし）：',
+  'interactive.update.dryRun': 'ドライラン（変更なし）？',
+  'interactive.update.force': '強制更新（リスクがあっても）？',
+  'interactive.update.createBackup': '更新前にバックアップを作成しますか？',
+  'interactive.update.useAi': 'AI分析を有効にしますか？',
+  'interactive.update.aiProvider': 'AIプロバイダー：',
+  'interactive.update.analysisType': '分析タイプ：',
+  'interactive.update.runInstall': '更新後に pnpm install を実行しますか？',
+  'interactive.update.showChangelog': '変更ログを表示しますか？',
+
+  // Interactive prompts - analyze command
+  'interactive.analyze.packageName': 'パッケージ名：',
+  'interactive.analyze.packageNameRequired': 'パッケージ名は必須です',
+  'interactive.analyze.catalogName': 'カタログ名（空欄で自動検出）：',
+  'interactive.analyze.targetVersion': '新しいバージョン（空欄で最新）：',
+  'interactive.analyze.outputFormat': '出力形式：',
+  'interactive.analyze.useAi': 'AI分析を有効にしますか？',
+  'interactive.analyze.aiProvider': 'AIプロバイダー：',
+  'interactive.analyze.analysisType': '分析タイプ：',
+
+  // Interactive prompts - workspace command
+  'interactive.workspace.validate': 'ワークスペースを検証しますか？',
+  'interactive.workspace.stats': '統計を表示しますか？',
+
+  // Interactive prompts - theme command
+  'interactive.theme.choose': 'テーマを選択：',
+
+  // Interactive prompts - security command
+  'interactive.security.action': 'npm audit を実行しますか？',
+  'interactive.security.severity': '最小重大度：',
+  'interactive.security.includeDev': '開発依存関係を含めますか？',
+  'interactive.security.useSnyk': 'Snyk を使用しますか（CLI が必要）？',
+  'interactive.security.outputFormat': '出力形式：',
+
+  // Interactive prompts - init command
+  'interactive.init.overwrite': '既存の設定を上書きしますか？',
+  'interactive.init.createWorkspace': 'PNPM ワークスペース構造を作成しますか？',
+
+  // Interactive prompts - ai command
+
+  // Interactive prompts - cache command
+
+  // Interactive prompts - rollback command
+
+  // Interactive prompts - watch command
+  'interactive.watch.debounce': 'デバウンス遅延（ミリ秒）：',
+  'interactive.watch.debouncePositive': 'デバウンス遅延は正の数でなければなりません',
+  'interactive.watch.clearConsole': 'チェックごとにコンソールをクリアしますか？',
+
+  // Missing interactive keys
+  'interactive.update.mode': '更新モード：',
+  'interactive.update.mode.interactive': 'インタラクティブ選択（パッケージを選択）',
+  'interactive.update.mode.dryRun': 'ドライラン（プレビューのみ）',
+  'interactive.update.mode.apply': 'すべての更新を適用',
+  'interactive.workspace.actions': '何をしますか？',
+  'interactive.workspace.outputFormat': '出力形式：',
+  'interactive.theme.action': '何をしますか？',
+  'interactive.theme.action.set': 'テーマを選択して設定',
+  'interactive.theme.action.list': '利用可能なテーマを一覧',
+  'interactive.security.action.audit': '脆弱性を監査',
+  'interactive.security.action.fix': '脆弱性を修正',
+  'interactive.security.action.both': '監査と修正の両方',
+  'interactive.init.mode': '初期化モード：',
+  'interactive.init.mode.quick': 'クイックセットアップ（最小構成）',
+  'interactive.init.mode.full': 'フルセットアップ（すべてのオプション）',
+  'interactive.ai.action': 'AI管理アクション：',
+  'interactive.ai.action.status': 'AI状態を確認',
+  'interactive.ai.action.test': 'AI接続をテスト',
+  'interactive.ai.action.cacheStats': 'キャッシュ統計を表示',
+  'interactive.ai.action.clearCache': 'AIキャッシュをクリア',
+  'interactive.cache.action': 'キャッシュアクション：',
+  'interactive.cache.action.stats': 'キャッシュ統計を表示',
+  'interactive.cache.action.clear': 'キャッシュをクリア',
+  'interactive.rollback.action': 'ロールバックアクション：',
+  'interactive.rollback.action.list': '利用可能なバックアップを一覧',
+  'interactive.rollback.action.latest': '最新のバックアップを復元',
+  'interactive.rollback.action.deleteAll': 'すべてのバックアップを削除',
+  'interactive.watch.catalogName': '監視するカタログ名（空欄で全て）：',
+  'interactive.watch.updateTarget': '更新ターゲット：',
+  'interactive.watch.includePrerelease': 'プレリリースバージョンを含める？',
+  'interactive.watch.outputFormat': '出力形式：',
+
+  // Interactive cancelled message
+  'interactive.cancelled': '操作がキャンセルされました',
+
+  // Interactive command subtitles, intros, and completion messages
+  'interactive.check.subtitle': 'カタログ依存関係の古いバージョンをチェック',
+  'interactive.check.intro': 'チェックオプションを設定してください',
+  'interactive.check.ready': '設定完了！チェックを開始します...',
+  'interactive.check.catalogPlaceholder': '例: default, react',
+  'interactive.check.patternPlaceholder': '例: react*, @types/*',
+
+  'interactive.update.subtitle': 'カタログ依存関係を新しいバージョンに更新',
+  'interactive.update.intro': '更新オプションを設定してください',
+  'interactive.update.ready': '設定完了！更新を開始します...',
+  'interactive.update.catalogPlaceholder': '例: default, react',
+  'interactive.update.mode.interactiveHint': '更新するパッケージを手動で選択',
+  'interactive.update.mode.dryRunHint': '変更せずにプレビュー',
+  'interactive.update.mode.applyHint': '利用可能なすべての更新を直接適用',
+
+  'interactive.analyze.subtitle': 'パッケージ更新の影響を分析',
+  'interactive.analyze.intro': '分析オプションを設定してください',
+  'interactive.analyze.ready': '設定完了！分析を開始します...',
+  'interactive.analyze.packagePlaceholder': '例: lodash, react',
+  'interactive.analyze.versionPlaceholder': '最新の場合は空欄、例: 18.2.0, ^19.0.0',
+  'interactive.analyze.catalogPlaceholder': '自動検出の場合は空欄',
+
+  'interactive.workspace.subtitle': 'ワークスペース情報の表示と検証',
+  'interactive.workspace.intro': 'アクションを選択してください',
+  'interactive.workspace.ready': '設定完了！アクションを実行します...',
+  'interactive.workspace.validateHint': 'ワークスペース設定を検証',
+  'interactive.workspace.statsHint': 'ワークスペース統計を表示',
+
+  'interactive.theme.subtitle': 'CLIカラーテーマを設定',
+  'interactive.theme.intro': 'テーマアクションを選択してください',
+  'interactive.theme.ready': '設定完了！テーマを適用します...',
+
+  'interactive.security.subtitle': 'セキュリティ脆弱性のスキャンと修正',
+  'interactive.security.intro': 'セキュリティオプションを設定してください',
+  'interactive.security.ready': '設定完了！セキュリティスキャンを開始します...',
+
+  'interactive.init.subtitle': 'PCU設定を初期化',
+  'interactive.init.intro': '初期化モードを選択してください',
+  'interactive.init.ready': '設定完了！初期化中...',
+
+  'interactive.cache.subtitle': 'PCUキャッシュを管理',
+  'interactive.cache.intro': 'キャッシュアクションを選択してください',
+  'interactive.cache.ready': '設定完了！アクションを実行します...',
+
+  'interactive.rollback.subtitle': '以前のバージョンにロールバック',
+  'interactive.rollback.intro': 'ロールバックアクションを選択してください',
+  'interactive.rollback.ready': '設定完了！ロールバックを開始します...',
+
+  'interactive.watch.subtitle': '依存関係の更新を監視',
+  'interactive.watch.intro': '監視オプションを設定してください',
+  'interactive.watch.ready': '設定完了！監視モードを開始します...',
+  'interactive.watch.catalogPlaceholder': '例: default, react',
+
+  // Interactive choice hints - format
+  'interactive.choice.format.tableHint': 'ターミナル表示に最適',
+  'interactive.choice.format.jsonHint': 'プログラム処理に最適',
+  'interactive.choice.format.yamlHint': '設定ファイルに最適',
+  'interactive.choice.format.minimalHint': '重要な情報のみ表示',
+
+  // Interactive choice hints - target
+  'interactive.choice.target.latestHint': '推奨、最新の安定版',
+  'interactive.choice.target.greatestHint': 'プレリリース版を含む',
+  'interactive.choice.target.minorHint': '安全、後方互換性あり',
+  'interactive.choice.target.patchHint': '最も安全、バグ修正のみ',
+  'interactive.choice.target.newestHint': 'リリース日順',
+
+  // Interactive action hints
+  'interactive.workspace.action.validateHint': 'ワークスペース設定の問題をチェック',
+  'interactive.workspace.action.statsHint': '詳細なワークスペース統計を表示',
+
+  'interactive.theme.action.setHint': '新しいテーマを選択して適用',
+  'interactive.theme.action.listHint': '利用可能なすべてのテーマを表示',
+
+  'interactive.security.action.auditHint': 'セキュリティ脆弱性をスキャン',
+  'interactive.security.action.fixHint': '脆弱性を自動的に修正',
+  'interactive.security.action.bothHint': 'スキャンと修正を一度に実行',
+
+  'interactive.init.mode.quickHint': 'デフォルト設定でクイックセットアップ',
+  'interactive.init.mode.fullHint': 'すべてのオプションを設定',
+
+  'interactive.cache.action.statsHint': 'キャッシュ使用統計を表示',
+  'interactive.cache.action.clearHint': 'キャッシュされたデータをすべてクリア',
+
+  'interactive.rollback.action.listHint': '利用可能なすべてのバックアップを表示',
+  'interactive.rollback.action.latestHint': '最新のバックアップを復元',
+  'interactive.rollback.action.deleteAllHint': 'すべてのバックアップファイルを削除',
 }

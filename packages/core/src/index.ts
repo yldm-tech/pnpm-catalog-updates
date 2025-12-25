@@ -28,6 +28,9 @@ export type {
   UpdateTarget,
 } from './application/services/catalogUpdateService'
 export { CatalogUpdateService } from './application/services/catalogUpdateService'
+// Impact Analysis Service
+export type { PackageImpact, SecurityImpact } from './application/services/impactAnalysisService'
+export { ImpactAnalysisService } from './application/services/impactAnalysisService'
 // Watch Service
 export type { WatchCallbacks, WatchOptions } from './application/services/watchService'
 export { WatchService } from './application/services/watchService'

@@ -7,9 +7,33 @@
 
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { getConfig } from '../config/config.js'
 
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug'
+
+// Default logging configuration
+// Logger uses sensible defaults to avoid circular dependency with ConfigManager
+// These defaults match the values in DEFAULT_CONFIG in config.ts
+const DEFAULT_LOGGING_CONFIG = {
+  logging: {
+    level: 'info' as LogLevel,
+    file: undefined as string | undefined,
+    maxSize: '10MB',
+    maxFiles: 5,
+  },
+  output: {
+    color: true,
+    silent: false,
+  },
+}
+
+/**
+ * Get logging config - uses defaults to avoid bundling order issues
+ * The Logger system works independently of ConfigManager to prevent
+ * circular dependencies during module initialization.
+ */
+function getLoggerConfig(): typeof DEFAULT_LOGGING_CONFIG {
+  return DEFAULT_LOGGING_CONFIG
+}
 
 export interface LogEntry {
   timestamp: string
@@ -42,7 +66,7 @@ export class Logger {
   private constructor(context: string, options: Partial<LoggerOptions> = {}) {
     this.context = context
 
-    const config = getConfig().getConfig()
+    const config = getLoggerConfig()
 
     this.options = {
       context: options.context || context,
@@ -157,7 +181,7 @@ export class Logger {
    * Write to console with colors
    */
   private writeToConsole(entry: LogEntry): void {
-    const config = getConfig().getConfig()
+    const config = getLoggerConfig()
     const useColors = config.output.color
 
     let colorFn: (text: string) => string
@@ -256,7 +280,7 @@ export class Logger {
   private rotateLogFile(filePath: string): void {
     if (!existsSync(filePath)) return
 
-    const config = getConfig().getConfig()
+    const config = getLoggerConfig()
     const maxSize = this.parseSize(config.logging.maxSize)
     const maxFiles = config.logging.maxFiles
 

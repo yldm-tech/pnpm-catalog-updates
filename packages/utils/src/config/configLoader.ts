@@ -3,14 +3,17 @@
  *
  * Loads and merges user configuration with default configuration.
  * Supports multiple configuration file formats and locations.
+ * Supports JSON, JavaScript (.js), and TypeScript (.ts) config files.
  */
 
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { ConfigurationError } from '../error-handling/index.js'
 import {
   CONFIG_FILE_NAMES,
   DEFAULT_PACKAGE_FILTER_CONFIG,
+  type DefaultPackageFilterConfig,
   type PackageFilterConfig,
 } from './packageFilterConfig.js'
 
@@ -18,15 +21,33 @@ export class ConfigLoader {
   private static cache = new Map<string, PackageFilterConfig>()
 
   /**
-   * Load configuration from the specified directory
+   * Load configuration from the specified directory (async)
+   * Supports JSON, JavaScript (.js), and TypeScript (.ts) config files.
    */
-  static loadConfig(workspacePath: string = process.cwd()): PackageFilterConfig {
+  static async loadConfig(workspacePath: string = process.cwd()): Promise<PackageFilterConfig> {
     const cacheKey = workspacePath
     if (ConfigLoader.cache.has(cacheKey)) {
       return ConfigLoader.cache.get(cacheKey)!
     }
 
-    const userConfig = ConfigLoader.findAndLoadUserConfig(workspacePath)
+    const userConfig = await ConfigLoader.findAndLoadUserConfig(workspacePath)
+    const mergedConfig = ConfigLoader.mergeConfigs(DEFAULT_PACKAGE_FILTER_CONFIG, userConfig || {})
+
+    ConfigLoader.cache.set(cacheKey, mergedConfig)
+    return mergedConfig
+  }
+
+  /**
+   * Load configuration synchronously (JSON only)
+   * For backward compatibility with code that can't use async.
+   */
+  static loadConfigSync(workspacePath: string = process.cwd()): PackageFilterConfig {
+    const cacheKey = workspacePath
+    if (ConfigLoader.cache.has(cacheKey)) {
+      return ConfigLoader.cache.get(cacheKey)!
+    }
+
+    const userConfig = ConfigLoader.findAndLoadUserConfigSync(workspacePath)
     const mergedConfig = ConfigLoader.mergeConfigs(DEFAULT_PACKAGE_FILTER_CONFIG, userConfig || {})
 
     ConfigLoader.cache.set(cacheKey, mergedConfig)
@@ -41,14 +62,16 @@ export class ConfigLoader {
   }
 
   /**
-   * Find and load user configuration file
+   * Find and load user configuration file (async)
    */
-  private static findAndLoadUserConfig(workspacePath: string): PackageFilterConfig | null {
+  private static async findAndLoadUserConfig(
+    workspacePath: string
+  ): Promise<PackageFilterConfig | null> {
     for (const fileName of CONFIG_FILE_NAMES) {
       const configPath = join(workspacePath, fileName)
       if (existsSync(configPath)) {
         try {
-          return ConfigLoader.loadConfigFile(configPath)
+          return await ConfigLoader.loadConfigFile(configPath)
         } catch (error) {
           console.warn(`Warning: Failed to load config file ${configPath}:`, error)
         }
@@ -58,32 +81,113 @@ export class ConfigLoader {
   }
 
   /**
-   * Load configuration from a specific file
+   * Find and load user configuration file (sync, JSON only)
    */
-  private static loadConfigFile(configPath: string): PackageFilterConfig {
-    const content = readFileSync(configPath, 'utf-8')
+  private static findAndLoadUserConfigSync(workspacePath: string): PackageFilterConfig | null {
+    for (const fileName of CONFIG_FILE_NAMES) {
+      // Skip JS/TS files in sync mode
+      if (fileName.endsWith('.js') || fileName.endsWith('.ts')) {
+        continue
+      }
+      const configPath = join(workspacePath, fileName)
+      if (existsSync(configPath)) {
+        try {
+          return ConfigLoader.loadConfigFileSync(configPath)
+        } catch (error) {
+          console.warn(`Warning: Failed to load config file ${configPath}:`, error)
+        }
+      }
+    }
+    return null
+  }
 
+  /**
+   * Load configuration from a specific file (async)
+   * Supports JSON, JavaScript (.js), and TypeScript (.ts) files.
+   */
+  private static async loadConfigFile(configPath: string): Promise<PackageFilterConfig> {
     if (configPath.endsWith('.json')) {
+      const content = readFileSync(configPath, 'utf-8')
       return JSON.parse(content) as PackageFilterConfig
     }
 
-    if (configPath.endsWith('.js')) {
-      // For JavaScript config files, we would need dynamic import
-      // For now, let's focus on JSON support
-      throw new ConfigurationError(configPath, 'JavaScript config files are not yet supported')
+    if (configPath.endsWith('.js') || configPath.endsWith('.ts')) {
+      return ConfigLoader.loadDynamicConfig(configPath)
     }
 
     throw new ConfigurationError(configPath, 'unsupported config file format')
   }
 
   /**
+   * Load configuration from a specific file (sync, JSON only)
+   */
+  private static loadConfigFileSync(configPath: string): PackageFilterConfig {
+    if (configPath.endsWith('.json')) {
+      const content = readFileSync(configPath, 'utf-8')
+      return JSON.parse(content) as PackageFilterConfig
+    }
+
+    throw new ConfigurationError(
+      configPath,
+      'Only JSON config files are supported in sync mode. Use loadConfig() for JS/TS files.'
+    )
+  }
+
+  /**
+   * Dynamically import a JavaScript or TypeScript config file
+   */
+  private static async loadDynamicConfig(configPath: string): Promise<PackageFilterConfig> {
+    try {
+      // Convert to file URL for cross-platform compatibility
+      const fileUrl = pathToFileURL(configPath).href
+
+      // Dynamic import - works for .js files and .ts files if running with tsx/ts-node
+      const module = await import(fileUrl)
+
+      // Support both default export and named 'config' export
+      const config = module.default ?? module.config ?? module
+
+      if (!config || typeof config !== 'object') {
+        throw new ConfigurationError(
+          configPath,
+          'Config file must export a configuration object as default export or named "config" export'
+        )
+      }
+
+      return config as PackageFilterConfig
+    } catch (error) {
+      if (error instanceof ConfigurationError) {
+        throw error
+      }
+
+      // Provide helpful error message for TypeScript files
+      if (configPath.endsWith('.ts')) {
+        throw new ConfigurationError(
+          configPath,
+          `Failed to load TypeScript config. Make sure you're running with a TypeScript loader (tsx, ts-node) or use a .json config instead. Original error: ${error instanceof Error ? error.message : String(error)}`
+        )
+      }
+
+      throw new ConfigurationError(
+        configPath,
+        `Failed to load config file: ${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+  }
+
+  /**
    * Deep merge two configuration objects
    */
   private static mergeConfigs(
-    defaultConfig: Required<PackageFilterConfig>,
+    defaultConfig: DefaultPackageFilterConfig,
     userConfig: PackageFilterConfig
   ): PackageFilterConfig {
     const merged: PackageFilterConfig = JSON.parse(JSON.stringify(defaultConfig))
+
+    // Locale - user config overrides (no default)
+    if (userConfig.locale) {
+      merged.locale = userConfig.locale
+    }
 
     // Merge simple arrays and objects
     if (userConfig.exclude) {

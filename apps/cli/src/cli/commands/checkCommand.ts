@@ -27,6 +27,8 @@ export interface CheckCommandOptions {
   verbose?: boolean
   color?: boolean
   exitCode?: boolean
+  /** Skip security vulnerability checks */
+  noSecurity?: boolean
 }
 
 export class CheckCommand {
@@ -60,7 +62,7 @@ export class CheckCommand {
       }
 
       // Load configuration file first
-      const config = ConfigLoader.loadConfig(options.workspace || process.cwd())
+      const config = await ConfigLoader.loadConfig(options.workspace || process.cwd())
 
       // Use format from CLI options first, then config file, then default
       const effectiveFormat = options.format || config.defaults?.format || 'table'
@@ -80,6 +82,8 @@ export class CheckCommand {
         // CLI include/exclude options take priority over config file
         include: options.include?.length ? options.include : config.include,
         exclude: options.exclude?.length ? options.exclude : config.exclude,
+        // Skip security checks if --no-security flag is set
+        noSecurity: options.noSecurity,
       }
 
       // Execute check

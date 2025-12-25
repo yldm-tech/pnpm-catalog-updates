@@ -18,6 +18,10 @@ export interface SecurityConfig {
   autoFixVulnerabilities?: boolean
   allowMajorForSecurity?: boolean
   notifyOnSecurityUpdate?: boolean
+  /** Cache security check results for this many minutes (default: 60) */
+  cacheMinutes?: number
+  /** Enable security vulnerability checks (default: true) */
+  enableCheck?: boolean
 }
 
 export interface DefaultsConfig {
@@ -43,6 +47,8 @@ export interface MonorepoConfig {
 }
 
 export interface PackageFilterConfig {
+  /** UI locale: en, zh, ja, ko, de, fr, es */
+  locale?: 'en' | 'zh' | 'ja' | 'ko' | 'de' | 'fr' | 'es'
   exclude?: string[]
   include?: string[]
   defaults?: DefaultsConfig
@@ -53,9 +59,15 @@ export interface PackageFilterConfig {
 }
 
 /**
+ * Type for default config (locale is optional, others required)
+ */
+export type DefaultPackageFilterConfig = Omit<Required<PackageFilterConfig>, 'locale'> &
+  Pick<PackageFilterConfig, 'locale'>
+
+/**
  * Default built-in configuration
  */
-export const DEFAULT_PACKAGE_FILTER_CONFIG: Required<PackageFilterConfig> = {
+export const DEFAULT_PACKAGE_FILTER_CONFIG: DefaultPackageFilterConfig = {
   exclude: [],
   include: [],
   defaults: {
@@ -122,6 +134,8 @@ export const DEFAULT_PACKAGE_FILTER_CONFIG: Required<PackageFilterConfig> = {
     autoFixVulnerabilities: true,
     allowMajorForSecurity: true,
     notifyOnSecurityUpdate: false,
+    cacheMinutes: 60,
+    enableCheck: true,
   },
   advanced: {
     concurrency: 5,
@@ -139,4 +153,11 @@ export const DEFAULT_PACKAGE_FILTER_CONFIG: Required<PackageFilterConfig> = {
 /**
  * Configuration file names to look for
  */
-export const CONFIG_FILE_NAMES = ['.pcurc.json', '.pcurc.js', 'pcu.config.json', 'pcu.config.js']
+export const CONFIG_FILE_NAMES = [
+  '.pcurc.json',
+  '.pcurc.js',
+  '.pcurc.ts',
+  'pcu.config.json',
+  'pcu.config.js',
+  'pcu.config.ts',
+]

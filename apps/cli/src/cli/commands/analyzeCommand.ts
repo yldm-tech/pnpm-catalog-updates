@@ -42,7 +42,7 @@ export class AnalyzeCommand {
     // Auto-detect catalog if not specified
     let catalog = options.catalog
     if (!catalog) {
-      console.log(chalk.gray(`🔍 ${t('command.analyze.autoDetecting', { packageName })}`))
+      console.log(chalk.gray(`${t('command.analyze.autoDetecting', { packageName })}`))
       catalog =
         (await this.catalogUpdateService.findCatalogForPackage(packageName, options.workspace)) ??
         undefined
@@ -77,7 +77,7 @@ export class AnalyzeCommand {
     const aiEnabled = options.ai !== false
 
     if (aiEnabled) {
-      console.log(chalk.blue(`🤖 ${t('command.analyze.runningAI')}`))
+      console.log(chalk.blue(`${t('command.analyze.runningAI')}`))
 
       const aiService = new AIAnalysisService({
         config: {
@@ -125,7 +125,7 @@ export class AnalyzeCommand {
           targetVersion,
           provider: options.provider,
         })
-        console.warn(chalk.yellow(`⚠️  ${t('command.analyze.aiFailed')}`))
+        console.warn(chalk.yellow(`⚠️ ${t('command.analyze.aiFailed')}`))
         if (options.verbose) {
           console.warn(chalk.gray(String(aiError)))
         }

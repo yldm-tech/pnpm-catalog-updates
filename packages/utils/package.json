@@ -36,7 +36,6 @@
     "@types/node": "catalog:node20",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
-    "eslint": "catalog:",
     "prettier": "catalog:",
     "rimraf": "catalog:",
     "tsup": "catalog:",

@@ -24,6 +24,8 @@ export interface WorkspaceInfo {
   path: string
   packageCount: number
   catalogCount: number
+  isValid?: boolean
+  catalogNames?: string[]
 }
 
 /**

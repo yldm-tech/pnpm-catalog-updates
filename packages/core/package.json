@@ -48,7 +48,7 @@
     "@types/semver": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
-    "eslint": "catalog:",
+    "msw": "catalog:",
     "prettier": "catalog:",
     "rimraf": "catalog:",
     "tsup": "catalog:",

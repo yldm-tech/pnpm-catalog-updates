@@ -18,11 +18,12 @@ PCU bietet mehrere Hauptbefehle mit sowohl vollständigen Namen als auch praktis
 | `pcu check`          | `pcu chk`, `pcu -c`, `pcu --check`        | Nach veralteten Katalog-Dependencies suchen         |
 | `pcu update`         | `pcu u`, `pcu -u`, `pcu --update`         | Katalog-Dependencies aktualisieren                  |
 | `pcu analyze`        | `pcu a`, `pcu -a`, `pcu --analyze`        | Auswirkungen von Dependency-Updates analysieren     |
-| `pcu ai`             | -                                         | AI-Provider-Verwaltung und Analyse-Tests            |
 | `pcu workspace`      | `pcu w`, `pcu -s`, `pcu --workspace-info` | Workspace-Informationen und Validierung anzeigen    |
 | `pcu theme`          | `pcu t`, `pcu -t`, `pcu --theme`          | Farbthemen und UI-Einstellungen konfigurieren       |
 | `pcu security`       | `pcu sec`                                 | Sicherheitslücken-Scanning und -Fixes               |
 | `pcu cache`          | -                                         | Cache-Verwaltung (Statistiken und Löschen)          |
+| `pcu rollback`       | -                                         | Katalog-Updates auf vorherigen Zustand zurücksetzen |
+| `pcu watch`          | -                                         | Änderungen überwachen und automatisch prüfen        |
 | `pcu help`           | `pcu h`, `pcu -h`                         | Hilfeinformationen anzeigen                         |
 
 ### Spezielle Shortcuts
@@ -32,6 +33,50 @@ PCU bietet mehrere Hauptbefehle mit sowohl vollständigen Namen als auch praktis
 | `pcu -i`               | `pcu update --interactive` | Interaktiver Update-Modus               |
 | `pcu --security-audit` | `pcu security`             | Sicherheitsscan ausführen               |
 | `pcu --security-fix`   | `pcu security --fix-vulns` | Sicherheitsscan mit automatischen Fixes |
+
+---
+
+## Hybrid-Modus
+
+PCU bietet den **Hybrid-Modus** - wenn Sie einen Befehl ohne Flags ausführen, wechselt er automatisch in den interaktiven Modus und führt Sie durch die Optionen.
+
+<CodeGroup>
+
+```bash {{ title: 'Keine Flags = Interaktive Prompts' }}
+pcu check        # Prompts für Format, Ziel, Filteroptionen
+pcu update       # Prompts für Katalog, Format, Ziel, etc.
+pcu security     # Prompts für Ausgabeformat, Schweregrad-Filter
+```
+
+```bash {{ title: 'Mit Flags = Direkte Ausführung' }}
+pcu check --format table    # Führt direkt mit angegebenen Optionen aus
+pcu update --target minor   # Führt direkt mit angegebenen Optionen aus
+```
+
+</CodeGroup>
+
+### Unterstützte Befehle
+
+Der Hybrid-Modus ist für folgende Befehle verfügbar:
+
+| Befehl       | Interaktive Optionen                               |
+| ------------ | -------------------------------------------------- |
+| `check`      | Format, Ziel, Prerelease, Include/Exclude-Muster   |
+| `update`     | Katalog, Format, Ziel, Backup, Dry-Run             |
+| `analyze`    | Format                                             |
+| `workspace`  | Validierung, Statistiken, Format                   |
+| `theme`      | Theme-Auswahl, Fortschrittsbalken-Stil             |
+| `security`   | Format, Schweregrad, Auto-Fix                      |
+| `init`       | Vorlage, Framework-Optionen, Interaktiver Assistent |
+| `cache`      | Statistiken/Löschen-Auswahl                        |
+| `rollback`   | Backup-Auswahl, Bestätigung                        |
+| `watch`      | Katalog, Format, Ziel, Debounce, Löschen-Optionen  |
+
+### Vorteile
+
+- **Flexibilität**: Nahtloser Wechsel zwischen Automatisierung für Skripte und interaktiver Führung für Erkundung
+- **Auffindbarkeit**: Erkunden Sie verfügbare Funktionen durch interaktive Prompts ohne alle Optionen auswendig zu lernen
+- **Effizienz**: Erfahrene Benutzer verwenden Flags direkt, während neue Benutzer eine geführte Erfahrung erhalten
 
 ---
 
@@ -562,24 +607,21 @@ pcu theme --interactive
 
 ---
 
-## `pcu ai` - AI-Provider-Verwaltung
+## `pcu rollback` - Backup-Wiederherstellung
 
-AI-Provider-Status prüfen und AI-Analyse-Cache verwalten.
+Katalog-Updates mithilfe von Backup-Dateien auf einen vorherigen Zustand zurücksetzen.
 
 <CodeGroup>
 
-```bash {{ title: 'Status prüfen' }}
-pcu ai
-pcu ai --status
+```bash {{ title: 'Backups auflisten' }}
+pcu rollback --list
+pcu rollback -l
 ```
 
-```bash {{ title: 'Analyse testen' }}
-pcu ai --test
-```
-
-```bash {{ title: 'Cache-Verwaltung' }}
-pcu ai --cache-stats
-pcu ai --clear-cache
+```bash {{ title: 'Rollback-Operationen' }}
+pcu rollback --latest
+pcu rollback --select
+pcu rollback --delete-all
 ```
 
 </CodeGroup>
@@ -587,47 +629,151 @@ pcu ai --clear-cache
 ### Optionen
 
 <Properties>
-  <Property name="--status" type="boolean">
-    Status aller AI-Provider anzeigen (Standard)
+  <Property name="-l, --list" type="boolean">
+    Alle verfügbaren Backup-Dateien mit Zeitstempeln auflisten
   </Property>
-  <Property name="--test" type="boolean">
-    AI-Analyse mit einer Beispielanfrage testen
+  <Property name="--latest" type="boolean">
+    Automatisch auf das neueste Backup zurücksetzen
   </Property>
-  <Property name="--cache-stats" type="boolean">
-    AI-Analyse-Cache-Statistiken anzeigen
+  <Property name="--select" type="boolean">
+    Interaktive Auswahl des wiederherzustellenden Backups
   </Property>
-  <Property name="--clear-cache" type="boolean">
-    AI-Analyse-Cache löschen
+  <Property name="--delete-all" type="boolean">
+    Alle Backup-Dateien löschen (erfordert Bestätigung)
+  </Property>
+  <Property name="-w, --workspace" type="string">
+    Workspace-Verzeichnispfad (Standard: aktuelles Verzeichnis)
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    Detaillierte Informationen während des Rollbacks anzeigen
   </Property>
 </Properties>
 
-### Unterstützte AI-Provider
+### Backup-System
 
-PCU erkennt und verwendet automatisch verfügbare AI-CLI-Tools:
+PCU erstellt automatisch Backup-Dateien, wenn Sie das Flag `--create-backup` mit dem Update-Befehl verwenden:
 
-| Provider   | CLI-Tool         | Erkennungsmethode              |
-| ---------- | ---------------- | ------------------------------ |
-| Claude     | `claude`         | PATH-Suche und Versionsausgabe |
-| Gemini     | `gemini`         | PATH-Suche und Versionsausgabe |
-| OpenAI     | `codex`          | PATH-Suche und Versionsausgabe |
+```bash
+pcu update --create-backup
+```
+
+Backup-Dateien werden mit Zeitstempeln gespeichert und enthalten den ursprünglichen `pnpm-workspace.yaml`-Zustand vor Updates.
 
 ### Verwendungsbeispiele
 
-#### Provider-Status anzeigen
+#### Verfügbare Backups auflisten
 
 ```bash
-pcu ai
+pcu rollback --list
 ```
 
-Zeigt alle erkannten AI-Provider mit Verfügbarkeitsstatus, Pfad und Version.
+Zeigt alle Backup-Dateien mit Erstellungszeitstempeln und Dateigrößen.
 
-#### AI-Analyse testen
+#### Auf neuestes Backup zurücksetzen
 
 ```bash
-pcu ai --test
+pcu rollback --latest
 ```
 
-Führt einen Testlauf mit einem Beispiel-Abhängigkeitsupdate durch, um zu überprüfen, ob die AI-Analyse funktioniert.
+Stellt automatisch das neueste Backup ohne Nachfrage wieder her.
+
+#### Interaktive Backup-Auswahl
+
+```bash
+pcu rollback --select
+```
+
+Öffnet eine interaktive Eingabeaufforderung zur Auswahl des wiederherzustellenden Backups.
+
+---
+
+## `pcu watch` - Überwachungsmodus
+
+Änderungen in `pnpm-workspace.yaml` überwachen und automatisch nach veralteten Dependencies prüfen.
+
+<CodeGroup>
+
+```bash {{ title: 'Grundlegende Überwachung' }}
+pcu watch
+```
+
+```bash {{ title: 'Erweiterte Überwachung' }}
+pcu watch --debounce 1000 --clear
+pcu watch --catalog default --target minor
+pcu watch --include "react*" --exclude "*-dev"
+```
+
+</CodeGroup>
+
+### Optionen
+
+<Properties>
+  <Property name="--catalog" type="string">
+    Nur bestimmten Katalog prüfen
+  </Property>
+  <Property name="-f, --format" type="enum" default="table">
+    Ausgabeformat: table, json, markdown
+  </Property>
+  <Property name="-t, --target" type="enum" default="latest">
+    Update-Ziel: latest, minor, patch
+  </Property>
+  <Property name="--prerelease" type="boolean">
+    Prerelease-Versionen einbeziehen
+  </Property>
+  <Property name="--include" type="string">
+    Pakete einbeziehen, die dem Muster entsprechen
+  </Property>
+  <Property name="--exclude" type="string">
+    Pakete ausschließen, die dem Muster entsprechen
+  </Property>
+  <Property name="--debounce" type="number" default="300">
+    Entprellungsverzögerung in Millisekunden vor der Prüfung
+  </Property>
+  <Property name="--clear" type="boolean">
+    Konsole vor jeder Prüfung löschen
+  </Property>
+  <Property name="-w, --workspace" type="string">
+    Workspace-Verzeichnispfad (Standard: aktuelles Verzeichnis)
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    Detaillierte Informationen anzeigen
+  </Property>
+</Properties>
+
+### Überwachungsverhalten
+
+Der Watch-Befehl bietet kontinuierliche Überwachung mit intelligenten Funktionen:
+
+- **Initiale Prüfung**: Führt sofort beim Start eine Prüfung durch
+- **Entprellung**: Verhindert schnelle Wiederholungsprüfungen bei schnellen Dateiänderungen
+- **Sauberes Beenden**: Drücken Sie `Strg+C` zum sauberen Beenden
+- **Echtzeit-Updates**: Zeigt veraltete Paketanzahlen bei Erkennung
+
+### Verwendungsbeispiele
+
+#### Grundlegender Überwachungsmodus
+
+```bash
+pcu watch
+```
+
+Überwacht die `pnpm-workspace.yaml` des aktuellen Verzeichnisses auf Änderungen.
+
+#### Überwachung mit Konsolen-Löschung
+
+```bash
+pcu watch --clear
+```
+
+Löscht die Konsole vor jeder Prüfung für sauberere Ausgabe.
+
+#### Überwachung mit benutzerdefinierter Entprellung
+
+```bash
+pcu watch --debounce 1000
+```
+
+Wartet 1 Sekunde nach Dateiänderungen vor der Prüfung.
 
 ---
 

@@ -38,9 +38,6 @@ export class ProgressBar {
     this.text = text || this.text
     this.startTime = Date.now()
 
-    // 在开始新进度条前，彻底清理可能的残留内容
-    this.clearPreviousOutput()
-
     // 强制使用percentageBar，即使没有total也要创建
     // 这样可以避免spinner导致的冲突问题
     const effectiveTotal = this.total > 0 ? this.total : 1 // 如果没有total，设为1避免除零错误
@@ -87,7 +84,9 @@ export class ProgressBar {
     // 只使用percentageBar，不使用spinner
     if (this.percentageBar) {
       const successText = text || this.getCompletionText()
+      // complete() will clear the progress bar output
       this.percentageBar.complete(successText)
+      // Now print the success message on a clean line
       console.log(this.getSuccessMessage(successText))
       this.percentageBar = null
     }
@@ -100,6 +99,9 @@ export class ProgressBar {
     // 只使用percentageBar，不使用spinner
     if (this.percentageBar) {
       const failText = text || this.getFailureText()
+      // Clear the progress bar first
+      this.percentageBar.complete(failText)
+      // Now print the failure message on a clean line
       console.log(this.getFailureMessage(failText))
       this.percentageBar = null
     }
@@ -112,13 +114,13 @@ export class ProgressBar {
     const elapsed = this.getElapsedTime()
     switch (this.style) {
       case 'gradient':
-        return `${chalk.magenta.bold('✨')} ${chalk.green(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.magenta.bold('*')} ${chalk.green(text)} ${chalk.gray(elapsed)}`
       case 'fancy':
-        return `${chalk.cyan('🎉')} ${chalk.green.bold(text)} ${chalk.cyan('🎉')} ${chalk.gray(elapsed)}`
+        return `${chalk.cyan('*')} ${chalk.green.bold(text)} ${chalk.cyan('*')} ${chalk.gray(elapsed)}`
       case 'minimal':
         return chalk.green(text)
       case 'rainbow':
-        return `${chalk.magenta('🌈')} ${chalk.green(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.magenta('~')} ${chalk.green(text)} ${chalk.gray(elapsed)}`
       case 'neon':
         return `${chalk.green.bold(`⚡ ${t('progress.success').toUpperCase()}`)} ${chalk.green(text)} ${chalk.gray(elapsed)}`
       default:
@@ -133,9 +135,9 @@ export class ProgressBar {
     const elapsed = this.getElapsedTime()
     switch (this.style) {
       case 'gradient':
-        return `${chalk.red.bold('💥')} ${chalk.red(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.red.bold('!!')} ${chalk.red(text)} ${chalk.gray(elapsed)}`
       case 'fancy':
-        return `${chalk.red('💔')} ${chalk.red.bold(text)} ${chalk.red('💔')} ${chalk.gray(elapsed)}`
+        return `${chalk.red('!!')} ${chalk.red.bold(text)} ${chalk.red('!!')} ${chalk.gray(elapsed)}`
       case 'minimal':
         return chalk.red(text)
       case 'rainbow':
@@ -190,6 +192,9 @@ export class ProgressBar {
     // 只使用percentageBar，不使用spinner
     if (this.percentageBar) {
       const warnText = text || this.text
+      // Clear the progress bar first
+      this.percentageBar.complete(warnText)
+      // Now print the warning message on a clean line
       console.log(this.getWarningMessage(warnText))
       this.percentageBar = null
     }
@@ -202,6 +207,9 @@ export class ProgressBar {
     // 只使用percentageBar，不使用spinner
     if (this.percentageBar) {
       const infoText = text || this.text
+      // Clear the progress bar first
+      this.percentageBar.complete(infoText)
+      // Now print the info message on a clean line
       console.log(this.getInfoMessage(infoText))
       this.percentageBar = null
     }
@@ -214,7 +222,7 @@ export class ProgressBar {
     const elapsed = this.getElapsedTime()
     switch (this.style) {
       case 'gradient':
-        return `${chalk.yellow.bold('⚡')} ${chalk.yellow(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.yellow.bold('!')} ${chalk.yellow(text)} ${chalk.gray(elapsed)}`
       case 'fancy':
         return `${chalk.yellow('⚠️')} ${chalk.yellow.bold(text)} ${chalk.yellow('⚠️')} ${chalk.gray(elapsed)}`
       case 'minimal':
@@ -235,17 +243,17 @@ export class ProgressBar {
     const elapsed = this.getElapsedTime()
     switch (this.style) {
       case 'gradient':
-        return `${chalk.blue.bold('ℹ️')} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.blue.bold('[i]')} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
       case 'fancy':
-        return `${chalk.blue('💡')} ${chalk.blue.bold(text)} ${chalk.blue('💡')} ${chalk.gray(elapsed)}`
+        return `${chalk.blue('[i]')} ${chalk.blue.bold(text)} ${chalk.blue('[i]')} ${chalk.gray(elapsed)}`
       case 'minimal':
         return chalk.blue(text)
       case 'rainbow':
-        return `${chalk.blue('ℹ️')} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.blue('[i]')} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
       case 'neon':
-        return `${chalk.blue.bold(`⚡ ${t('progress.info').toUpperCase()}`)} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.blue.bold(`[i] ${t('progress.info').toUpperCase()}`)} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
       default:
-        return `${chalk.blue('ℹ️')} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
+        return `${chalk.blue('[i]')} ${chalk.blue(text)} ${chalk.gray(elapsed)}`
     }
   }
 
@@ -255,20 +263,10 @@ export class ProgressBar {
   stop(): void {
     // 只使用percentageBar，不使用spinner
     if (this.percentageBar) {
+      // Clear the progress bar before stopping
+      this.percentageBar.complete('')
       this.percentageBar = null
     }
-  }
-
-  /**
-   * Clear previous output to prevent residual progress bars
-   */
-  private clearPreviousOutput(): void {
-    // 清理可能的残留进度条显示（最多清理5行，应该足够了）
-    for (let i = 0; i < 5; i++) {
-      process.stdout.write('\x1b[1A\r\x1b[K') // 上移一行并清除
-    }
-    // 确保光标在正确位置
-    process.stdout.write('\r')
   }
 
   /**
@@ -404,22 +402,7 @@ export class PercentageProgressBar {
     this.startTime = Date.now()
     this.isFirstRender = true // 重置首次渲染标记
 
-    // 清理可能的残留输出
-    this.clearPreviousLines()
-
     this.render()
-  }
-
-  /**
-   * Clear any previous output lines to prevent conflicts
-   */
-  private clearPreviousLines(): void {
-    // 更强力的清理：清理多行可能的残留内容
-    for (let i = 0; i < 6; i++) {
-      process.stdout.write('\x1b[1A\r\x1b[2K') // 上移一行并完全清除该行
-    }
-    // 回到起始位置
-    process.stdout.write('\r')
   }
 
   update(current: number, text?: string): void {
@@ -437,8 +420,15 @@ export class PercentageProgressBar {
   complete(text?: string): void {
     this.current = this.total
     if (text) this.text = text
-    this.render()
-    console.log('') // New line after completion
+
+    // Clear the multi-line progress bar output completely before final state
+    if (this.useMultiLine && !this.isFirstRender) {
+      // Move up 2 lines (text line + progress bar line) and clear them
+      process.stdout.write('\x1b[2A\r\x1b[2K\x1b[1B\x1b[2K\x1b[1A\r')
+    }
+
+    // Don't render anymore - just let the caller handle the final message
+    this.lastRender = ''
   }
 
   private render(): void {

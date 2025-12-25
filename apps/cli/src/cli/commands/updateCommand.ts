@@ -49,6 +49,8 @@ export interface UpdateCommandOptions {
   install?: boolean
   // Show changelog for updates
   changelog?: boolean
+  // Skip security vulnerability checks
+  noSecurity?: boolean
 }
 
 export class UpdateCommand {
@@ -76,7 +78,7 @@ export class UpdateCommand {
       progressBar.start(t('command.update.loadingConfig'))
 
       // Load configuration file first
-      const config = ConfigLoader.loadConfig(options.workspace || process.cwd())
+      const config = await ConfigLoader.loadConfig(options.workspace || process.cwd())
 
       // Use format from CLI options first, then config file, then default
       const effectiveFormat = options.format || config.defaults?.format || 'table'
@@ -100,6 +102,8 @@ export class UpdateCommand {
         dryRun: options.dryRun ?? config.defaults?.dryRun ?? false,
         force: options.force ?? false,
         createBackup: options.createBackup ?? config.defaults?.createBackup ?? false,
+        // Skip security vulnerability checks if --no-security flag is set
+        noSecurity: options.noSecurity,
       }
 
       // Step 1: Planning updates
@@ -115,9 +119,8 @@ export class UpdateCommand {
         return
       }
 
-      console.log(
-        StyledText.iconPackage(t('command.update.foundUpdates', { count: plan.totalUpdates }))
-      )
+      // Complete the progress bar before showing results
+      progressBar.succeed(t('command.update.foundUpdates', { count: plan.totalUpdates }))
 
       // Display changelog if enabled
       if (options.changelog) {
@@ -129,7 +132,6 @@ export class UpdateCommand {
       if (options.interactive) {
         finalPlan = await this.interactiveSelection(plan)
         if (!finalPlan.updates.length) {
-          progressBar.warn(t('command.update.noUpdatesSelected'))
           console.log(StyledText.iconWarning(t('command.update.noUpdatesSelected')))
           return
         }
@@ -137,13 +139,6 @@ export class UpdateCommand {
 
       // AI batch analysis if enabled - analyze ALL packages in one request
       if (options.ai) {
-        progressBar.update(
-          `🤖 ${t('command.update.runningBatchAI', { count: finalPlan.updates.length })}`,
-          2.5,
-          4
-        )
-        progressBar.stop()
-
         console.log(
           chalk.blue(
             `\n🤖 ${t('command.update.runningBatchAI', { count: finalPlan.updates.length })}`
@@ -240,21 +235,11 @@ export class UpdateCommand {
             console.warn(chalk.gray(String(aiError)))
           }
         }
-
-        // Restart progress bar
-        progressBar = new ProgressBar({
-          text: t('command.update.preparingApply'),
-          total: 4,
-        })
-        progressBar.start(t('command.update.preparingApply'))
       }
 
       // Step 3: Apply updates
-      progressBar.update(t('command.update.preparingApply'), 3, 4)
-
       if (!options.dryRun) {
-        // Replace the progress bar with one for applying updates
-        progressBar.stop()
+        // Create new progress bar for applying updates
         progressBar = new ProgressBar({
           text: t('command.update.applyingUpdates'),
           total: finalPlan.updates.length,
@@ -271,14 +256,24 @@ export class UpdateCommand {
           await this.runPnpmInstall(updateOptions.workspacePath || process.cwd(), options.verbose)
         }
       } else {
-        progressBar.update(t('command.update.generatingPreview'), 4, 4)
-        progressBar.succeed(t('command.update.previewComplete'))
         console.log(StyledText.iconInfo(t('command.update.dryRunHint')))
         console.log(JSON.stringify(finalPlan, null, 2))
       }
 
       console.log(StyledText.iconComplete(t('command.update.processComplete')))
     } catch (error) {
+      // Handle user cancellation gracefully (Ctrl+C)
+      if (
+        error instanceof Error &&
+        (error.name === 'ExitPromptError' || error.message.includes('force closed'))
+      ) {
+        if (progressBar) {
+          progressBar.stop()
+        }
+        console.log(StyledText.iconWarning(t('command.update.cancelled')))
+        return
+      }
+
       logger.error('Update command failed', error instanceof Error ? error : undefined, { options })
       if (progressBar) {
         progressBar.fail(t('progress.operationFailed'))
@@ -435,7 +430,6 @@ export class UpdateCommand {
       const pnpmProcess = spawn('pnpm', ['install'], {
         cwd: workspacePath,
         stdio: verbose ? 'inherit' : 'pipe',
-        shell: true,
       })
 
       let stdout = ''

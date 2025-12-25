@@ -13,6 +13,7 @@ import type { NpmRegistryService } from '../../../infrastructure/external-servic
 const mocks = vi.hoisted(() => ({
   getPackageConfig: vi.fn(),
   loadConfig: vi.fn(),
+  loadConfigAsync: vi.fn(),
   handleSecurityCheckFailure: vi.fn(),
   handlePackageQueryFailure: vi.fn(),
 }))
@@ -98,7 +99,8 @@ vi.mock('@pcu/utils', () => {
     InvalidVersionError,
     WorkspaceNotFoundError,
     ConfigLoader: {
-      loadConfig: mocks.loadConfig,
+      loadConfig: mocks.loadConfigAsync,
+      loadConfigSync: mocks.loadConfig,
       getPackageConfig: mocks.getPackageConfig,
     },
     UserFriendlyErrorHandler: {
@@ -128,6 +130,14 @@ vi.mock('@pcu/utils', () => {
     getConfig: vi.fn(() => ({
       getConfig: vi.fn(() => ({ logLevel: 'info' })),
     })),
+    // Add parallelLimit mock for concurrent operations
+    parallelLimit: vi.fn(
+      async (items: [string, unknown][], callback: (item: [string, unknown]) => Promise<void>) => {
+        for (const item of items) {
+          await callback(item)
+        }
+      }
+    ),
   }
 })
 
@@ -170,6 +180,20 @@ describe('CatalogUpdateService', () => {
       advanced: {},
       monorepo: {},
       security: { notifyOnSecurityUpdate: false },
+    })
+
+    // Setup async loadConfig mock
+    mocks.loadConfigAsync.mockResolvedValue({
+      include: [],
+      exclude: [],
+      defaults: {},
+      advanced: {
+        concurrency: 8,
+      },
+      security: {
+        enableAudit: true,
+        notifyOnSecurityUpdate: false,
+      },
     })
 
     // Create mock dependencies map

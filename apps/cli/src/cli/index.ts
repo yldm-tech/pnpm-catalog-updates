@@ -10,6 +10,8 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+// Import ExitPromptError for proper instanceof checking (QUAL-004 fix)
+import { ExitPromptError } from '@inquirer/core'
 // Services and Dependencies
 import type { AnalysisType } from '@pcu/core'
 import {
@@ -19,10 +21,53 @@ import {
   WorkspaceService,
 } from '@pcu/core'
 // CLI Commands
-import { ConfigLoader, isCommandExitError, logger, t, VersionChecker } from '@pcu/utils'
+import { ConfigLoader, I18n, isCommandExitError, logger, t, VersionChecker } from '@pcu/utils'
+
+/**
+ * Check if error is an ExitPromptError from @inquirer/core (user pressed Ctrl+C)
+ * Uses instanceof as primary method, with fallbacks for cross-realm scenarios
+ */
+function isExitPromptError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+
+  // Primary: instanceof check (most reliable when in same realm)
+  if (error instanceof ExitPromptError) return true
+
+  // Fallback 1: Check by name property (for cross-realm scenarios)
+  if ('name' in error && (error as { name: string }).name === 'ExitPromptError') return true
+
+  // Fallback 2: Check by constructor name (for edge cases)
+  if (error.constructor?.name === 'ExitPromptError') return true
+
+  return false
+}
+
+/**
+ * Unified command error handler to reduce code duplication (QUAL-003)
+ * Handles common error types: CommandExitError, ExitPromptError, and general errors
+ */
+function handleCommandError(error: unknown, commandName: string): never {
+  // Handle structured exit codes
+  if (isCommandExitError(error)) {
+    process.exit(error.exitCode)
+  }
+
+  // Handle user cancellation (Ctrl+C) gracefully
+  if (isExitPromptError(error)) {
+    console.log(chalk.gray(`\n${t('cli.cancelled')}`))
+    process.exit(0)
+  }
+
+  // Log and display general errors
+  logger.error(`${commandName} command failed`, error instanceof Error ? error : undefined, {
+    command: commandName,
+  })
+  console.error(chalk.red(`❌ ${t('cli.error')}`), error)
+  process.exit(1)
+}
+
 import chalk from 'chalk'
-import { Command } from 'commander'
-import { AiCommand } from './commands/aiCommand.js'
+import { Command, Option } from 'commander'
 import { AnalyzeCommand } from './commands/analyzeCommand.js'
 import { CacheCommand } from './commands/cacheCommand.js'
 import { CheckCommand } from './commands/checkCommand.js'
@@ -34,6 +79,21 @@ import { UpdateCommand } from './commands/updateCommand.js'
 import { WatchCommand } from './commands/watchCommand.js'
 import { WorkspaceCommand } from './commands/workspaceCommand.js'
 import { type OutputFormat, OutputFormatter } from './formatters/outputFormatter.js'
+import {
+  hasProvidedOptions,
+  interactiveOptionsCollector,
+} from './interactive/InteractiveOptionsCollector.js'
+
+/**
+ * CLI Option Choices - provides auto-completion and validation in --help
+ */
+const CLI_CHOICES = {
+  format: ['table', 'json', 'yaml', 'minimal'] as const,
+  target: ['latest', 'greatest', 'minor', 'patch', 'newest'] as const,
+  provider: ['auto', 'claude', 'gemini', 'codex'] as const,
+  analysisType: ['impact', 'security', 'compatibility', 'recommend'] as const,
+  severity: ['low', 'moderate', 'high', 'critical'] as const,
+} as const
 
 // Get package.json for version info
 const __filename = fileURLToPath(import.meta.url)
@@ -41,23 +101,48 @@ const __dirname = dirname(__filename)
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'))
 
 /**
- * Create service dependencies with configuration support
+ * Service type definitions
  */
-function createServices(workspacePath?: string) {
-  const fileSystemService = new FileSystemService()
-  const workspaceRepository = new FileWorkspaceRepository(fileSystemService)
-  // Use factory method to create CatalogUpdateService with configuration
-  const catalogUpdateService = CatalogUpdateService.createWithConfig(
-    workspaceRepository,
-    workspacePath
-  )
-  const workspaceService = new WorkspaceService(workspaceRepository)
+type Services = {
+  fileSystemService: FileSystemService
+  workspaceRepository: FileWorkspaceRepository
+  catalogUpdateService: CatalogUpdateService
+  workspaceService: WorkspaceService
+}
 
-  return {
-    fileSystemService,
-    workspaceRepository,
-    catalogUpdateService,
-    workspaceService,
+/**
+ * Lazy service factory - creates services only when first accessed
+ * Solves QUAL-005: Services were previously created eagerly even for --help
+ */
+class LazyServiceFactory {
+  private services: Services | null = null
+  private workspacePath?: string
+
+  constructor(workspacePath?: string) {
+    this.workspacePath = workspacePath
+  }
+
+  /**
+   * Get services, creating them lazily on first access
+   */
+  get(): Services {
+    if (!this.services) {
+      const fileSystemService = new FileSystemService()
+      const workspaceRepository = new FileWorkspaceRepository(fileSystemService)
+      const catalogUpdateService = CatalogUpdateService.createWithConfig(
+        workspaceRepository,
+        this.workspacePath
+      )
+      const workspaceService = new WorkspaceService(workspaceRepository)
+
+      this.services = {
+        fileSystemService,
+        workspaceRepository,
+        catalogUpdateService,
+        workspaceService,
+      }
+    }
+    return this.services
   }
 }
 
@@ -80,7 +165,7 @@ function parseBooleanFlag(value: unknown): boolean {
  * Check for version updates at startup
  */
 async function checkForUpdates(
-  config: ReturnType<typeof ConfigLoader.loadConfig>
+  config: Awaited<ReturnType<typeof ConfigLoader.loadConfig>>
 ): Promise<boolean> {
   if (VersionChecker.shouldCheckForUpdates() && config.advanced?.checkForUpdates !== false) {
     try {
@@ -112,330 +197,436 @@ async function checkForUpdates(
 
 /**
  * Register all CLI commands
+ * Uses lazy service factory to defer service instantiation until command execution
  */
-function registerCommands(program: Command, services: ReturnType<typeof createServices>): void {
+function registerCommands(program: Command, serviceFactory: LazyServiceFactory): void {
   // Check command
   program
     .command('check')
-    .alias('chk')
     .description(t('cli.description.check'))
+    .option('-i, --interactive', t('cli.option.interactive'))
     .option('--catalog <name>', t('cli.option.catalog'))
-    .option('-f, --format <type>', t('cli.option.format'), 'table')
-    .option('-t, --target <type>', t('cli.option.target'), 'latest')
+    .addOption(
+      new Option('-f, --format <type>', t('cli.option.format'))
+        .choices(CLI_CHOICES.format)
+        .default('table')
+    )
+    .addOption(
+      new Option('-t, --target <type>', t('cli.option.target'))
+        .choices(CLI_CHOICES.target)
+        .default('latest')
+    )
     .option('--prerelease', t('cli.option.prerelease'))
     .option('--include <pattern>', t('cli.option.include'), [])
     .option('--exclude <pattern>', t('cli.option.exclude'), [])
     .option('--exit-code', t('cli.option.exitCode'))
+    .option('--no-security', t('cli.option.noSecurity'))
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
+
+        // Check if any meaningful options were provided (not just defaults)
+        // Options are automatically extracted from command definition
+        // Exclude 'interactive' from the check since it controls mode, not data
+        let finalOptions = options
+
+        // Enter interactive mode if:
+        // 1. Explicitly requested with -i/--interactive
+        // 2. No other meaningful options provided
+        if (options.interactive || !hasProvidedOptions(options, command, ['interactive'])) {
+          // Enter interactive mode
+          const collected = await interactiveOptionsCollector.collectCheckOptions({
+            ...options,
+            workspace: globalOptions.workspace,
+          })
+          finalOptions = { ...options, ...collected }
+        }
+
+        const services = serviceFactory.get()
         const checkCommand = new CheckCommand(services.catalogUpdateService)
 
         await checkCommand.execute({
           workspace: globalOptions.workspace,
-          catalog: options.catalog,
-          format: options.format,
-          target: options.target,
-          prerelease: options.prerelease,
-          include: Array.isArray(options.include)
-            ? options.include
-            : [options.include].filter(Boolean),
-          exclude: Array.isArray(options.exclude)
-            ? options.exclude
-            : [options.exclude].filter(Boolean),
+          catalog: finalOptions.catalog,
+          format: finalOptions.format,
+          target: finalOptions.target,
+          prerelease: finalOptions.prerelease,
+          include: Array.isArray(finalOptions.include)
+            ? finalOptions.include
+            : [finalOptions.include].filter(Boolean),
+          exclude: Array.isArray(finalOptions.exclude)
+            ? finalOptions.exclude
+            : [finalOptions.exclude].filter(Boolean),
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
-          exitCode: options.exitCode,
+          exitCode: finalOptions.exitCode,
+          noSecurity: finalOptions.security === false,
         })
       } catch (error) {
-        if (isCommandExitError(error)) {
-          process.exit(error.exitCode)
-        }
-        logger.error('Check command failed', error instanceof Error ? error : undefined, {
-          command: 'check',
-        })
-        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
-        process.exit(1)
+        handleCommandError(error, 'check')
       }
     })
 
   // Update command
   program
     .command('update')
-    .alias('u')
     .description(t('cli.description.update'))
+    // Basic options
     .option('-i, --interactive', t('cli.option.interactive'))
     .option('-d, --dry-run', t('cli.option.dryRun'))
-    .option('-t, --target <type>', t('cli.option.target'), 'latest')
+    .option('--force', t('cli.option.force'))
+    .option('-b, --create-backup', t('cli.option.createBackup'))
+    // Filter options
     .option('--catalog <name>', t('cli.option.catalog'))
     .option('--include <pattern>', t('cli.option.include'), [])
     .option('--exclude <pattern>', t('cli.option.exclude'), [])
-    .option('--force', t('cli.option.force'))
+    .addOption(
+      new Option('-t, --target <type>', t('cli.option.target'))
+        .choices(CLI_CHOICES.target)
+        .default('latest')
+    )
     .option('--prerelease', t('cli.option.prerelease'))
-    .option('-b, --create-backup', t('cli.option.createBackup'))
-    .option('-f, --format <type>', t('cli.option.format'), 'table')
-    .option('--ai', t('cli.option.ai'))
-    .option('--provider <name>', t('cli.option.provider'), 'auto')
-    .option('--analysis-type <type>', t('cli.option.analysisType'), 'impact')
-    .option('--skip-cache', t('cli.option.skipCache'))
-    .option('--install', t('cli.option.install'), true)
-    .option('--no-install', t('cli.option.noInstall'))
+    // Output options
+    .addOption(
+      new Option('-f, --format <type>', t('cli.option.format'))
+        .choices(CLI_CHOICES.format)
+        .default('table')
+    )
     .option('--changelog', t('cli.option.changelog'))
     .option('--no-changelog', t('cli.option.noChangelog'))
+    // AI options
+    .option('--ai', t('cli.option.ai'))
+    .addOption(
+      new Option('--provider <name>', t('cli.option.provider'))
+        .choices(CLI_CHOICES.provider)
+        .default('auto')
+    )
+    .addOption(
+      new Option('--analysis-type <type>', t('cli.option.analysisType'))
+        .choices(CLI_CHOICES.analysisType)
+        .default('impact')
+    )
+    .option('--skip-cache', t('cli.option.skipCache'))
+    // Post-update options
+    .option('--install', t('cli.option.install'), true)
+    .option('--no-install', t('cli.option.noInstall'))
+    .option('--no-security', t('cli.option.noSecurity'))
+    .addHelpText(
+      'after',
+      () => `
+${t('cli.help.optionGroupsTitle')}
+  ${t('cli.help.groupBasic')}    -i, -d, --force, -b
+  ${t('cli.help.groupFilter')}   --catalog, --include, --exclude, -t, --prerelease
+  ${t('cli.help.groupOutput')}   -f, --changelog
+  ${t('cli.help.groupAI')}       --ai, --provider, --analysis-type, --skip-cache
+  ${t('cli.help.groupInstall')}  --install, --no-security
+
+${t('cli.help.tipLabel')} ${t('cli.help.tipContent', { locale: I18n.getLocale() })}
+`
+    )
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
+
+        // Check if any meaningful options were provided
+        // Options are automatically extracted from command definition
+        // Exclude 'interactive' from the check since it controls mode, not data
+        let finalOptions = options
+
+        // Enter interactive mode if:
+        // 1. Explicitly requested with -i/--interactive
+        // 2. No other meaningful options provided
+        if (options.interactive || !hasProvidedOptions(options, command, ['interactive'])) {
+          // Enter interactive mode
+          const collected = await interactiveOptionsCollector.collectUpdateOptions({
+            ...options,
+            workspace: globalOptions.workspace,
+          })
+          finalOptions = { ...options, ...collected }
+        }
+
+        const services = serviceFactory.get()
         const updateCommand = new UpdateCommand(services.catalogUpdateService)
 
         await updateCommand.execute({
           workspace: globalOptions.workspace,
-          catalog: options.catalog,
-          format: options.format,
-          target: options.target,
-          interactive: options.interactive,
-          dryRun: options.dryRun,
-          force: options.force,
-          prerelease: options.prerelease,
-          include: Array.isArray(options.include)
-            ? options.include
-            : [options.include].filter(Boolean),
-          exclude: Array.isArray(options.exclude)
-            ? options.exclude
-            : [options.exclude].filter(Boolean),
-          createBackup: options.createBackup,
+          catalog: finalOptions.catalog,
+          format: finalOptions.format,
+          target: finalOptions.target,
+          interactive: finalOptions.interactive,
+          dryRun: finalOptions.dryRun,
+          force: finalOptions.force,
+          prerelease: finalOptions.prerelease,
+          include: Array.isArray(finalOptions.include)
+            ? finalOptions.include
+            : [finalOptions.include].filter(Boolean),
+          exclude: Array.isArray(finalOptions.exclude)
+            ? finalOptions.exclude
+            : [finalOptions.exclude].filter(Boolean),
+          createBackup: finalOptions.createBackup,
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
           // AI batch analysis options
-          ai: parseBooleanFlag(options.ai),
-          provider: options.provider,
-          analysisType: options.analysisType as AnalysisType,
-          skipCache: parseBooleanFlag(options.skipCache),
+          ai: parseBooleanFlag(finalOptions.ai),
+          provider: finalOptions.provider,
+          analysisType: finalOptions.analysisType as AnalysisType,
+          skipCache: parseBooleanFlag(finalOptions.skipCache),
           // Auto install option
-          install: options.install,
+          install: finalOptions.install,
           // Changelog display option
-          changelog: options.changelog,
+          changelog: finalOptions.changelog,
+          // Skip security vulnerability checks
+          noSecurity: finalOptions.security === false,
         })
-      } catch (error) {
-        if (isCommandExitError(error)) {
-          process.exit(error.exitCode)
+
+        // Ensure process exits after interactive mode (stdin may keep event loop alive)
+        if (finalOptions.interactive) {
+          process.exit(0)
         }
-        logger.error('Update command failed', error instanceof Error ? error : undefined, {
-          command: 'update',
-        })
-        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
-        process.exit(1)
+      } catch (error) {
+        handleCommandError(error, 'update')
       }
     })
 
   // Analyze command
   program
     .command('analyze')
-    .alias('a')
     .description(t('cli.description.analyze'))
-    .argument('<package>', t('cli.argument.package'))
+    .argument('[package]', t('cli.argument.package'))
     .argument('[version]', t('cli.argument.version'))
     .option('--catalog <name>', t('cli.option.catalog'))
-    .option('-f, --format <type>', t('cli.option.format'), 'table')
+    .addOption(
+      new Option('-f, --format <type>', t('cli.option.format'))
+        .choices(CLI_CHOICES.format)
+        .default('table')
+    )
     .option('--no-ai', t('cli.option.noAi'))
-    .option('--provider <name>', t('cli.option.provider'), 'auto')
-    .option('--analysis-type <type>', t('cli.option.analysisType'), 'impact')
+    .addOption(
+      new Option('--provider <name>', t('cli.option.provider'))
+        .choices(CLI_CHOICES.provider)
+        .default('auto')
+    )
+    .addOption(
+      new Option('--analysis-type <type>', t('cli.option.analysisType'))
+        .choices(CLI_CHOICES.analysisType)
+        .default('impact')
+    )
     .option('--skip-cache', t('cli.option.skipCache'))
     .action(async (packageName, version, options, command) => {
       try {
         const globalOptions = command.parent.opts()
+
+        let finalPackageName = packageName
+        let finalVersion = version
+        let finalOptions = options
+
+        // If no package name provided, enter interactive mode
+        if (!packageName) {
+          const collected = await interactiveOptionsCollector.collectAnalyzeOptions({
+            ...options,
+            workspace: globalOptions.workspace,
+          })
+          finalPackageName = collected.packageName
+          finalVersion = collected.version
+          finalOptions = { ...options, ...collected }
+        }
+
+        const services = serviceFactory.get()
         const analyzeCommand = new AnalyzeCommand(
           services.catalogUpdateService,
           services.workspaceService
         )
 
-        await analyzeCommand.execute(packageName, version, {
+        await analyzeCommand.execute(finalPackageName, finalVersion, {
           workspace: globalOptions.workspace,
-          catalog: options.catalog,
-          format: options.format,
-          ai: options.ai,
-          provider: options.provider,
-          analysisType: options.analysisType as AnalysisType,
-          skipCache: parseBooleanFlag(options.skipCache),
+          catalog: finalOptions.catalog,
+          format: finalOptions.format,
+          ai: finalOptions.ai,
+          provider: finalOptions.provider,
+          analysisType: finalOptions.analysisType as AnalysisType,
+          skipCache: parseBooleanFlag(finalOptions.skipCache),
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         })
       } catch (error) {
-        if (isCommandExitError(error)) {
-          process.exit(error.exitCode)
-        }
-        logger.error('Analyze command failed', error instanceof Error ? error : undefined, {
-          command: 'analyze',
-        })
-        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
-        process.exit(1)
+        handleCommandError(error, 'analyze')
       }
     })
 
   // Workspace command
   program
     .command('workspace')
-    .alias('w')
     .description(t('cli.description.workspace'))
     .option('--validate', t('cli.option.validate'))
-    .option('-s, --stats', t('cli.option.stats'))
-    .option('-f, --format <type>', t('cli.option.format'), 'table')
+    .option('--info', t('cli.option.stats'))
+    .addOption(
+      new Option('-f, --format <type>', t('cli.option.format'))
+        .choices(CLI_CHOICES.format)
+        .default('table')
+    )
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
+
+        // Check if any meaningful options were provided
+        // Options are automatically extracted from command definition
+        let finalOptions = options
+
+        if (!hasProvidedOptions(options, command)) {
+          // No options provided, enter interactive mode
+          const collected = await interactiveOptionsCollector.collectWorkspaceOptions({
+            ...options,
+            workspace: globalOptions.workspace,
+          })
+          finalOptions = { ...options, ...collected }
+        }
+
+        const services = serviceFactory.get()
         const workspaceCommand = new WorkspaceCommand(services.workspaceService)
 
         await workspaceCommand.execute({
           workspace: globalOptions.workspace,
-          validate: options.validate,
-          stats: options.stats,
-          format: options.format,
+          validate: finalOptions.validate,
+          stats: finalOptions.info,
+          format: finalOptions.format,
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         })
       } catch (error) {
-        if (isCommandExitError(error)) {
-          process.exit(error.exitCode)
-        }
-        logger.error('Workspace command failed', error instanceof Error ? error : undefined, {
-          command: 'workspace',
-        })
-        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
-        process.exit(1)
+        handleCommandError(error, 'workspace')
       }
     })
 
   // Theme command
   program
     .command('theme')
-    .alias('t')
     .description(t('cli.description.theme'))
     .option('-s, --set <theme>', t('cli.option.setTheme'))
     .option('-l, --list', t('cli.option.listThemes'))
     .option('-i, --interactive', t('cli.option.interactive'))
-    .action(async (options) => {
+    .action(async (options, command) => {
       try {
+        // Check if any meaningful options were provided (not just defaults)
+        // Options are automatically extracted from command definition
+        let finalOptions = options
+
+        if (!hasProvidedOptions(options, command)) {
+          // No options provided, enter interactive mode
+          const collected = await interactiveOptionsCollector.collectThemeOptions(options)
+          finalOptions = { ...options, ...collected }
+        }
+
         const themeCommand = new ThemeCommand()
         await themeCommand.execute({
-          set: options.set,
-          list: options.list,
-          interactive: options.interactive,
+          set: finalOptions.set,
+          list: finalOptions.list,
+          interactive: finalOptions.interactive,
         })
+
+        // Ensure process exits after interactive mode (stdin may keep event loop alive)
+        process.exit(0)
       } catch (error) {
-        if (isCommandExitError(error)) {
-          process.exit(error.exitCode)
-        }
-        logger.error('Theme command failed', error instanceof Error ? error : undefined, {
-          command: 'theme',
-        })
-        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
-        process.exit(1)
+        handleCommandError(error, 'theme')
       }
     })
 
   // Security command
   program
     .command('security')
-    .alias('sec')
     .description(t('cli.description.security'))
-    .option('-f, --format <type>', t('cli.option.format'), 'table')
+    .addOption(
+      new Option('-f, --format <type>', t('cli.option.format'))
+        .choices(CLI_CHOICES.format)
+        .default('table')
+    )
     .option('--audit', t('cli.option.audit'), true)
     .option('--fix-vulns', t('cli.option.fixVulns'))
-    .option('--severity <level>', t('cli.option.severity'))
+    .addOption(
+      new Option('--severity <level>', t('cli.option.severity')).choices(CLI_CHOICES.severity)
+    )
     .option('--include-dev', t('cli.option.includeDev'))
     .option('--snyk', t('cli.option.snyk'))
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
+
+        // Check if any meaningful options were provided
+        // Options are automatically extracted from command definition
+        let finalOptions = options
+
+        if (!hasProvidedOptions(options, command)) {
+          // No options provided, enter interactive mode
+          const collected = await interactiveOptionsCollector.collectSecurityOptions({
+            ...options,
+            workspace: globalOptions.workspace,
+          })
+          finalOptions = { ...options, ...collected }
+        }
+
         const formatter = new OutputFormatter(
-          options.format as OutputFormat,
+          finalOptions.format as OutputFormat,
           !globalOptions.noColor
         )
         const securityCommand = new SecurityCommand(formatter)
 
         await securityCommand.execute({
           workspace: globalOptions.workspace,
-          format: options.format,
-          audit: options.audit,
-          fixVulns: options.fixVulns,
-          severity: options.severity,
-          includeDev: options.includeDev,
-          snyk: options.snyk,
+          format: finalOptions.format,
+          audit: finalOptions.audit,
+          fixVulns: finalOptions.fixVulns,
+          severity: finalOptions.severity,
+          includeDev: finalOptions.includeDev,
+          snyk: finalOptions.snyk,
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         })
       } catch (error) {
-        if (isCommandExitError(error)) {
-          process.exit(error.exitCode)
-        }
-        logger.error('Security command failed', error instanceof Error ? error : undefined, {
-          command: 'security',
-        })
-        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
-        process.exit(1)
+        handleCommandError(error, 'security')
       }
     })
 
   // Init command
   program
     .command('init')
-    .alias('i')
     .description(t('cli.description.init'))
     .option('--force', t('cli.option.forceOverwrite'))
     .option('--full', t('cli.option.full'))
     .option('--create-workspace', t('cli.option.createWorkspace'), true)
     .option('--no-create-workspace', t('cli.option.noCreateWorkspace'))
-    .option('-f, --format <type>', t('cli.option.format'), 'table')
+    .addOption(
+      new Option('-f, --format <type>', t('cli.option.format'))
+        .choices(CLI_CHOICES.format)
+        .default('table')
+    )
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
+
+        // Check if any meaningful options were provided
+        // Options are automatically extracted from command definition
+        let finalOptions = options
+
+        if (!hasProvidedOptions(options, command)) {
+          // No options provided, enter interactive mode
+          const collected = await interactiveOptionsCollector.collectInitOptions({
+            ...options,
+            workspace: globalOptions.workspace,
+          })
+          finalOptions = { ...options, ...collected }
+        }
+
         const initCommand = new InitCommand()
 
         await initCommand.execute({
           workspace: globalOptions.workspace,
-          force: options.force,
-          full: options.full,
-          createWorkspace: options.createWorkspace,
+          force: finalOptions.force,
+          full: finalOptions.full,
+          createWorkspace: finalOptions.createWorkspace,
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         })
       } catch (error) {
-        if (isCommandExitError(error)) {
-          process.exit(error.exitCode)
-        }
-        logger.error('Init command failed', error instanceof Error ? error : undefined, {
-          command: 'init',
-        })
-        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
-        process.exit(1)
-      }
-    })
-
-  // AI command
-  program
-    .command('ai')
-    .description(t('cli.description.ai'))
-    .option('--status', t('cli.option.status'))
-    .option('--test', t('cli.option.test'))
-    .option('--cache-stats', t('cli.option.cacheStats'))
-    .option('--clear-cache', t('cli.option.clearCache'))
-    .action(async (options) => {
-      try {
-        const aiCommand = new AiCommand()
-        await aiCommand.execute({
-          status: options.status,
-          test: options.test,
-          cacheStats: options.cacheStats,
-          clearCache: options.clearCache,
-        })
-      } catch (error) {
-        if (isCommandExitError(error)) {
-          process.exit(error.exitCode)
-        }
-        logger.error('AI command failed', error instanceof Error ? error : undefined, {
-          command: 'ai',
-        })
-        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
-        process.exit(1)
+        handleCommandError(error, 'init')
       }
     })
 
@@ -448,30 +639,33 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
+
+        // Check if any meaningful options were provided
+        // Options are automatically extracted from command definition
+        let finalOptions = options
+
+        if (!hasProvidedOptions(options, command)) {
+          // No options provided, enter interactive mode
+          const collected = await interactiveOptionsCollector.collectCacheOptions(options)
+          finalOptions = { ...options, ...collected }
+        }
+
         const cacheCommand = new CacheCommand()
 
         await cacheCommand.execute({
-          stats: options.stats,
-          clear: options.clear,
+          stats: finalOptions.stats,
+          clear: finalOptions.clear,
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         })
       } catch (error) {
-        if (isCommandExitError(error)) {
-          process.exit(error.exitCode)
-        }
-        logger.error('Cache command failed', error instanceof Error ? error : undefined, {
-          command: 'cache',
-        })
-        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
-        process.exit(1)
+        handleCommandError(error, 'cache')
       }
     })
 
   // Rollback command
   program
     .command('rollback')
-    .alias('rb')
     .description(t('cli.description.rollback'))
     .option('-l, --list', t('cli.option.listBackups'))
     .option('--latest', t('cli.option.restoreLatest'))
@@ -479,36 +673,47 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
+
+        // Check if any meaningful options were provided
+        // Options are automatically extracted from command definition
+        let finalOptions = options
+
+        if (!hasProvidedOptions(options, command)) {
+          // No options provided, enter interactive mode
+          const collected = await interactiveOptionsCollector.collectRollbackOptions(options)
+          finalOptions = { ...options, ...collected }
+        }
+
         const rollbackCommand = new RollbackCommand()
 
         await rollbackCommand.execute({
           workspace: globalOptions.workspace,
-          list: options.list,
-          latest: options.latest,
-          deleteAll: options.deleteAll,
+          list: finalOptions.list,
+          latest: finalOptions.latest,
+          deleteAll: finalOptions.deleteAll,
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
         })
       } catch (error) {
-        if (isCommandExitError(error)) {
-          process.exit(error.exitCode)
-        }
-        logger.error('Rollback command failed', error instanceof Error ? error : undefined, {
-          command: 'rollback',
-        })
-        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
-        process.exit(1)
+        handleCommandError(error, 'rollback')
       }
     })
 
   // Watch command
   program
     .command('watch')
-    .alias('wch')
     .description(t('cli.description.watch'))
     .option('--catalog <name>', t('cli.option.catalog'))
-    .option('-f, --format <type>', t('cli.option.format'), 'table')
-    .option('-t, --target <type>', t('cli.option.target'), 'latest')
+    .addOption(
+      new Option('-f, --format <type>', t('cli.option.format'))
+        .choices(CLI_CHOICES.format)
+        .default('table')
+    )
+    .addOption(
+      new Option('-t, --target <type>', t('cli.option.target'))
+        .choices(CLI_CHOICES.target)
+        .default('latest')
+    )
     .option('--prerelease', t('cli.option.prerelease'))
     .option('--include <pattern>', t('cli.option.include'), [])
     .option('--exclude <pattern>', t('cli.option.exclude'), [])
@@ -517,119 +722,54 @@ function registerCommands(program: Command, services: ReturnType<typeof createSe
     .action(async (options, command) => {
       try {
         const globalOptions = command.parent.opts()
+
+        // Check if any meaningful options were provided
+        // Options are automatically extracted from command definition
+        let finalOptions = options
+
+        if (!hasProvidedOptions(options, command)) {
+          // No options provided, enter interactive mode
+          const collected = await interactiveOptionsCollector.collectWatchOptions({
+            ...options,
+            workspace: globalOptions.workspace,
+          })
+          finalOptions = { ...options, ...collected }
+        }
+
+        const services = serviceFactory.get()
         const watchCommand = new WatchCommand(services.catalogUpdateService)
 
         await watchCommand.execute({
           workspace: globalOptions.workspace,
-          catalog: options.catalog,
-          format: options.format,
-          target: options.target,
-          prerelease: options.prerelease,
-          include: Array.isArray(options.include)
-            ? options.include
-            : [options.include].filter(Boolean),
-          exclude: Array.isArray(options.exclude)
-            ? options.exclude
-            : [options.exclude].filter(Boolean),
+          catalog: finalOptions.catalog,
+          format: finalOptions.format,
+          target: finalOptions.target,
+          prerelease: finalOptions.prerelease,
+          include: Array.isArray(finalOptions.include)
+            ? finalOptions.include
+            : [finalOptions.include].filter(Boolean),
+          exclude: Array.isArray(finalOptions.exclude)
+            ? finalOptions.exclude
+            : [finalOptions.exclude].filter(Boolean),
           verbose: globalOptions.verbose,
           color: !globalOptions.noColor,
-          debounce: parseInt(options.debounce, 10),
-          clear: options.clear,
+          debounce:
+            typeof finalOptions.debounce === 'number'
+              ? finalOptions.debounce
+              : parseInt(finalOptions.debounce, 10),
+          clear: finalOptions.clear,
         })
       } catch (error) {
-        if (isCommandExitError(error)) {
-          process.exit(error.exitCode)
-        }
-        logger.error('Watch command failed', error instanceof Error ? error : undefined, {
-          command: 'watch',
-        })
-        console.error(chalk.red(`❌ ${t('cli.error')}`), error)
-        process.exit(1)
-      }
-    })
-
-  // Help command
-  program
-    .command('help')
-    .alias('h')
-    .argument('[command]', t('cli.argument.command'))
-    .description(t('cli.description.help'))
-    .action((command) => {
-      if (command) {
-        const cmd = program.commands.find((c) => c.name() === command)
-        if (cmd) {
-          cmd.help()
-        } else {
-          console.log(chalk.red(t('cli.unknownCommand', { command })))
-        }
-      } else {
-        program.help()
+        handleCommandError(error, 'watch')
       }
     })
 }
-
-/**
- * Handle shorthand options by rewriting arguments
- */
-function handleShorthandArgs(args: string[]): string[] {
-  const rewrittenArgs = [...args]
-
-  // Map single-letter command 'i' -> init (changed from interactive mode)
-  if (
-    rewrittenArgs.includes('i') &&
-    !rewrittenArgs.some(
-      (a) =>
-        a === 'init' ||
-        a === 'update' ||
-        a === '-u' ||
-        a === '--update' ||
-        a === '-i' ||
-        a === '--interactive'
-    )
-  ) {
-    const index = rewrittenArgs.indexOf('i')
-    rewrittenArgs.splice(index, 1, 'init')
-  }
-
-  if (rewrittenArgs.includes('-u') || rewrittenArgs.includes('--update')) {
-    const index = rewrittenArgs.findIndex((arg) => arg === '-u' || arg === '--update')
-    rewrittenArgs.splice(index, 1, 'update')
-  } else if (
-    (rewrittenArgs.includes('-i') || rewrittenArgs.includes('--interactive')) &&
-    !rewrittenArgs.some((a) => a === 'update' || a === '-u' || a === '--update')
-  ) {
-    // Map standalone -i to `update -i`
-    const index = rewrittenArgs.findIndex((arg) => arg === '-i' || arg === '--interactive')
-    rewrittenArgs.splice(index, 1, 'update', '-i')
-  } else if (rewrittenArgs.includes('-c') || rewrittenArgs.includes('--check')) {
-    const index = rewrittenArgs.findIndex((arg) => arg === '-c' || arg === '--check')
-    rewrittenArgs.splice(index, 1, 'check')
-  } else if (rewrittenArgs.includes('-a') || rewrittenArgs.includes('--analyze')) {
-    const index = rewrittenArgs.findIndex((arg) => arg === '-a' || arg === '--analyze')
-    rewrittenArgs.splice(index, 1, 'analyze')
-  } else if (rewrittenArgs.includes('-s') || rewrittenArgs.includes('--workspace-info')) {
-    const index = rewrittenArgs.findIndex((arg) => arg === '-s' || arg === '--workspace-info')
-    rewrittenArgs.splice(index, 1, 'workspace')
-  } else if (rewrittenArgs.includes('-t') || rewrittenArgs.includes('--theme')) {
-    const index = rewrittenArgs.findIndex((arg) => arg === '-t' || arg === '--theme')
-    rewrittenArgs.splice(index, 1, 'theme')
-  } else if (rewrittenArgs.includes('--security-audit')) {
-    const index = rewrittenArgs.indexOf('--security-audit')
-    rewrittenArgs.splice(index, 1, 'security')
-  } else if (rewrittenArgs.includes('--security-fix')) {
-    const index = rewrittenArgs.indexOf('--security-fix')
-    rewrittenArgs.splice(index, 1, 'security', '--fix-vulns')
-  }
-
-  return rewrittenArgs
-}
-
 /**
  * Handle custom --version with update checking
  */
 async function handleVersionFlag(
   args: string[],
-  config: ReturnType<typeof ConfigLoader.loadConfig>
+  config: Awaited<ReturnType<typeof ConfigLoader.loadConfig>>
 ): Promise<void> {
   if (!args.includes('--version')) return
 
@@ -673,6 +813,13 @@ async function handleVersionFlag(
 export async function main(): Promise<void> {
   const program = new Command()
 
+  // Configure Commander.js help text labels for i18n
+  program.configureHelp({
+    formatHelp: (cmd, helper) => {
+      return helper.formatHelp(cmd, helper)
+    },
+  })
+
   // Parse arguments first to get workspace path
   let workspacePath: string | undefined
 
@@ -683,7 +830,10 @@ export async function main(): Promise<void> {
   }
 
   // Load configuration to check if version updates are enabled
-  const config = ConfigLoader.loadConfig(workspacePath || process.cwd())
+  const config = await ConfigLoader.loadConfig(workspacePath || process.cwd())
+
+  // Initialize i18n with config locale (priority: config > env > system)
+  I18n.init(config.locale)
 
   // Check for version updates (skip in CI environments or if disabled)
   const didUpdate = await checkForUpdates(config)
@@ -691,47 +841,47 @@ export async function main(): Promise<void> {
     process.exit(0)
   }
 
-  // Create services with workspace path for configuration loading
-  const services = createServices(workspacePath)
+  // Create lazy service factory - services will only be instantiated when actually needed
+  // This means --help and --version won't trigger service creation
+  const serviceFactory = new LazyServiceFactory(workspacePath)
 
   // Configure the main command
   program
     .name('pcu')
     .description(t('cli.description.main'))
+    .helpCommand(t('cli.help.command'), t('cli.help.description'))
+    .helpOption('-h, --help', t('cli.help.option'))
     .option('--version', t('cli.option.version'))
     .option('-v, --verbose', t('cli.option.verbose'))
     .option('-w, --workspace <path>', t('cli.option.workspace'))
     .option('--no-color', t('cli.option.noColor'))
-    .option('-u, --update', t('cli.option.updateShorthand'))
-    .option('-c, --check', t('cli.option.checkShorthand'))
-    .option('-a, --analyze', t('cli.option.analyzeShorthand'))
-    .option('-s, --workspace-info', t('cli.option.workspaceShorthand'))
-    .option('-t, --theme', t('cli.option.themeShorthand'))
-    .option('--security-audit', t('cli.option.securityAudit'))
-    .option('--security-fix', t('cli.option.securityFix'))
 
-  // Register all commands
-  registerCommands(program, services)
-
-  // Handle shorthand options and single-letter commands by rewriting arguments
-  const args = handleShorthandArgs([...process.argv])
+  // Register all commands with lazy service factory
+  registerCommands(program, serviceFactory)
 
   // Show help if no arguments provided
-  if (args.length <= 2) {
+  if (process.argv.length <= 2) {
     program.help()
   }
 
   // Handle custom --version with update checking
-  await handleVersionFlag(args, config)
+  await handleVersionFlag(process.argv, config)
 
   // Parse command line arguments
   try {
-    await program.parseAsync(args)
+    await program.parseAsync(process.argv)
   } catch (error) {
     if (isCommandExitError(error)) {
       process.exit(error.exitCode)
     }
-    logger.error('CLI parse error', error instanceof Error ? error : undefined, { args })
+    // Handle user cancellation (Ctrl+C) gracefully
+    if (isExitPromptError(error)) {
+      console.log(chalk.gray(`\n${t('cli.cancelled')}`))
+      process.exit(0)
+    }
+    logger.error('CLI parse error', error instanceof Error ? error : undefined, {
+      args: process.argv,
+    })
     console.error(chalk.red(`❌ ${t('cli.unexpectedError')}`), error)
     if (error instanceof Error && error.stack) {
       console.error(chalk.gray(error.stack))
@@ -745,6 +895,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
     if (isCommandExitError(error)) {
       process.exit(error.exitCode)
+    }
+    // Handle user cancellation (Ctrl+C) gracefully
+    if (isExitPromptError(error)) {
+      console.log(chalk.gray(`\n${t('cli.cancelled')}`))
+      process.exit(0)
     }
     logger.error('Fatal CLI error', error instanceof Error ? error : undefined)
     console.error(chalk.red(`❌ ${t('cli.fatalError')}`), error)

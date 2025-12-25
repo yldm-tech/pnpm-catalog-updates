@@ -8,7 +8,7 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  external: ['fs-extra', 'npm-registry-fetch', 'pacote', 'semver', 'lodash'],
+  external: ['fs-extra', 'npm-registry-fetch', 'pacote', 'semver', 'lodash', '@inquirer/core'],
   noExternal: ['@pcu/core', '@pcu/utils'],
   treeshake: true,
   minify: false,

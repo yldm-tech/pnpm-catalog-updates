@@ -92,6 +92,7 @@ export const de: TranslationDictionary = {
   'command.theme.invalidTheme': 'Ungültiges Theme: {{theme}}',
   'command.theme.setTo': 'Theme gesetzt auf: {{theme}}',
   'command.theme.configured': 'Theme konfiguriert: {{theme}}',
+  'command.theme.cancelled': 'Theme-Auswahl abgebrochen.',
   'command.theme.currentSettings': 'Aktuelle Theme-Einstellungen:',
   'command.theme.preview': 'Theme-Vorschau:',
   'command.theme.useHint':
@@ -142,6 +143,7 @@ export const de: TranslationDictionary = {
     'pnpm install fehlgeschlagen (Katalog-Updates waren erfolgreich)',
   'command.update.fetchingChangelogs': 'Lade Änderungsprotokolle...',
   'command.update.changelogUnavailable': 'Änderungsprotokoll nicht verfügbar',
+  'command.update.cancelled': 'Vorgang abgebrochen',
 
   // Rollback command
   'command.rollback.noBackups': 'Keine Backups gefunden',
@@ -283,9 +285,18 @@ export const de: TranslationDictionary = {
   'command.theme.previewWarning': 'Warnmeldung',
   'command.theme.previewError': 'Fehlermeldung',
   'command.theme.previewInfo': 'Informationsmeldung',
-  'command.theme.previewMajor': 'Major-Update',
-  'command.theme.previewMinor': 'Minor-Update',
-  'command.theme.previewPatch': 'Patch-Update',
+  'command.theme.previewMajor': 'Major',
+  'command.theme.previewMinor': 'Minor',
+  'command.theme.previewPatch': 'Patch',
+  'command.theme.previewPackageUpdates': 'Paket-Updates Beispiele',
+  'command.theme.previewStatusMessages': 'Statusmeldungen',
+  'command.theme.previewProgressBar': 'Fortschrittsbalken',
+  'command.theme.previewPrerelease': 'Vorabversion',
+  'command.theme.previewCheckingDeps': 'Abhängigkeiten prüfen...',
+  'command.theme.previewUpdatesFound': '{{count}} Updates',
+  'command.theme.previewUpdateComplete': 'Update abgeschlossen',
+  'command.theme.previewPotentialIssue': 'Potenzielles Problem',
+  'command.theme.previewOperationFailed': 'Operation fehlgeschlagen',
 
   // Init command next steps
   'command.init.step1': '1. Überprüfen und anpassen der Konfiguration:',
@@ -307,6 +318,7 @@ export const de: TranslationDictionary = {
   'cli.error': 'Fehler:',
   'cli.unexpectedError': 'Unerwarteter Fehler:',
   'cli.fatalError': 'Fataler Fehler:',
+  'cli.cancelled': 'Abgebrochen.',
 
   // Progress bar messages
   'progress.securityAnalyzing': 'Sicherheitsanalyse wird durchgeführt...',
@@ -383,6 +395,25 @@ export const de: TranslationDictionary = {
   'cli.option.verbose': 'Ausführliche Protokollierung aktivieren',
   'cli.option.workspace': 'Workspace-Verzeichnispfad',
   'cli.option.noColor': 'Farbausgabe deaktivieren',
+  'cli.help.command': 'help [command]',
+  'cli.help.description': 'Hilfe für Befehl anzeigen',
+  'cli.help.option': 'Hilfeinformationen anzeigen',
+  // Commander.js Hilfetext-Labels
+  'cli.help.usage': 'Verwendung:',
+  'cli.help.arguments': 'Argumente:',
+  'cli.help.optionsTitle': 'Optionen:',
+  'cli.help.commandsTitle': 'Befehle:',
+  // Benutzerdefinierter Hilfetext - Optionsgruppen-Abschnitt
+  'cli.help.optionGroupsTitle': 'Optionsgruppen:',
+  'cli.help.groupBasic': 'Basis:',
+  'cli.help.groupFilter': 'Filter:',
+  'cli.help.groupOutput': 'Ausgabe:',
+  'cli.help.groupAI': 'KI:',
+  'cli.help.groupInstall': 'Installation:',
+  // Benutzerdefinierter Hilfetext - Tipp-Abschnitt
+  'cli.help.tipLabel': 'Tipp:',
+  'cli.help.tipContent':
+    "Verwenden Sie .pcurc.json, um Standardwerte festzulegen und Befehlszeilenoptionen zu reduzieren.\n     Führen Sie 'pcu init' aus, um eine Konfigurationsdatei zu erstellen, oder besuchen Sie https://pcu-cli.dev/{{locale}}/configuration",
   'cli.option.install': 'pnpm install nach dem Update ausführen (Standard: true)',
   'cli.option.noInstall': 'pnpm install nach dem Update überspringen',
   'cli.option.changelog': 'Änderungsprotokoll für jedes Update anzeigen',
@@ -400,6 +431,7 @@ export const de: TranslationDictionary = {
   'cli.option.debounce': 'Debounce-Verzögerung in Millisekunden',
   'cli.option.clearConsole': 'Konsole vor jeder Prüfung leeren',
   'cli.option.exitCode': 'mit Code 1 beenden, wenn Updates verfügbar sind (für CI/CD)',
+  'cli.option.noSecurity': 'Sicherheitsprüfungen überspringen',
 
   // CLI argument descriptions
   'cli.argument.package': 'Paketname',
@@ -466,6 +498,7 @@ export const de: TranslationDictionary = {
   'prompt.browsePath': 'Durchsuchen: {{path}}',
   'prompt.securityUpdatesCount': '{{count}} Sicherheitsupdates',
   'prompt.errorMessage': 'Fehler: {{error}}',
+  'prompt.cancel': 'Abbrechen',
 
   // Severity labels
   'severity.critical': 'Kritisch',
@@ -676,4 +709,244 @@ export const de: TranslationDictionary = {
   'option.validateWorkspace': 'Workspace-Konfiguration validieren',
   'option.showStats': 'Workspace-Statistiken anzeigen',
   'option.showInfo': 'Workspace-Informationen anzeigen',
+
+  // Interactive mode titles
+  'interactive.check.title': 'Check-Befehl - Interaktiver Modus',
+  'interactive.update.title': 'Update-Befehl - Interaktiver Modus',
+  'interactive.analyze.title': 'Analyze-Befehl - Interaktiver Modus',
+  'interactive.workspace.title': 'Workspace-Befehl - Interaktiver Modus',
+  'interactive.theme.title': 'Theme-Befehl - Interaktiver Modus',
+  'interactive.security.title': 'Security-Befehl - Interaktiver Modus',
+  'interactive.init.title': 'Init-Befehl - Interaktiver Modus',
+  'interactive.ai.title': 'AI-Befehl - Interaktiver Modus',
+  'interactive.cache.title': 'Cache-Befehl - Interaktiver Modus',
+  'interactive.rollback.title': 'Rollback-Befehl - Interaktiver Modus',
+  'interactive.watch.title': 'Watch-Befehl - Interaktiver Modus',
+
+  // Interactive common choices - format
+  'interactive.choice.format.table': 'Tabelle (Standard)',
+  'interactive.choice.format.json': 'JSON',
+  'interactive.choice.format.yaml': 'YAML',
+  'interactive.choice.format.minimal': 'Minimal',
+
+  // Interactive common choices - target
+  'interactive.choice.target.latest': 'Neueste Version (Standard)',
+  'interactive.choice.target.greatest': 'Höchste Version',
+  'interactive.choice.target.minor': 'Minor-Update',
+  'interactive.choice.target.patch': 'Patch-Update',
+  'interactive.choice.target.newest': 'Neueste Veröffentlichung',
+
+  // Interactive common choices - severity
+  'interactive.choice.severity.low': 'Niedrig',
+  'interactive.choice.severity.medium': 'Mittel und höher',
+  'interactive.choice.severity.high': 'Hoch',
+  'interactive.choice.severity.critical': 'Kritisch',
+  'interactive.choice.severity.all': 'Alle Schweregrade',
+
+  // Interactive common choices - analysis type
+  'interactive.choice.analysisType.impact': 'Auswirkungsanalyse',
+  'interactive.choice.analysisType.security': 'Sicherheitsanalyse',
+  'interactive.choice.analysisType.compatibility': 'Kompatibilitätsanalyse',
+  'interactive.choice.analysisType.recommend': 'Empfehlungsanalyse',
+
+  // Interactive common choices - provider
+  'interactive.choice.provider.auto': 'Automatisch (Standard)',
+  'interactive.choice.provider.claude': 'Claude',
+  'interactive.choice.provider.gemini': 'Gemini',
+  'interactive.choice.provider.codex': 'Codex',
+
+  // Interactive common choices - theme
+  'interactive.choice.theme.default': 'Standard',
+  'interactive.choice.theme.modern': 'Modern',
+  'interactive.choice.theme.minimal': 'Minimal',
+  'interactive.choice.theme.neon': 'Neon',
+  'interactive.choice.theme.ocean': 'Ozean',
+  'interactive.choice.theme.forest': 'Wald',
+
+  // Interactive prompts - check command
+  'interactive.check.catalogName': 'Katalogname (leer für alle):',
+  'interactive.check.outputFormat': 'Ausgabeformat:',
+  'interactive.check.updateTarget': 'Aktualisierungsziel:',
+  'interactive.check.includePrerelease': 'Vorabversionen einschließen?',
+  'interactive.check.includePatterns': 'Einschlussmuster (durch Kommas getrennt, leer für alle):',
+  'interactive.check.excludePatterns': 'Ausschlussmuster (durch Kommas getrennt, leer für keine):',
+  'interactive.check.exitCode': 'Mit Code 1 beenden, wenn Updates verfügbar sind (für CI)?',
+
+  // Interactive prompts - update command
+  'interactive.update.catalogName': 'Katalogname (leer für alle):',
+  'interactive.update.outputFormat': 'Ausgabeformat:',
+  'interactive.update.updateTarget': 'Aktualisierungsziel:',
+  'interactive.update.includePrerelease': 'Vorabversionen einschließen?',
+  'interactive.update.includePatterns': 'Einschlussmuster (durch Kommas getrennt, leer für alle):',
+  'interactive.update.excludePatterns': 'Ausschlussmuster (durch Kommas getrennt, leer für keine):',
+  'interactive.update.dryRun': 'Testlauf (keine Änderungen)?',
+  'interactive.update.force': 'Update erzwingen (auch wenn riskant)?',
+  'interactive.update.createBackup': 'Backup vor dem Update erstellen?',
+  'interactive.update.useAi': 'KI-Analyse aktivieren?',
+  'interactive.update.aiProvider': 'KI-Anbieter:',
+  'interactive.update.analysisType': 'Analysetyp:',
+  'interactive.update.runInstall': 'pnpm install nach dem Update ausführen?',
+  'interactive.update.showChangelog': 'Änderungsprotokoll anzeigen?',
+
+  // Interactive prompts - analyze command
+  'interactive.analyze.packageName': 'Paketname:',
+  'interactive.analyze.packageNameRequired': 'Paketname ist erforderlich',
+  'interactive.analyze.catalogName': 'Katalogname (leer für automatische Erkennung):',
+  'interactive.analyze.targetVersion': 'Neue Version (leer für neueste):',
+  'interactive.analyze.outputFormat': 'Ausgabeformat:',
+  'interactive.analyze.useAi': 'KI-Analyse aktivieren?',
+  'interactive.analyze.aiProvider': 'KI-Anbieter:',
+  'interactive.analyze.analysisType': 'Analysetyp:',
+
+  // Interactive prompts - workspace command
+  'interactive.workspace.validate': 'Workspace validieren?',
+  'interactive.workspace.stats': 'Statistiken anzeigen?',
+
+  // Interactive prompts - theme command
+  'interactive.theme.choose': 'Theme auswählen:',
+
+  // Interactive prompts - security command
+  'interactive.security.action': 'npm audit ausführen?',
+  'interactive.security.severity': 'Minimale Schwere:',
+  'interactive.security.includeDev': 'Entwicklungsabhängigkeiten einschließen?',
+  'interactive.security.useSnyk': 'Snyk verwenden (CLI erforderlich)?',
+  'interactive.security.outputFormat': 'Ausgabeformat:',
+
+  // Interactive prompts - init command
+  'interactive.init.overwrite': 'Bestehende Konfiguration überschreiben?',
+  'interactive.init.createWorkspace': 'PNPM Workspace-Struktur erstellen?',
+
+  // Interactive prompts - ai command
+
+  // Interactive prompts - cache command
+
+  // Interactive prompts - rollback command
+
+  // Interactive prompts - watch command
+  'interactive.watch.debounce': 'Entprellverzögerung (ms):',
+  'interactive.watch.debouncePositive': 'Entprellverzögerung muss positiv sein',
+  'interactive.watch.clearConsole': 'Konsole bei jeder Prüfung leeren?',
+
+  // Missing interactive keys
+  'interactive.update.mode': 'Aktualisierungsmodus:',
+  'interactive.update.mode.interactive': 'Interaktive Auswahl (Pakete wählen)',
+  'interactive.update.mode.dryRun': 'Testlauf (nur Vorschau)',
+  'interactive.update.mode.apply': 'Alle Updates anwenden',
+  'interactive.workspace.actions': 'Was möchten Sie tun?',
+  'interactive.workspace.outputFormat': 'Ausgabeformat:',
+  'interactive.theme.action': 'Was möchten Sie tun?',
+  'interactive.theme.action.set': 'Theme auswählen und festlegen',
+  'interactive.theme.action.list': 'Verfügbare Themes auflisten',
+  'interactive.security.action.audit': 'Schwachstellen prüfen',
+  'interactive.security.action.fix': 'Schwachstellen beheben',
+  'interactive.security.action.both': 'Prüfen und beheben',
+  'interactive.init.mode': 'Initialisierungsmodus:',
+  'interactive.init.mode.quick': 'Schnelleinrichtung (minimale Konfiguration)',
+  'interactive.init.mode.full': 'Vollständige Einrichtung (alle Optionen)',
+  'interactive.ai.action': 'KI-Verwaltungsaktion:',
+  'interactive.ai.action.status': 'KI-Status prüfen',
+  'interactive.ai.action.test': 'KI-Verbindung testen',
+  'interactive.ai.action.cacheStats': 'Cache-Statistiken anzeigen',
+  'interactive.ai.action.clearCache': 'KI-Cache leeren',
+  'interactive.cache.action': 'Cache-Aktion:',
+  'interactive.cache.action.stats': 'Cache-Statistiken anzeigen',
+  'interactive.cache.action.clear': 'Cache leeren',
+  'interactive.rollback.action': 'Rollback-Aktion:',
+  'interactive.rollback.action.list': 'Verfügbare Backups auflisten',
+  'interactive.rollback.action.latest': 'Neuestes Backup wiederherstellen',
+  'interactive.rollback.action.deleteAll': 'Alle Backups löschen',
+  'interactive.watch.catalogName': 'Zu überwachender Katalogname (leer für alle):',
+  'interactive.watch.updateTarget': 'Update-Ziel:',
+  'interactive.watch.includePrerelease': 'Vorabversionen einschließen?',
+  'interactive.watch.outputFormat': 'Ausgabeformat:',
+
+  // Interactive cancelled message
+  'interactive.cancelled': 'Vorgang abgebrochen',
+
+  // Interactive command subtitles, intros, and completion messages
+  'interactive.check.subtitle': 'Katalog-Abhängigkeiten auf veraltete Versionen prüfen',
+  'interactive.check.intro': 'Bitte konfigurieren Sie die Prüfoptionen',
+  'interactive.check.ready': 'Konfiguration abgeschlossen! Prüfung wird gestartet...',
+  'interactive.check.catalogPlaceholder': 'z.B. default, react',
+  'interactive.check.patternPlaceholder': 'z.B. react*, @types/*',
+
+  'interactive.update.subtitle': 'Katalog-Abhängigkeiten auf neue Versionen aktualisieren',
+  'interactive.update.intro': 'Bitte konfigurieren Sie die Aktualisierungsoptionen',
+  'interactive.update.ready': 'Konfiguration abgeschlossen! Aktualisierung wird gestartet...',
+  'interactive.update.catalogPlaceholder': 'z.B. default, react',
+  'interactive.update.mode.interactiveHint': 'Zu aktualisierende Pakete manuell auswählen',
+  'interactive.update.mode.dryRunHint': 'Änderungen ohne Modifikation vorschauen',
+  'interactive.update.mode.applyHint': 'Alle verfügbaren Updates direkt anwenden',
+
+  'interactive.analyze.subtitle': 'Auswirkungen von Paketaktualisierungen analysieren',
+  'interactive.analyze.intro': 'Bitte konfigurieren Sie die Analyseoptionen',
+  'interactive.analyze.ready': 'Konfiguration abgeschlossen! Analyse wird gestartet...',
+  'interactive.analyze.packagePlaceholder': 'z.B. lodash, react',
+  'interactive.analyze.versionPlaceholder': 'Leer lassen für neueste, z.B. 18.2.0, ^19.0.0',
+  'interactive.analyze.catalogPlaceholder': 'Leer lassen für automatische Erkennung',
+
+  'interactive.workspace.subtitle': 'Workspace-Informationen anzeigen und validieren',
+  'interactive.workspace.intro': 'Bitte wählen Sie eine Aktion',
+  'interactive.workspace.ready': 'Konfiguration abgeschlossen! Aktion wird ausgeführt...',
+  'interactive.workspace.validateHint': 'Workspace-Konfiguration validieren',
+  'interactive.workspace.statsHint': 'Workspace-Statistiken anzeigen',
+
+  'interactive.theme.subtitle': 'CLI-Farbthema konfigurieren',
+  'interactive.theme.intro': 'Bitte wählen Sie eine Theme-Aktion',
+  'interactive.theme.ready': 'Konfiguration abgeschlossen! Theme wird angewendet...',
+
+  'interactive.security.subtitle': 'Sicherheitslücken scannen und beheben',
+  'interactive.security.intro': 'Bitte konfigurieren Sie die Sicherheitsoptionen',
+  'interactive.security.ready': 'Konfiguration abgeschlossen! Sicherheitsscan wird gestartet...',
+
+  'interactive.init.subtitle': 'PCU-Konfiguration initialisieren',
+  'interactive.init.intro': 'Bitte wählen Sie den Initialisierungsmodus',
+  'interactive.init.ready': 'Konfiguration abgeschlossen! Initialisierung...',
+
+  'interactive.cache.subtitle': 'PCU-Cache verwalten',
+  'interactive.cache.intro': 'Bitte wählen Sie eine Cache-Aktion',
+  'interactive.cache.ready': 'Konfiguration abgeschlossen! Aktion wird ausgeführt...',
+
+  'interactive.rollback.subtitle': 'Auf eine frühere Version zurücksetzen',
+  'interactive.rollback.intro': 'Bitte wählen Sie eine Rollback-Aktion',
+  'interactive.rollback.ready': 'Konfiguration abgeschlossen! Rollback wird gestartet...',
+
+  'interactive.watch.subtitle': 'Abhängigkeitsaktualisierungen überwachen',
+  'interactive.watch.intro': 'Bitte konfigurieren Sie die Überwachungsoptionen',
+  'interactive.watch.ready': 'Konfiguration abgeschlossen! Überwachungsmodus wird gestartet...',
+  'interactive.watch.catalogPlaceholder': 'z.B. default, react',
+
+  // Interactive choice hints - format
+  'interactive.choice.format.tableHint': 'Optimal für Terminalanzeige',
+  'interactive.choice.format.jsonHint': 'Optimal für programmatische Verarbeitung',
+  'interactive.choice.format.yamlHint': 'Optimal für Konfigurationsdateien',
+  'interactive.choice.format.minimalHint': 'Nur wichtige Informationen anzeigen',
+
+  // Interactive choice hints - target
+  'interactive.choice.target.latestHint': 'Empfohlen, neueste stabile Version',
+  'interactive.choice.target.greatestHint': 'Enthält Vorabversionen',
+  'interactive.choice.target.minorHint': 'Sicher, abwärtskompatibel',
+  'interactive.choice.target.patchHint': 'Am sichersten, nur Bugfixes',
+  'interactive.choice.target.newestHint': 'Nach Veröffentlichungsdatum sortiert',
+
+  // Interactive action hints
+  'interactive.workspace.action.validateHint': 'Workspace-Konfiguration auf Probleme prüfen',
+  'interactive.workspace.action.statsHint': 'Detaillierte Workspace-Statistiken anzeigen',
+
+  'interactive.theme.action.setHint': 'Neues Theme auswählen und anwenden',
+  'interactive.theme.action.listHint': 'Alle verfügbaren Themes anzeigen',
+
+  'interactive.security.action.auditHint': 'Sicherheitslücken scannen',
+  'interactive.security.action.fixHint': 'Schwachstellen automatisch beheben',
+  'interactive.security.action.bothHint': 'Scannen und Beheben in einem Schritt',
+
+  'interactive.init.mode.quickHint': 'Schnelleinrichtung mit Standardwerten',
+  'interactive.init.mode.fullHint': 'Alle verfügbaren Optionen konfigurieren',
+
+  'interactive.cache.action.statsHint': 'Cache-Nutzungsstatistiken anzeigen',
+  'interactive.cache.action.clearHint': 'Alle zwischengespeicherten Daten löschen',
+
+  'interactive.rollback.action.listHint': 'Alle verfügbaren Backups anzeigen',
+  'interactive.rollback.action.latestHint': 'Neuestes Backup wiederherstellen',
+  'interactive.rollback.action.deleteAllHint': 'Alle Backup-Dateien löschen',
 }

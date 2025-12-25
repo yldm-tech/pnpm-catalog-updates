@@ -17,11 +17,12 @@ PCU 提供几个主要命令，既有全名也有便捷的简写：
 | `pcu check`     | `pcu chk`, `pcu -c`, `pcu --check`        | 检查过时的目录依赖              |
 | `pcu update`    | `pcu u`, `pcu -u`, `pcu --update`         | 更新目录依赖                    |
 | `pcu analyze`   | `pcu a`, `pcu -a`, `pcu --analyze`        | 分析依赖更新的影响              |
-| `pcu ai`        | -                                         | AI 提供者管理和分析测试         |
 | `pcu workspace` | `pcu w`, `pcu -s`, `pcu --workspace-info` | 显示工作空间信息和验证          |
 | `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | 配置颜色主题和 UI 设置          |
 | `pcu security`  | `pcu sec`                                 | 安全漏洞扫描和修复              |
 | `pcu cache`     | -                                         | 缓存管理（统计和清除）          |
+| `pcu rollback`  | -                                         | 将目录更新回滚到之前的状态      |
+| `pcu watch`     | -                                         | 监视更改并自动检查更新          |
 | `pcu help`      | `pcu h`, `pcu -h`                         | 显示帮助信息                    |
 
 ### 特殊快捷方式
@@ -31,6 +32,60 @@ PCU 提供几个主要命令，既有全名也有便捷的简写：
 | `pcu -i`               | `pcu update --interactive` | 交互式更新模式             |
 | `pcu --security-audit` | `pcu security`             | 运行安全扫描               |
 | `pcu --security-fix`   | `pcu security --fix-vulns` | 运行安全扫描并自动修复漏洞 |
+
+---
+
+## 混合模式
+
+PCU 具有**混合模式**功能 - 当您运行任何命令但不带标志时，它会自动进入交互模式，引导您完成各项选项。这提供了无缝体验：您可以使用标志进行自动化操作，或省略标志以获得引导式提示。
+
+### 工作原理
+
+<CodeGroup>
+
+```bash {{ title: '无标志 = 交互式提示' }}
+# 不带标志运行会触发交互式提示
+pcu check        # 提示选择格式、目标、过滤选项
+pcu update       # 提示选择目录、格式、目标、备份等
+pcu security     # 提示选择输出格式、严重性过滤
+pcu analyze      # 提示选择目录和包
+pcu theme        # 提示选择主题
+```
+
+```bash {{ title: '带标志 = 直接执行' }}
+# 提供标志则直接运行，无需提示
+pcu check --format table
+pcu update --target minor --create-backup
+pcu security --severity high --format json
+pcu analyze default react
+pcu theme --set modern
+```
+
+</CodeGroup>
+
+### 支持的命令
+
+混合模式适用于所有 10 个主要命令：
+
+| 命令           | 交互选项                                                 |
+| -------------- | -------------------------------------------------------- |
+| `pcu check`    | 格式、目标、目录、过滤模式、预发布版本                   |
+| `pcu update`   | 目录、格式、目标、交互、试运行、强制、备份、预发布、AI   |
+| `pcu analyze`  | 目录选择、包名、目标版本                                 |
+| `pcu workspace`| 格式、验证、统计                                         |
+| `pcu theme`    | 主题选择、进度条样式、预览                               |
+| `pcu security` | 格式、严重性过滤、修复选项、开发依赖                     |
+| `pcu init`     | 模板、框架选项、工作空间创建                             |
+| `pcu cache`    | 统计查看、清除选项                                       |
+| `pcu rollback` | 备份选择、确认                                           |
+| `pcu watch`    | 目录、格式、目标、防抖、清除选项                         |
+
+### 优势
+
+- **新手友好**：新用户可以在无需阅读文档的情况下探索选项
+- **自动化就绪**：脚本和 CI/CD 可以使用标志实现可预测的行为
+- **可发现性**：交互式提示帮助用户发现可用选项
+- **灵活性**：根据每个命令选择您偏好的工作流程
 
 ---
 
@@ -840,21 +895,21 @@ pcu -t -i
 
 ---
 
-## `pcu ai` - AI 提供者管理
+## `pcu rollback` - 备份回滚
 
-检查 AI 提供者状态、测试 AI 分析功能和管理 AI 缓存。
+使用更新期间创建的备份文件将目录更新回滚到之前的状态。
 
 <CodeGroup>
 
-```bash {{ title: '基本用法' }}
-pcu ai
-pcu ai --status
+```bash {{ title: '列出备份' }}
+pcu rollback --list
+pcu rollback -l
 ```
 
-```bash {{ title: '高级用法' }}
-pcu ai --test
-pcu ai --cache-stats
-pcu ai --clear-cache
+```bash {{ title: '回滚操作' }}
+pcu rollback --latest
+pcu rollback --select
+pcu rollback --delete-all
 ```
 
 </CodeGroup>
@@ -862,71 +917,183 @@ pcu ai --clear-cache
 ### 选项
 
 <Properties>
-  <Property name="--status" type="boolean">
-    显示所有 AI 提供者的状态（默认）
+  <Property name="-l, --list" type="boolean">
+    列出所有可用的备份文件及其时间戳
   </Property>
-  <Property name="--test" type="boolean">
-    使用示例请求测试 AI 分析功能
+  <Property name="--latest" type="boolean">
+    自动回滚到最近的备份
   </Property>
-  <Property name="--cache-stats" type="boolean">
-    显示 AI 分析缓存统计信息
+  <Property name="--select" type="boolean">
+    交互式选择要恢复的备份
   </Property>
-  <Property name="--clear-cache" type="boolean">
-    清除 AI 分析缓存
+  <Property name="--delete-all" type="boolean">
+    删除所有备份文件（需要确认）
+  </Property>
+  <Property name="-w, --workspace" type="string">
+    工作空间目录路径（默认：当前目录）
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    在回滚期间显示详细信息
   </Property>
 </Properties>
 
-### AI 提供者检测
+### 备份系统
 
-PCU 自动检测并支持多个 AI CLI 工具：
+PCU 在使用 update 命令时，如果添加 `--create-backup` 标志，会自动创建备份文件：
 
-| 提供者 | 优先级 | 检测方式     |
-| ------ | ------ | ------------ |
-| Claude | 100    | `claude` CLI |
-| Gemini | 80     | `gemini` CLI |
-| Codex  | 60     | `codex` CLI  |
+```bash
+pcu update --create-backup
+```
 
-#### 检测机制
-
-- **自动检测**：PCU 自动检测已安装的 AI CLI 工具
-- **优先级选择**：使用最高优先级的可用提供者
-- **智能缓存**：结果被缓存以避免冗余 API 调用
-- **优雅降级**：当没有 AI 工具可用时回退到基于规则的分析
+备份文件带有时间戳存储，包含更新前 `pnpm-workspace.yaml` 的原始状态。
 
 ### 使用示例
 
-#### 检查 AI 提供者状态
+#### 列出可用备份
 
 ```bash
-pcu ai
-pcu ai --status
+pcu rollback --list
 ```
 
-显示所有检测到的 AI 提供者及其可用性状态。
+显示所有备份文件及其创建时间戳和文件大小。
 
-#### 测试 AI 分析
+#### 回滚到最新备份
 
 ```bash
-pcu ai --test
+pcu rollback --latest
 ```
 
-使用示例包更新运行测试分析，验证 AI 集成是否正常工作。
+无需确认自动恢复最近的备份。
 
-#### 查看缓存统计
+#### 交互式备份选择
 
 ```bash
-pcu ai --cache-stats
+pcu rollback --select
 ```
 
-显示 AI 分析缓存的详细统计信息，包括条目数、命中率等。
+打开交互式提示来选择要恢复的备份。
 
-#### 清除 AI 缓存
+#### 清理旧备份
 
 ```bash
-pcu ai --clear-cache
+pcu rollback --delete-all --verbose
 ```
 
-清除所有缓存的 AI 分析结果，强制下次分析时重新查询。
+通过确认提示和详细输出删除所有备份文件。
+
+---
+
+## `pcu watch` - 监视模式
+
+监视 `pnpm-workspace.yaml` 的变化，当检测到修改时自动检查过时的依赖项。
+
+<CodeGroup>
+
+```bash {{ title: '基本监视' }}
+pcu watch
+```
+
+```bash {{ title: '高级监视' }}
+pcu watch --debounce 1000 --clear
+pcu watch --catalog default --target minor
+pcu watch --include "react*" --exclude "*-dev"
+```
+
+</CodeGroup>
+
+### 选项
+
+<Properties>
+  <Property name="--catalog" type="string">
+    仅检查指定的目录
+  </Property>
+  <Property name="-f, --format" type="enum" default="table">
+    输出格式：table、json、markdown
+  </Property>
+  <Property name="-t, --target" type="enum" default="latest">
+    更新目标：latest、minor、patch
+  </Property>
+  <Property name="--prerelease" type="boolean">
+    包含预发布版本
+  </Property>
+  <Property name="--include" type="string">
+    包含匹配模式的包
+  </Property>
+  <Property name="--exclude" type="string">
+    排除匹配模式的包
+  </Property>
+  <Property name="--debounce" type="number" default="300">
+    检查前的防抖延迟（毫秒）
+  </Property>
+  <Property name="--clear" type="boolean">
+    每次检查前清除控制台
+  </Property>
+  <Property name="-w, --workspace" type="string">
+    工作空间目录路径（默认：当前目录）
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    显示详细信息
+  </Property>
+</Properties>
+
+### 监视行为
+
+watch 命令提供具有智能功能的持续监控：
+
+- **初始检查**：监视启动时立即运行检查
+- **防抖**：防止文件快速变化时的重复检查
+- **优雅关闭**：按 `Ctrl+C` 干净地停止监视
+- **实时更新**：显示检测到的过时包数量
+
+### 使用示例
+
+#### 基本监视模式
+
+```bash
+pcu watch
+```
+
+监视当前目录的 `pnpm-workspace.yaml` 变化。
+
+#### 带控制台清除的监视
+
+```bash
+pcu watch --clear
+```
+
+每次检查前清除控制台以获得更干净的输出。
+
+#### 带自定义防抖的监视
+
+```bash
+pcu watch --debounce 1000
+```
+
+文件变化后等待 1 秒再运行检查。
+
+#### 监视特定目录
+
+```bash
+pcu watch --catalog default --target minor
+```
+
+监视变化并仅检查 default 目录的次版本更新。
+
+#### 带过滤器的监视
+
+```bash
+pcu watch --include "react*,@types/*" --exclude "*-dev"
+```
+
+监视并将结果过滤为特定的包模式。
+
+### 集成提示
+
+监视模式非常适合：
+
+- **开发工作流**：在活跃开发期间保持依赖更新可见
+- **CI/CD 监控**：在长时间运行的开发环境中监控更新
+- **团队通知**：与通知工具结合以提醒更新
 
 ---
 

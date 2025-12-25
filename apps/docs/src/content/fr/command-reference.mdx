@@ -18,11 +18,12 @@ PCU fournit plusieurs commandes principales avec des noms complets et des raccou
 | `pcu check`       | `pcu chk`, `pcu -c`, `pcu --check`        | Vérifier les dépendances de catalogue obsolètes                |
 | `pcu update`      | `pcu u`, `pcu -u`, `pcu --update`         | Mettre à jour les dépendances de catalogue                     |
 | `pcu analyze`     | `pcu a`, `pcu -a`, `pcu --analyze`        | Analyser l'impact des mises à jour de dépendances              |
-| `pcu ai`          | -                                         | Gestion des fournisseurs AI et tests d'analyse                 |
 | `pcu workspace`   | `pcu w`, `pcu -s`, `pcu --workspace-info` | Afficher les informations et validation de l'espace de travail |
 | `pcu theme`       | `pcu t`, `pcu -t`, `pcu --theme`          | Configurer les thèmes couleur et paramètres d'interface        |
 | `pcu security`    | `pcu sec`                                 | Analyse et corrections des vulnérabilités de sécurité          |
 | `pcu cache`       | -                                         | Gestion du cache (statistiques et nettoyage)                   |
+| `pcu rollback`    | -                                         | Restaurer les mises à jour du catalogue à un état précédent    |
+| `pcu watch`       | -                                         | Surveiller les changements et vérifier les mises à jour        |
 | `pcu help`        | `pcu h`, `pcu -h`                         | Afficher l'aide                                                |
 
 ### Raccourcis spéciaux
@@ -32,6 +33,50 @@ PCU fournit plusieurs commandes principales avec des noms complets et des raccou
 | `pcu -i`               | `pcu update --interactive` | Mode de mise à jour interactive                              |
 | `pcu --security-audit` | `pcu security`             | Exécuter l'analyse de sécurité                               |
 | `pcu --security-fix`   | `pcu security --fix-vulns` | Exécuter l'analyse de sécurité avec corrections automatiques |
+
+---
+
+## Mode Hybride
+
+PCU dispose du **Mode Hybride** - lorsque vous exécutez une commande sans drapeaux, elle entre automatiquement en mode interactif pour vous guider à travers les options.
+
+<CodeGroup>
+
+```bash {{ title: 'Sans Drapeaux = Invites Interactives' }}
+pcu check        # Invites pour format, cible, options de filtre
+pcu update       # Invites pour catalogue, format, cible, etc.
+pcu security     # Invites pour format de sortie, filtre de sévérité
+```
+
+```bash {{ title: 'Avec Drapeaux = Exécution Directe' }}
+pcu check --format table    # S'exécute directement avec les options spécifiées
+pcu update --target minor   # S'exécute directement avec les options spécifiées
+```
+
+</CodeGroup>
+
+### Commandes Supportées
+
+Le mode hybride est disponible pour les commandes suivantes :
+
+| Commande     | Options Interactives                                   |
+| ------------ | ------------------------------------------------------ |
+| `check`      | Format, cible, prerelease, motifs include/exclude      |
+| `update`     | Catalogue, format, cible, sauvegarde, dry-run          |
+| `analyze`    | Format                                                 |
+| `workspace`  | Validation, statistiques, format                       |
+| `theme`      | Sélection de thème, style de barre de progression      |
+| `security`   | Format, sévérité, correction automatique               |
+| `init`       | Modèle, options de framework, assistant interactif     |
+| `cache`      | Sélection statistiques/nettoyage                       |
+| `rollback`   | Sélection de version, format                           |
+| `watch`      | Intervalle, format, options de notification            |
+
+### Avantages
+
+- **Flexibilité** : Basculez facilement entre l'automatisation pour les scripts et le guidage interactif pour l'exploration
+- **Découvrabilité** : Explorez les fonctionnalités disponibles via des invites interactives sans mémoriser toutes les options
+- **Efficacité** : Les utilisateurs avancés utilisent les drapeaux directement tandis que les nouveaux utilisateurs bénéficient d'une expérience guidée
 
 ---
 
@@ -909,24 +954,21 @@ Lance un assistant de sélection de thème guidé qui permet de prévisualiser l
 
 ---
 
-## `pcu ai` - Gestion des fournisseurs AI
+## `pcu rollback` - Restauration de sauvegarde
 
-Vérifier l'état des fournisseurs AI et gérer le cache d'analyse AI.
+Restaurer les mises à jour du catalogue à un état précédent en utilisant les fichiers de sauvegarde créés lors des mises à jour.
 
 <CodeGroup>
 
-```bash {{ title: 'Vérifier le statut' }}
-pcu ai
-pcu ai --status
+```bash {{ title: 'Lister les sauvegardes' }}
+pcu rollback --list
+pcu rollback -l
 ```
 
-```bash {{ title: 'Tester l'analyse' }}
-pcu ai --test
-```
-
-```bash {{ title: 'Gestion du cache' }}
-pcu ai --cache-stats
-pcu ai --clear-cache
+```bash {{ title: 'Opérations de restauration' }}
+pcu rollback --latest
+pcu rollback --select
+pcu rollback --delete-all
 ```
 
 </CodeGroup>
@@ -934,47 +976,183 @@ pcu ai --clear-cache
 ### Options
 
 <Properties>
-  <Property name="--status" type="boolean">
-    Afficher l'état de tous les fournisseurs AI (par défaut)
+  <Property name="-l, --list" type="boolean">
+    Lister tous les fichiers de sauvegarde disponibles avec horodatages
   </Property>
-  <Property name="--test" type="boolean">
-    Tester l'analyse AI avec une requête d'exemple
+  <Property name="--latest" type="boolean">
+    Restaurer automatiquement la sauvegarde la plus récente
   </Property>
-  <Property name="--cache-stats" type="boolean">
-    Afficher les statistiques du cache d'analyse AI
+  <Property name="--select" type="boolean">
+    Sélection interactive de la sauvegarde à restaurer
   </Property>
-  <Property name="--clear-cache" type="boolean">
-    Vider le cache d'analyse AI
+  <Property name="--delete-all" type="boolean">
+    Supprimer tous les fichiers de sauvegarde (nécessite confirmation)
+  </Property>
+  <Property name="-w, --workspace" type="string">
+    Chemin du répertoire de l'espace de travail (par défaut : répertoire actuel)
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    Afficher les informations détaillées pendant la restauration
   </Property>
 </Properties>
 
-### Fournisseurs AI pris en charge
+### Système de sauvegarde
 
-PCU détecte et utilise automatiquement les outils CLI AI disponibles :
+PCU crée automatiquement des fichiers de sauvegarde lorsque vous utilisez le drapeau `--create-backup` avec la commande update :
 
-| Fournisseur | Outil CLI | Méthode de détection                      |
-| ----------- | --------- | ----------------------------------------- |
-| Claude      | `claude`  | Recherche dans PATH et sortie de version  |
-| Gemini      | `gemini`  | Recherche dans PATH et sortie de version  |
-| OpenAI      | `codex`   | Recherche dans PATH et sortie de version  |
+```bash
+pcu update --create-backup
+```
+
+Les fichiers de sauvegarde sont stockés avec des horodatages et contiennent l'état original de `pnpm-workspace.yaml` avant les mises à jour.
 
 ### Exemples d'utilisation
 
-#### Afficher l'état des fournisseurs
+#### Lister les sauvegardes disponibles
 
 ```bash
-pcu ai
+pcu rollback --list
 ```
 
-Affiche tous les fournisseurs AI détectés avec l'état de disponibilité, le chemin et la version.
+Affiche tous les fichiers de sauvegarde avec leurs horodatages de création et tailles de fichier.
 
-#### Tester l'analyse AI
+#### Restaurer la dernière sauvegarde
 
 ```bash
-pcu ai --test
+pcu rollback --latest
 ```
 
-Exécute un test avec une mise à jour de dépendance d'exemple pour vérifier que l'analyse AI fonctionne.
+Restaure automatiquement la sauvegarde la plus récente sans demander.
+
+#### Sélection interactive de sauvegarde
+
+```bash
+pcu rollback --select
+```
+
+Ouvre une invite interactive pour sélectionner quelle sauvegarde restaurer.
+
+#### Nettoyer les anciennes sauvegardes
+
+```bash
+pcu rollback --delete-all --verbose
+```
+
+Supprime tous les fichiers de sauvegarde avec invite de confirmation et sortie détaillée.
+
+---
+
+## `pcu watch` - Mode surveillance
+
+Surveiller les modifications de `pnpm-workspace.yaml` et vérifier automatiquement les dépendances obsolètes lorsque des modifications sont détectées.
+
+<CodeGroup>
+
+```bash {{ title: 'Surveillance de base' }}
+pcu watch
+```
+
+```bash {{ title: 'Surveillance avancée' }}
+pcu watch --debounce 1000 --clear
+pcu watch --catalog default --target minor
+pcu watch --include "react*" --exclude "*-dev"
+```
+
+</CodeGroup>
+
+### Options
+
+<Properties>
+  <Property name="--catalog" type="string">
+    Vérifier uniquement un catalogue spécifique
+  </Property>
+  <Property name="-f, --format" type="enum" default="table">
+    Format de sortie : table, json, markdown
+  </Property>
+  <Property name="-t, --target" type="enum" default="latest">
+    Cible de mise à jour : latest, minor, patch
+  </Property>
+  <Property name="--prerelease" type="boolean">
+    Inclure les versions préliminaires
+  </Property>
+  <Property name="--include" type="string">
+    Inclure les packages correspondant au motif
+  </Property>
+  <Property name="--exclude" type="string">
+    Exclure les packages correspondant au motif
+  </Property>
+  <Property name="--debounce" type="number" default="300">
+    Délai de temporisation en millisecondes avant vérification
+  </Property>
+  <Property name="--clear" type="boolean">
+    Effacer la console avant chaque vérification
+  </Property>
+  <Property name="-w, --workspace" type="string">
+    Chemin du répertoire de l'espace de travail (par défaut : répertoire actuel)
+  </Property>
+  <Property name="-v, --verbose" type="boolean">
+    Afficher les informations détaillées
+  </Property>
+</Properties>
+
+### Comportement de surveillance
+
+La commande watch fournit une surveillance continue avec des fonctionnalités intelligentes :
+
+- **Vérification initiale** : Exécute une vérification immédiatement au démarrage de la surveillance
+- **Temporisation** : Empêche les re-vérifications rapides lorsque les fichiers changent rapidement
+- **Arrêt gracieux** : Appuyez sur `Ctrl+C` pour arrêter proprement la surveillance
+- **Mises à jour en temps réel** : Affiche les comptages de packages obsolètes au fur et à mesure de leur détection
+
+### Exemples d'utilisation
+
+#### Mode surveillance de base
+
+```bash
+pcu watch
+```
+
+Surveille le `pnpm-workspace.yaml` du répertoire actuel pour les modifications.
+
+#### Surveillance avec effacement de console
+
+```bash
+pcu watch --clear
+```
+
+Efface la console avant chaque vérification pour une sortie plus propre.
+
+#### Surveillance avec temporisation personnalisée
+
+```bash
+pcu watch --debounce 1000
+```
+
+Attend 1 seconde après les modifications de fichiers avant d'exécuter les vérifications.
+
+#### Surveiller un catalogue spécifique
+
+```bash
+pcu watch --catalog default --target minor
+```
+
+Surveille les modifications et vérifie uniquement le catalogue default pour les mises à jour mineures.
+
+#### Surveillance avec filtres
+
+```bash
+pcu watch --include "react*,@types/*" --exclude "*-dev"
+```
+
+Surveille et filtre les résultats selon des motifs de packages spécifiques.
+
+### Conseils d'intégration
+
+Le mode surveillance est idéal pour :
+
+- **Flux de développement** : Garder les mises à jour de dépendances visibles pendant le développement actif
+- **Surveillance CI/CD** : Surveiller les mises à jour dans les environnements de développement de longue durée
+- **Notifications d'équipe** : Combiner avec des outils de notification pour alerter sur les mises à jour
 
 ---
 

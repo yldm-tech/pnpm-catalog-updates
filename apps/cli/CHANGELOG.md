@@ -1,5 +1,15 @@
 # pcu
 
+## Unreleased
+
+### Minor Changes
+
+- feat: Add Hybrid Mode for all CLI commands
+  - Commands now automatically enter interactive mode when no flags are provided
+  - Supports all 11 commands: check, update, analyze, workspace, theme, security, init, ai, cache, rollback, watch
+  - Seamless experience: use flags for automation, skip flags for guided prompts
+  - New `InteractiveOptionsCollector` class for consistent option collection
+
 ## 1.0.3
 
 ### Patch Changes

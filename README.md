@@ -33,6 +33,7 @@ pcu -i
 ## Features
 
 - **Catalog Focused** - Specialized for pnpm workspace catalog dependency management
+- **Hybrid Mode** - Commands auto-enter interactive prompts when no flags provided
 - **Interactive Mode** - Choose which dependencies to update with intuitive interface
 - **AI-Powered Analysis** - Intelligent recommendations using Claude, Gemini, or Codex CLI
 - **Security Scanning** - Built-in vulnerability detection with auto-fix capability

@@ -15,6 +15,11 @@ const mocks = vi.hoisted(() => ({
   npmrcParse: vi.fn(),
   npmrcGetRegistryForPackage: vi.fn(),
   npmrcGetAuthToken: vi.fn(),
+  // Cache mocks
+  cacheGet: vi.fn(),
+  cacheSet: vi.fn(),
+  cacheClear: vi.fn(),
+  cacheGetStats: vi.fn(),
 }))
 
 // Mock external dependencies
@@ -27,6 +32,16 @@ vi.mock('pacote', () => ({
 
 vi.mock('npm-registry-fetch', () => ({
   default: mocks.npmFetch,
+}))
+
+// Mock the shared cache module
+vi.mock('../../cache/cache.js', () => ({
+  registryCache: {
+    get: mocks.cacheGet,
+    set: mocks.cacheSet,
+    clear: mocks.cacheClear,
+    getStats: mocks.cacheGetStats,
+  },
 }))
 
 // Override UserFriendlyErrorHandler with test mocks
@@ -78,6 +93,20 @@ vi.mock('@pcu/utils', () => {
       handleSecurityCheckFailure: mocks.handleSecurityCheckFailure,
       handlePackageQueryFailure: mocks.handlePackageQueryFailure,
     },
+    // Add parallelLimit mock for batchQueryVersions
+    parallelLimit: vi.fn(
+      async <T, R>(
+        items: T[],
+        callback: (item: T) => Promise<R>,
+        _concurrency?: number
+      ): Promise<R[]> => {
+        const results: R[] = []
+        for (const item of items) {
+          results.push(await callback(item))
+        }
+        return results
+      }
+    ),
   }
 })
 
@@ -442,6 +471,16 @@ describe('NpmRegistryService', () => {
     let cachedService: InstanceType<typeof NpmRegistryService>
 
     beforeEach(() => {
+      // Reset cache mocks
+      mocks.cacheGet.mockReturnValue(undefined) // Cache miss by default
+      mocks.cacheGetStats.mockReturnValue({
+        totalEntries: 0,
+        totalSize: 0,
+        hitRate: 0,
+        hits: 0,
+        misses: 0,
+      })
+
       // Create service with caching enabled
       cachedService = new NpmRegistryService('https://registry.npmjs.org/', {
         cacheValidityMinutes: 10,
@@ -450,38 +489,40 @@ describe('NpmRegistryService', () => {
     })
 
     it('should cache package versions', async () => {
-      await cachedService.getPackageVersions('lodash')
+      // First call - cache miss, should call API
+      mocks.cacheGet.mockReturnValueOnce(undefined)
       await cachedService.getPackageVersions('lodash')
 
-      // Should only call API once due to caching
+      // Second call - cache hit, return cached result
+      mocks.cacheGet.mockReturnValueOnce(['4.17.19', '4.17.20', '4.17.21'])
+      await cachedService.getPackageVersions('lodash')
+
+      // Should only call API once (first call), second call uses cache
       expect(mocks.packument).toHaveBeenCalledTimes(1)
+      expect(mocks.cacheGet).toHaveBeenCalledTimes(2)
+      expect(mocks.cacheSet).toHaveBeenCalledTimes(1)
     })
 
     it('should clear all cache', async () => {
-      await cachedService.getPackageVersions('lodash')
       cachedService.clearCache()
-      await cachedService.getPackageVersions('lodash')
 
-      // Should call API twice after clearing cache
-      expect(mocks.packument).toHaveBeenCalledTimes(2)
-    })
-
-    it('should clear cache by type', async () => {
-      await cachedService.getPackageVersions('lodash')
-      cachedService.clearCacheByType('versions')
-      await cachedService.getPackageVersions('lodash')
-
-      expect(mocks.packument).toHaveBeenCalledTimes(2)
+      expect(mocks.cacheClear).toHaveBeenCalled()
     })
 
     it('should return cache statistics', async () => {
-      await cachedService.getPackageVersions('lodash')
-      await cachedService.getPackageVersions('express')
+      mocks.cacheGetStats.mockReturnValue({
+        totalEntries: 5,
+        totalSize: 1024,
+        hitRate: 0.8,
+        hits: 16,
+        misses: 4,
+      })
 
       const stats = cachedService.getCacheStats()
 
-      expect(stats.total).toBeGreaterThanOrEqual(2)
-      expect(stats.versions).toBeGreaterThanOrEqual(2)
+      expect(stats.totalEntries).toBe(5)
+      expect(stats.hitRate).toBe(0.8)
+      expect(stats.hits).toBe(16)
     })
   })
 

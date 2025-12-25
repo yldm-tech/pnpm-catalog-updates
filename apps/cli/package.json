@@ -31,8 +31,11 @@
     "clean": "rimraf dist bin/*.js"
   },
   "dependencies": {
+    "@clack/prompts": "catalog:",
+    "@inquirer/core": "catalog:",
     "@pcu/core": "workspace:*",
     "@pcu/utils": "workspace:*",
+    "boxen": "catalog:",
     "chalk": "catalog:",
     "cli-table3": "catalog:",
     "commander": "catalog:",
@@ -52,7 +55,6 @@
     "@types/node": "catalog:node20",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
-    "eslint": "catalog:",
     "fs-extra": "catalog:",
     "msw": "catalog:",
     "prettier": "catalog:",

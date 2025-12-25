@@ -5,7 +5,7 @@
  */
 
 import type { WorkspaceService } from '@pcu/core'
-import { CommandExitError, t } from '@pcu/utils'
+import { CommandExitError } from '@pcu/utils'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 
 export interface WorkspaceCommandOptions {
@@ -40,23 +40,8 @@ export class WorkspaceCommand {
       throw CommandExitError.success()
     } else {
       const info = await this.workspaceService.getWorkspaceInfo(options.workspace)
-      console.log(formatter.formatMessage(`${t('command.workspace.title')}: ${info.name}`, 'info'))
-      console.log(formatter.formatMessage(`${t('command.workspace.path')}: ${info.path}`, 'info'))
-      console.log(
-        formatter.formatMessage(`${t('command.workspace.packages')}: ${info.packageCount}`, 'info')
-      )
-      console.log(
-        formatter.formatMessage(`${t('command.workspace.catalogs')}: ${info.catalogCount}`, 'info')
-      )
-
-      if (info.catalogNames.length > 0) {
-        console.log(
-          formatter.formatMessage(
-            `${t('command.workspace.catalogNames')}: ${info.catalogNames.join(', ')}`,
-            'info'
-          )
-        )
-      }
+      const formattedOutput = formatter.formatWorkspaceInfo(info)
+      console.log(formattedOutput)
       throw CommandExitError.success()
     }
   }

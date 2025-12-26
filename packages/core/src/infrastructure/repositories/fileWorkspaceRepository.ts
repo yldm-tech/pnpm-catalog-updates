@@ -7,7 +7,7 @@
 
 import path from 'node:path'
 
-import { FileSystemError, logger } from '@pcu/utils'
+import { FileSystemError, logger, WorkspaceNotFoundError } from '@pcu/utils'
 import { Catalog } from '../../domain/entities/catalog.js'
 import { Package } from '../../domain/entities/package.js'
 import { Workspace } from '../../domain/entities/workspace.js'
@@ -55,6 +55,18 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
   }
 
   /**
+   * Get a workspace by its path
+   * Throws WorkspaceNotFoundError if not found
+   */
+  async getByPath(path: WorkspacePath): Promise<Workspace> {
+    const workspace = await this.findByPath(path)
+    if (!workspace) {
+      throw new WorkspaceNotFoundError(path.toString())
+    }
+    return workspace
+  }
+
+  /**
    * Find a workspace by its ID
    */
   async findById(_id: WorkspaceId): Promise<Workspace | null> {
@@ -68,23 +80,149 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
   }
 
   /**
-   * Save a workspace
+   * Save a workspace with atomic transaction support.
+   * Implements atomic save to prevent inconsistent state.
+   * If any save operation fails, all changes are rolled back.
    */
   async save(workspace: Workspace): Promise<void> {
-    try {
-      // Save workspace configuration
-      await this.saveConfiguration(workspace.getPath(), workspace.getConfig())
+    const backups: Map<string, string> = new Map()
+    const workspacePath = workspace.getPath()
 
-      // Save packages (update their package.json files)
-      await this.savePackages(workspace.getPackages())
+    try {
+      // Phase 1: Create backups of all files that will be modified
+      await this.createSaveBackups(workspace, backups)
+
+      // Phase 2: Attempt to save all files
+      await this.saveConfiguration(workspacePath, workspace.getConfig())
+      await this.savePackagesAtomic(workspace.getPackages())
+
+      // Phase 3: Success - clean up backups
+      await this.cleanupBackups(backups)
     } catch (error) {
+      // Phase 4: Failure - rollback all changes
+      logger.warn('Save operation failed, rolling back changes', {
+        workspacePath: workspacePath.toString(),
+        error: error instanceof Error ? error.message : String(error),
+      })
+
+      await this.rollbackFromBackups(backups)
+
       throw new FileSystemError(
-        workspace.getPath().toString(),
+        workspacePath.toString(),
         'save',
-        `${error}`,
+        `Atomic save failed and changes were rolled back: ${error}`,
         error instanceof Error ? error : undefined
       )
     }
+  }
+
+  /**
+   * Create backups of all files that will be modified during save.
+   * Only ignores ENOENT errors (file doesn't exist = new file).
+   * Other errors (EACCES, ENOSPC, etc.) should fail the save operation.
+   */
+  private async createSaveBackups(
+    workspace: Workspace,
+    backups: Map<string, string>
+  ): Promise<void> {
+    const workspacePath = workspace.getPath()
+
+    // Backup pnpm-workspace.yaml
+    const workspaceConfigPath = workspacePath.getPnpmWorkspaceConfigPath().toString()
+    try {
+      const backupPath = await this.fileSystemService.createBackup(workspaceConfigPath)
+      backups.set(workspaceConfigPath, backupPath)
+    } catch (error) {
+      // Only ignore ENOENT (file not found) - this means it's a new file
+      if (this.isFileNotFoundError(error)) {
+        logger.debug('No existing workspace config to backup (new workspace)', {
+          path: workspaceConfigPath,
+        })
+      } else {
+        // Re-throw other errors (permissions, disk full, etc.)
+        throw error
+      }
+    }
+
+    // Backup all package.json files
+    for (const pkg of workspace.getPackages().getAll()) {
+      const packageJsonPath = pkg.getPath().getPackageJsonPath().toString()
+      try {
+        const backupPath = await this.fileSystemService.createBackup(packageJsonPath)
+        backups.set(packageJsonPath, backupPath)
+      } catch (error) {
+        // Only ignore ENOENT (file not found) - this means it's a new file
+        if (this.isFileNotFoundError(error)) {
+          logger.debug('No existing package.json to backup (new package)', {
+            path: packageJsonPath,
+          })
+        } else {
+          // Re-throw other errors (permissions, disk full, etc.)
+          throw error
+        }
+      }
+    }
+  }
+
+  /**
+   * Check if an error is a "file not found" error (ENOENT)
+   */
+  private isFileNotFoundError(error: unknown): boolean {
+    return (
+      error instanceof Error &&
+      'code' in error &&
+      (error as NodeJS.ErrnoException).code === 'ENOENT'
+    )
+  }
+
+  /**
+   * Save packages atomically - all or nothing
+   * Unlike savePackages, this method throws on first error instead of continuing
+   */
+  private async savePackagesAtomic(packages: PackageCollection): Promise<void> {
+    for (const pkg of packages.getAll()) {
+      const packageData = pkg.toPackageJsonData()
+      await this.fileSystemService.writePackageJson(pkg.getPath(), packageData)
+    }
+  }
+
+  /**
+   * Rollback all changes from backups
+   */
+  private async rollbackFromBackups(backups: Map<string, string>): Promise<void> {
+    for (const [originalPath, backupPath] of backups) {
+      try {
+        await this.fileSystemService.restoreFromBackup(originalPath, backupPath)
+        logger.debug('Restored file from backup', { originalPath, backupPath })
+      } catch (restoreError) {
+        // Log but continue with other rollbacks
+        logger.error(
+          `Failed to restore file from backup: ${originalPath} <- ${backupPath}`,
+          restoreError instanceof Error ? restoreError : undefined
+        )
+      }
+    }
+
+    // Clean up backups after rollback attempt
+    await this.cleanupBackups(backups)
+  }
+
+  /**
+   * Clean up backup files
+   */
+  private async cleanupBackups(backups: Map<string, string>): Promise<void> {
+    for (const [, backupPath] of backups) {
+      try {
+        await this.fileSystemService.removeFile(backupPath)
+      } catch (error) {
+        // Ignore cleanup errors - backups can be cleaned up later
+        logger.debug('Failed to cleanup backup file', {
+          backupPath,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
+    backups.clear()
   }
 
   /**
@@ -98,7 +236,7 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
       throw new FileSystemError(
         path.toString(),
         'loadConfig',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -115,7 +253,7 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
       throw new FileSystemError(
         path.toString(),
         'saveConfig',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -152,7 +290,8 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
   }
 
   /**
-   * Load packages from workspace
+   * Load packages from workspace.
+   * Enhanced error handling with better context and statistics.
    */
   private async loadPackages(
     workspacePath: WorkspacePath,
@@ -167,25 +306,62 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
         packagePatterns
       )
 
-      const packages: Package[] = []
+      // Load packages in parallel for better performance in large monorepos.
+      // Use Promise.allSettled for cleaner error handling and statistics.
+      const packageLoadPromises = packageJsonFiles.map(async (packageJsonPath) => {
+        const packageDir = path.dirname(packageJsonPath)
+        const packagePath = WorkspacePath.fromString(packageDir)
 
-      for (const packageJsonPath of packageJsonFiles) {
-        try {
-          const packageDir = path.dirname(packageJsonPath)
-          const packagePath = WorkspacePath.fromString(packageDir)
+        // Read package.json
+        const packageData = await this.fileSystemService.readPackageJson(packagePath)
 
-          // Read package.json
-          const packageData = await this.fileSystemService.readPackageJson(packagePath)
-
-          // Create package
-          const packageId = `${packageData.name}-${packageDir}`
-          const pkg = Package.create(packageId, packageData.name, packagePath, packageData)
-
-          packages.push(pkg)
-        } catch (error) {
-          logger.warn(`Failed to load package from ${packageJsonPath}`, { error })
-          // Continue with other packages
+        // Create package
+        const packageId = `${packageData.name}-${packageDir}`
+        return {
+          pkg: Package.create(packageId, packageData.name, packagePath, packageData),
+          path: packageJsonPath,
         }
+      })
+
+      const results = await Promise.allSettled(packageLoadPromises)
+
+      // Collect successful packages and track failures with context
+      const packages: Package[] = []
+      const failures: Array<{ path: string; reason: string; errorType: string }> = []
+
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i]
+        const packageJsonPath = packageJsonFiles[i]
+
+        if (result?.status === 'fulfilled') {
+          packages.push(result.value.pkg)
+        } else if (result?.status === 'rejected') {
+          const error = result.reason as Error
+          // Categorize error type for better diagnostics
+          const errorType = this.categorizePackageLoadError(error)
+          failures.push({
+            path: packageJsonPath ?? 'unknown',
+            reason: error?.message ?? 'Unknown error',
+            errorType,
+          })
+        }
+      }
+
+      // Log summary of failures with categorization
+      if (failures.length > 0) {
+        const byType = failures.reduce(
+          (acc, f) => {
+            acc[f.errorType] = (acc[f.errorType] || 0) + 1
+            return acc
+          },
+          {} as Record<string, number>
+        )
+
+        logger.warn(`Failed to load ${failures.length} of ${packageJsonFiles.length} packages`, {
+          workspacePath: workspacePath.toString(),
+          failuresByType: byType,
+          failures: failures.slice(0, 5), // Limit to first 5 for brevity
+        })
       }
 
       return PackageCollection.fromPackages(packages)
@@ -193,10 +369,32 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
       throw new FileSystemError(
         workspacePath.toString(),
         'loadPackages',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
+  }
+
+  /**
+   * Categorize package load errors for better diagnostics.
+   */
+  private categorizePackageLoadError(error: Error): string {
+    const message = error.message?.toLowerCase() ?? ''
+    const code = (error as NodeJS.ErrnoException).code
+
+    if (code === 'ENOENT' || message.includes('no such file')) {
+      return 'file_not_found'
+    }
+    if (code === 'EACCES' || code === 'EPERM' || message.includes('permission')) {
+      return 'permission_denied'
+    }
+    if (message.includes('json') || message.includes('parse') || message.includes('syntax')) {
+      return 'invalid_json'
+    }
+    if (code === 'EBUSY' || code === 'ENOTEMPTY') {
+      return 'file_locked'
+    }
+    return 'unknown'
   }
 
   /**
@@ -223,27 +421,9 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
       throw new FileSystemError(
         'workspace',
         'loadCatalogs',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
-    }
-  }
-
-  /**
-   * Save packages (update their package.json files)
-   */
-  private async savePackages(packages: PackageCollection): Promise<void> {
-    for (const pkg of packages.getAll()) {
-      try {
-        const packageData = pkg.toPackageJsonData()
-        await this.fileSystemService.writePackageJson(pkg.getPath(), packageData)
-      } catch (error) {
-        logger.error(
-          `Failed to save package ${pkg.getName()}`,
-          error instanceof Error ? error : undefined
-        )
-        // Continue with other packages
-      }
     }
   }
 }

@@ -18,6 +18,7 @@ PCU bietet mehrere Hauptbefehle mit sowohl vollständigen Namen als auch praktis
 | `pcu check`          | `pcu chk`, `pcu -c`, `pcu --check`        | Nach veralteten Katalog-Dependencies suchen         |
 | `pcu update`         | `pcu u`, `pcu -u`, `pcu --update`         | Katalog-Dependencies aktualisieren                  |
 | `pcu analyze`        | `pcu a`, `pcu -a`, `pcu --analyze`        | Auswirkungen von Dependency-Updates analysieren     |
+| `pcu ai`             | -                                         | AI-Provider-Verwaltung und Analyse-Tests            |
 | `pcu workspace`      | `pcu w`, `pcu -s`, `pcu --workspace-info` | Workspace-Informationen und Validierung anzeigen    |
 | `pcu theme`          | `pcu t`, `pcu -t`, `pcu --theme`          | Farbthemen und UI-Einstellungen konfigurieren       |
 | `pcu security`       | `pcu sec`                                 | Sicherheitslücken-Scanning und -Fixes               |
@@ -68,6 +69,7 @@ Der Hybrid-Modus ist für folgende Befehle verfügbar:
 | `theme`      | Theme-Auswahl, Fortschrittsbalken-Stil             |
 | `security`   | Format, Schweregrad, Auto-Fix                      |
 | `init`       | Vorlage, Framework-Optionen, Interaktiver Assistent |
+| `ai`         | Provider-Status, Test, Cache-Operationen           |
 | `cache`      | Statistiken/Löschen-Auswahl                        |
 | `rollback`   | Backup-Auswahl, Bestätigung                        |
 | `watch`      | Katalog, Format, Ziel, Debounce, Löschen-Optionen  |
@@ -604,6 +606,75 @@ pcu theme --interactive
 - **`modern`** - Lebendige Farben perfekt für Entwicklungsumgebungen
 - **`minimal`** - Sauberes einfarbiges Design für Produktionsumgebungen
 - **`neon`** - Hoher Kontrast für Präsentationen und Demos
+
+---
+
+## `pcu ai` - AI-Provider-Verwaltung
+
+AI-Provider-Status prüfen und AI-Analyse-Cache verwalten.
+
+<CodeGroup>
+
+```bash {{ title: 'Status prüfen' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'Analyse testen' }}
+pcu ai --test
+```
+
+```bash {{ title: 'Cache-Verwaltung' }}
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### Optionen
+
+<Properties>
+  <Property name="--status" type="boolean">
+    Status aller AI-Provider anzeigen (Standard)
+  </Property>
+  <Property name="--test" type="boolean">
+    AI-Analyse mit einer Beispielanfrage testen
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    AI-Analyse-Cache-Statistiken anzeigen
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    AI-Analyse-Cache löschen
+  </Property>
+</Properties>
+
+### Unterstützte AI-Provider
+
+PCU erkennt und verwendet automatisch verfügbare AI-CLI-Tools:
+
+| Provider   | CLI-Tool         | Erkennungsmethode              |
+| ---------- | ---------------- | ------------------------------ |
+| Claude     | `claude`         | PATH-Suche und Versionsausgabe |
+| Gemini     | `gemini`         | PATH-Suche und Versionsausgabe |
+| OpenAI     | `codex`          | PATH-Suche und Versionsausgabe |
+
+### Verwendungsbeispiele
+
+#### Provider-Status anzeigen
+
+```bash
+pcu ai
+```
+
+Zeigt alle erkannten AI-Provider mit Verfügbarkeitsstatus, Pfad und Version.
+
+#### AI-Analyse testen
+
+```bash
+pcu ai --test
+```
+
+Führt einen Testlauf mit einem Beispiel-Abhängigkeitsupdate durch, um zu überprüfen, ob die AI-Analyse funktioniert.
 
 ---
 

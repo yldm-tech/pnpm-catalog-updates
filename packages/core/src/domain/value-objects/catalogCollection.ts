@@ -5,7 +5,7 @@
  * Provides operations for managing and querying multiple catalogs.
  */
 
-import { CatalogNotFoundError } from '@pcu/utils'
+import { CatalogNotFoundError, ValidationResultClass } from '@pcu/utils'
 import type { Catalog, CatalogName } from '../entities/catalog.js'
 
 export class CatalogCollection {
@@ -170,7 +170,7 @@ export class CatalogCollection {
   /**
    * Validate all catalogs in the collection
    */
-  public validate(): CatalogCollectionValidationResult {
+  public validate(): ValidationResultClass {
     const errors: string[] = []
     const warnings: string[] = []
 
@@ -209,7 +209,7 @@ export class CatalogCollection {
       }
     }
 
-    return new CatalogCollectionValidationResult(errors.length === 0, errors, warnings)
+    return new ValidationResultClass(errors.length === 0, errors, warnings)
   }
 
   /**
@@ -242,36 +242,5 @@ export class CatalogCollection {
     }
 
     return true
-  }
-}
-
-/**
- * Catalog Collection Validation Result
- */
-export class CatalogCollectionValidationResult {
-  constructor(
-    private readonly isValid: boolean,
-    private readonly errors: string[],
-    private readonly warnings: string[]
-  ) {}
-
-  public getIsValid(): boolean {
-    return this.isValid
-  }
-
-  public getErrors(): string[] {
-    return [...this.errors]
-  }
-
-  public getWarnings(): string[] {
-    return [...this.warnings]
-  }
-
-  public hasErrors(): boolean {
-    return this.errors.length > 0
-  }
-
-  public hasWarnings(): boolean {
-    return this.warnings.length > 0
   }
 }

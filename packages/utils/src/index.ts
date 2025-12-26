@@ -7,12 +7,13 @@ export * from './config/index'
 // Additional specific exports that might be missed by wildcard
 export type { AdvancedConfig } from './config/packageFilterConfig'
 export * from './config/packageFilterConfig'
-
 // Error Handling
 export * from './error-handling/errors'
 export * from './error-handling/errorTracker'
 export * from './error-handling/index'
 export * from './error-handling/userFriendlyErrorHandler'
+// Command Executor
+export * from './executor/index'
 // Internationalization
 export * from './i18n/index'
 // Logger

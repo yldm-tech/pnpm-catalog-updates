@@ -7,6 +7,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { logger } from '@pcu/utils'
 
 export interface WatchOptions {
   /** Debounce delay in milliseconds */
@@ -86,21 +87,34 @@ export class WatchService {
       }, debounceMs)
     })
 
+    // CONC-001/ERROR-002: Wrap error callback in try-catch to prevent watcher crash
     this.watcher.on('error', (error) => {
-      callbacks.onError?.(error)
+      try {
+        callbacks.onError?.(error)
+      } catch (callbackError) {
+        // Prevent callback errors from crashing the watcher
+        logger.error(
+          'Error in watch error callback:',
+          callbackError instanceof Error ? callbackError : undefined
+        )
+      }
     })
   }
 
   /**
    * Stop watching
+   * CONC-001: Properly cleanup all resources to prevent memory leaks
    */
   stop(): void {
+    // Clear debounce timer first to prevent pending callbacks
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer)
       this.debounceTimer = null
     }
 
     if (this.watcher) {
+      // CONC-001: Remove all event listeners before closing to prevent memory leaks
+      this.watcher.removeAllListeners()
       this.watcher.close()
       this.watcher = null
     }

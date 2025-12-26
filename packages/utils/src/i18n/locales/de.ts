@@ -35,7 +35,8 @@ export const de: TranslationDictionary = {
 
   // Validation errors
   'validation.packageNameRequired': 'Paketname ist erforderlich',
-  'validation.invalidFormat': 'Ungültiges Format. Muss eines sein von: table, json, yaml, minimal',
+  'validation.invalidFormat':
+    'Ungültiges Format. Muss eines sein von: table, json, yaml, minimal, github, gitlab, junit, sarif',
   'validation.invalidSeverity':
     'Ungültiger Schweregrad. Muss eines sein von: low, moderate, high, critical',
   'validation.invalidTarget':
@@ -44,6 +45,14 @@ export const de: TranslationDictionary = {
   'validation.includePatternsEmpty': 'Include-Muster dürfen nicht leer sein',
   'validation.excludePatternsEmpty': 'Exclude-Muster dürfen nicht leer sein',
   'validation.workspaceDirNotExist': 'Workspace-Verzeichnis existiert nicht: {{path}}',
+  'validation.invalidProvider':
+    'Ungültiger Provider. Muss einer der folgenden sein: auto, claude, gemini, codex',
+  'validation.invalidAnalysisType':
+    'Ungültiger Analysetyp. Muss einer der folgenden sein: impact, security, compatibility, recommend',
+  'validation.invalidGraphType':
+    'Ungültiger Graph-Typ. Muss einer der folgenden sein: {{validTypes}}',
+  'validation.invalidGraphFormat':
+    'Ungültiges Graph-Format. Muss eines der folgenden sein: {{validFormats}}',
 
   // Success messages
   'success.updateComplete': 'Aktualisierung erfolgreich abgeschlossen',
@@ -117,6 +126,7 @@ export const de: TranslationDictionary = {
   'command.update.noUpdatesSelected': 'Keine Aktualisierungen ausgewählt',
   'command.update.runningBatchAI': 'Führe KI-Batch-Analyse für {{count}} Pakete durch...',
   'command.update.batchAIHint': 'Analysiert alle Pakete in einer Anfrage für mehr Effizienz.',
+  'command.update.processingChunks': 'Verarbeite Chunk {{current}}/{{total}}...',
   'command.update.aiResults': 'KI-Analyseergebnisse:',
   'command.update.provider': 'Anbieter: {{provider}}',
   'command.update.confidence': 'Konfidenz: {{confidence}}%',
@@ -144,6 +154,15 @@ export const de: TranslationDictionary = {
   'command.update.fetchingChangelogs': 'Lade Änderungsprotokolle...',
   'command.update.changelogUnavailable': 'Änderungsprotokoll nicht verfügbar',
   'command.update.cancelled': 'Vorgang abgebrochen',
+  'command.update.moreLines': '{{count}} weitere Zeilen, verwenden Sie --verbose',
+  'command.update.installError': 'Unerwarteter Fehler während der Installation',
+  'command.update.suggestFix': 'Vorschläge:',
+  'command.update.suggestManualInstall': 'Versuchen Sie "{{pm}} install" manuell auszuführen',
+  'command.update.suggestCheckDeps': 'Überprüfen Sie Abhängigkeitskonflikte in Ihrem Workspace',
+  'command.update.suggestInstallPm':
+    'Stellen Sie sicher, dass {{pm}} installiert ist und sich im PATH befindet',
+  'command.update.suggestRetry': 'Versuchen Sie den Befehl erneut auszuführen',
+  'command.update.suggestCheckNetwork': 'Überprüfen Sie Ihre Netzwerkverbindung',
 
   // Rollback command
   'command.rollback.noBackups': 'Keine Backups gefunden',
@@ -164,6 +183,12 @@ export const de: TranslationDictionary = {
   'command.rollback.chooseBackup': 'Backup wählen',
   'command.rollback.warning': 'Warnung: Dies wird Ihre aktuelle pnpm-workspace.yaml überschreiben',
   'command.rollback.willRestore': 'Wiederherstellung von: {{time}}',
+  'command.rollback.autoBackupNote':
+    'Ihr aktueller Stand wird vor der Wiederherstellung automatisch gesichert',
+  'command.rollback.preRestoreBackupCreated':
+    'Vor-Wiederherstellungs-Backup gespeichert unter: {{path}}',
+  'command.rollback.safetyNote':
+    'Um dieses Rollback rückgängig zu machen, führen Sie "pcu rollback" erneut aus',
   'command.rollback.deleteWarning': 'Warnung: {{count}} Backup(s) werden gelöscht',
   'command.rollback.confirmDelete': 'Sind Sie sicher, dass Sie alle Backups löschen möchten?',
   'command.rollback.deletedBackups': '{{count}} Backup(s) gelöscht',
@@ -178,6 +203,15 @@ export const de: TranslationDictionary = {
   'command.watch.foundOutdated': '{{count}} veraltete(s) Paket(e) gefunden',
   'command.watch.waitingForChanges': 'Warte auf Änderungen...',
   'command.watch.runUpdateHint': 'Führen Sie "pcu update" aus, um Updates anzuwenden',
+
+  // Self-update command
+  'command.selfUpdate.checking': 'Suche nach pcu-Updates...',
+  'command.selfUpdate.updating': 'Aktualisiere pcu auf Version {{version}}...',
+  'command.selfUpdate.success': 'Erfolgreich auf Version {{version}} aktualisiert!',
+  'command.selfUpdate.failed': 'pcu-Aktualisierung fehlgeschlagen',
+  'command.selfUpdate.latestAlready': 'Sie verwenden bereits die neueste Version ({{version}})',
+  'command.selfUpdate.restartHint':
+    'Bitte starten Sie Ihr Terminal neu, um die neue Version zu verwenden.',
 
   // AI command
   'command.ai.cacheCleared': 'KI-Analyse-Cache geleert',
@@ -243,6 +277,13 @@ export const de: TranslationDictionary = {
   'command.security.allFixed':
     'Alle kritischen und schwerwiegenden Sicherheitslücken wurden behoben!',
   'command.security.fixesFailed': 'Fehler beim Anwenden der Sicherheitskorrekturen:',
+  'command.security.noPackageJson': 'Keine package.json in {{path}} gefunden',
+  'command.security.auditFailed': 'pnpm audit fehlgeschlagen: {{message}}',
+  'command.security.auditParseError': 'Fehler beim Parsen der pnpm audit-Ausgabe: {{error}}',
+  'command.security.auditExitError': 'pnpm audit fehlgeschlagen mit Status {{status}}: {{error}}',
+  'command.security.snykScanExitError': 'Snyk-Scan fehlgeschlagen mit Status {{status}}: {{error}}',
+  'command.security.snykScanFailed': 'Snyk-Scan fehlgeschlagen: {{message}}',
+  'command.security.auditFixFailed': 'pnpm audit --fix fehlgeschlagen mit Status {{status}}',
 
   // Check command additions
   'command.check.errorChecking': 'Fehler beim Überprüfen der Abhängigkeiten:',
@@ -319,6 +360,8 @@ export const de: TranslationDictionary = {
   'cli.unexpectedError': 'Unerwarteter Fehler:',
   'cli.fatalError': 'Fataler Fehler:',
   'cli.cancelled': 'Abgebrochen.',
+  'cli.updateAvailable': 'Update verfügbar: {{current}} → {{latest}}',
+  'cli.updateHint': 'Führen Sie "pcu self-update" aus, um zu aktualisieren.',
 
   // Progress bar messages
   'progress.securityAnalyzing': 'Sicherheitsanalyse wird durchgeführt...',
@@ -335,6 +378,13 @@ export const de: TranslationDictionary = {
   'progress.steps': 'Fortschrittsschritte',
   'progress.allStepsCompleted': 'Alle Schritte abgeschlossen!',
   'progress.overallProgress': 'Gesamtfortschritt',
+  'progress.checkingPackages': '{{count}} Abhängigkeiten werden überprüft...',
+  'progress.checkCompleteWithUpdates':
+    '✅ Überprüfung abgeschlossen! {{count}} veraltete Abhängigkeiten gefunden',
+  'progress.checkCompleteNoUpdates':
+    '✅ Überprüfung abgeschlossen! Alle Abhängigkeiten sind aktuell',
+  'progress.checkingPackage': 'Überprüfe Paket: {{packageName}}',
+  'progress.skippingPackage': 'Paket {{packageName}} übersprungen (Überprüfung fehlgeschlagen)',
 
   // Security command additions
   'command.security.criticalVulnsFound': '{{count}} kritische Schwachstellen gefunden',
@@ -355,6 +405,8 @@ export const de: TranslationDictionary = {
   'cli.description.cache': 'PCU-Cache für Registry- und Workspace-Daten verwalten',
   'cli.description.rollback': 'Katalog-Updates auf einen früheren Zustand zurücksetzen',
   'cli.description.watch': 'Änderungen überwachen und auf Updates prüfen',
+  'cli.description.selfUpdate': 'pcu auf die neueste Version aktualisieren',
+  'cli.description.graph': 'Katalog-Abhängigkeitsbeziehungen visualisieren',
   'cli.description.help': 'Hilfe für Befehl anzeigen',
 
   // CLI option descriptions
@@ -368,6 +420,7 @@ export const de: TranslationDictionary = {
   'cli.option.dryRun': 'Änderungen anzeigen ohne Dateien zu schreiben',
   'cli.option.force': 'Updates erzwingen, auch wenn riskant',
   'cli.option.createBackup': 'Backup-Dateien vor dem Update erstellen',
+  'cli.option.noBackup': 'Backup vor dem Update überspringen',
   'cli.option.ai': 'AI-Batch-Analyse für alle Updates aktivieren',
   'cli.option.provider': 'AI-Anbieter: auto, claude, gemini, codex',
   'cli.option.analysisType': 'AI-Analysetyp: impact, security, compatibility, recommend',
@@ -432,6 +485,8 @@ export const de: TranslationDictionary = {
   'cli.option.clearConsole': 'Konsole vor jeder Prüfung leeren',
   'cli.option.exitCode': 'mit Code 1 beenden, wenn Updates verfügbar sind (für CI/CD)',
   'cli.option.noSecurity': 'Sicherheitsprüfungen überspringen',
+  'cli.option.graphFormat': 'Ausgabeformat: text, mermaid, dot, json',
+  'cli.option.graphType': 'Graph-Typ: catalog, package, full',
 
   // CLI argument descriptions
   'cli.argument.package': 'Paketname',
@@ -666,6 +721,14 @@ export const de: TranslationDictionary = {
   'format.workspaceStatistics': 'Workspace-Statistiken',
   'format.packagesCount': '{{count}} Pakete',
   'format.catalogsCount': '{{count}} Kataloge',
+  'format.noUpdatesPlanned': 'Keine geplanten Aktualisierungen',
+  'format.plannedUpdates': 'Geplante Aktualisierungen: {{count}}',
+  'format.versionConflicts': 'Versionskonflikte',
+  'format.recommendation': 'Empfehlung',
+  'format.conflictsDetected': 'Versionskonflikte erkannt',
+
+  // Table headers
+  'table.header.new': 'Neu',
 
   // Statistics labels (workspaceCommand.ts)
   'stats.totalPackages': 'Pakete insgesamt',

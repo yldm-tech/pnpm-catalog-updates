@@ -5,26 +5,31 @@
  * Supports interactive mode, dry-run, and various update strategies.
  */
 
-import { spawn } from 'node:child_process'
-import {
-  AIAnalysisService,
-  type AnalysisType,
-  type CatalogUpdateService,
-  ChangelogService,
-  FileSystemService,
-  FileWorkspaceRepository,
-  NpmRegistryService,
-  type UpdateOptions,
-  type UpdatePlan,
-  type UpdateTarget,
+import type {
+  AnalysisType,
+  CatalogUpdateService,
+  IPackageManagerService,
+  UpdateOptions,
+  UpdatePlan,
+  UpdateTarget,
   WorkspaceService,
 } from '@pcu/core'
-import { ConfigLoader, logger, t } from '@pcu/utils'
-import chalk from 'chalk'
-import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
+import { logger, type PackageFilterConfig, t } from '@pcu/utils'
+import type { OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { ProgressBar } from '../formatters/progressBar.js'
+import { AIAnalysisHandler, ChangelogHandler, InstallHandler } from '../handlers/index.js'
 import { InteractivePrompts } from '../interactive/interactivePrompts.js'
-import { StyledText, ThemeManager } from '../themes/colorTheme.js'
+import { StyledText } from '../themes/colorTheme.js'
+import { cliOutput } from '../utils/cliOutput.js'
+import {
+  createFormatter,
+  getEffectivePatterns,
+  getEffectiveTarget,
+  initializeTheme,
+  loadConfiguration,
+  mergeWithConfig,
+} from '../utils/commandHelpers.js'
+import { errorsOnly, validateUpdateOptions } from '../validators/index.js'
 
 export interface UpdateCommandOptions {
   workspace?: string
@@ -55,237 +60,154 @@ export interface UpdateCommandOptions {
 
 export class UpdateCommand {
   private readonly updateService: CatalogUpdateService
+  private readonly aiAnalysisHandler: AIAnalysisHandler
+  private readonly changelogHandler: ChangelogHandler
+  private readonly installHandler: InstallHandler
 
-  constructor(updateService: CatalogUpdateService) {
+  constructor(
+    updateService: CatalogUpdateService,
+    workspaceService: WorkspaceService,
+    packageManagerService: IPackageManagerService
+  ) {
     this.updateService = updateService
+    this.aiAnalysisHandler = new AIAnalysisHandler(workspaceService)
+    this.changelogHandler = new ChangelogHandler()
+    // ARCH-002: Extracted install logic to dedicated handler
+    this.installHandler = new InstallHandler(packageManagerService)
   }
 
   /**
    * Execute the update command
    */
   async execute(options: UpdateCommandOptions = {}): Promise<void> {
-    let progressBar: ProgressBar | undefined
+    const progressBar = this.createProgressBar()
 
     try {
-      // Initialize theme
-      ThemeManager.setTheme('default')
+      // Load configuration and merge with CLI options
+      const { updateOptions, formatter } = await this.prepareUpdateContext(options)
 
-      // Create progress bar for the update process
-      progressBar = new ProgressBar({
-        text: t('command.update.planningUpdates'),
-        total: 4, // 4 main steps
-      })
-      progressBar.start(t('command.update.loadingConfig'))
+      // Plan updates
+      const plan = await this.planUpdates(progressBar, updateOptions)
 
-      // Load configuration file first
-      const config = await ConfigLoader.loadConfig(options.workspace || process.cwd())
-
-      // Use format from CLI options first, then config file, then default
-      const effectiveFormat = options.format || config.defaults?.format || 'table'
-
-      // Create output formatter with effective format
-      const formatter = new OutputFormatter(
-        effectiveFormat as OutputFormat,
-        options.color !== false
-      )
-
-      // Merge CLI options with configuration file settings
-      const updateOptions: UpdateOptions = {
-        workspacePath: options.workspace,
-        catalogName: options.catalog,
-        target: options.target || config.defaults?.target,
-        includePrerelease: options.prerelease ?? config.defaults?.includePrerelease ?? false,
-        // CLI include/exclude options take priority over config file
-        include: options.include?.length ? options.include : config.include,
-        exclude: options.exclude?.length ? options.exclude : config.exclude,
-        interactive: options.interactive ?? config.defaults?.interactive ?? false,
-        dryRun: options.dryRun ?? config.defaults?.dryRun ?? false,
-        force: options.force ?? false,
-        createBackup: options.createBackup ?? config.defaults?.createBackup ?? false,
-        // Skip security vulnerability checks if --no-security flag is set
-        noSecurity: options.noSecurity,
-      }
-
-      // Step 1: Planning updates
-      progressBar.update(t('command.update.checkingVersions'), 1, 4)
-      const plan = await this.updateService.planUpdates(updateOptions)
-
-      // Step 2: Check if any updates found
-      progressBar.update(t('command.update.analyzingUpdates'), 2, 4)
-
+      // Handle empty plan
       if (!plan.updates.length) {
         progressBar.succeed(t('command.update.allUpToDate'))
-        console.log(StyledText.iconSuccess(t('command.update.allUpToDate')))
+        cliOutput.print(StyledText.iconSuccess(t('command.update.allUpToDate')))
         return
       }
 
-      // Complete the progress bar before showing results
       progressBar.succeed(t('command.update.foundUpdates', { count: plan.totalUpdates }))
 
-      // Display changelog if enabled
-      if (options.changelog) {
-        await this.displayChangelogs(plan, options.verbose)
-      }
+      // Process optional features and get final plan
+      const finalPlan = await this.processOptionalFeatures(plan, options)
+      if (!finalPlan) return
 
-      // Interactive selection if enabled
-      let finalPlan = plan
-      if (options.interactive) {
-        finalPlan = await this.interactiveSelection(plan)
-        if (!finalPlan.updates.length) {
-          console.log(StyledText.iconWarning(t('command.update.noUpdatesSelected')))
-          return
-        }
-      }
+      // Execute updates or show dry-run preview
+      await this.executeUpdatesOrDryRun(finalPlan, updateOptions, options, formatter)
 
-      // AI batch analysis if enabled - analyze ALL packages in one request
-      if (options.ai) {
-        console.log(
-          chalk.blue(
-            `\n🤖 ${t('command.update.runningBatchAI', { count: finalPlan.updates.length })}`
-          )
-        )
-        console.log(chalk.gray(`${t('command.update.batchAIHint')}\n`))
-
-        try {
-          const aiResult = await this.performBatchAIAnalysis(finalPlan, options)
-
-          // Display AI analysis results
-          console.log(chalk.blue(`\n📊 ${t('command.update.aiResults')}`))
-          console.log(chalk.gray('─'.repeat(60)))
-          console.log(chalk.cyan(t('command.update.provider', { provider: aiResult.provider })))
-          console.log(
-            chalk.cyan(
-              t('command.update.confidence', { confidence: (aiResult.confidence * 100).toFixed(0) })
-            )
-          )
-          console.log(
-            chalk.cyan(t('command.update.processingTime', { time: aiResult.processingTimeMs }))
-          )
-          console.log(chalk.gray('─'.repeat(60)))
-          console.log(chalk.yellow(`\n📝 ${t('command.update.summary')}`))
-          console.log(aiResult.summary)
-
-          // Display recommendations for each package
-          if (aiResult.recommendations.length > 0) {
-            console.log(chalk.yellow(`\n📦 ${t('command.update.packageRecommendations')}`))
-            for (const rec of aiResult.recommendations) {
-              const actionIcon = rec.action === 'update' ? '✅' : rec.action === 'skip' ? '❌' : '⚠️'
-              const riskColor =
-                rec.riskLevel === 'critical'
-                  ? chalk.red
-                  : rec.riskLevel === 'high'
-                    ? chalk.yellow
-                    : rec.riskLevel === 'medium'
-                      ? chalk.cyan
-                      : chalk.green
-
-              console.log(
-                `\n  ${actionIcon} ${chalk.bold(rec.package)}: ${rec.currentVersion} → ${rec.targetVersion}`
-              )
-              console.log(
-                `     Action: ${chalk.bold(rec.action.toUpperCase())} | Risk: ${riskColor(rec.riskLevel)}`
-              )
-              console.log(`     ${rec.reason}`)
-
-              if (rec.breakingChanges && rec.breakingChanges.length > 0) {
-                console.log(
-                  chalk.red(
-                    `     ⚠️  ${t('command.update.breakingChanges', { changes: rec.breakingChanges.join(', ') })}`
-                  )
-                )
-              }
-              if (rec.securityFixes && rec.securityFixes.length > 0) {
-                console.log(
-                  chalk.green(
-                    `     🔒 ${t('command.update.securityFixes', { fixes: rec.securityFixes.join(', ') })}`
-                  )
-                )
-              }
-            }
-          }
-
-          // Display warnings
-          if (aiResult.warnings && aiResult.warnings.length > 0) {
-            console.log(chalk.yellow(`\n⚠️  ${t('command.update.warnings')}`))
-            for (const warning of aiResult.warnings) {
-              console.log(chalk.yellow(`  - ${warning}`))
-            }
-          }
-
-          console.log(chalk.gray(`\n${'─'.repeat(60)}`))
-
-          // If there are critical/skip recommendations, warn the user
-          const skipRecommendations = aiResult.recommendations.filter((r) => r.action === 'skip')
-          if (skipRecommendations.length > 0 && !options.force) {
-            console.log(
-              chalk.red(
-                `\n⛔ ${t('command.update.aiSkipRecommend', { count: skipRecommendations.length })}`
-              )
-            )
-            console.log(chalk.yellow(t('command.update.useForce')))
-          }
-        } catch (aiError) {
-          logger.warn('AI batch analysis failed', {
-            error: aiError instanceof Error ? aiError.message : String(aiError),
-            packageCount: finalPlan.updates.length,
-            provider: options.provider,
-          })
-          console.warn(chalk.yellow(`\n⚠️  ${t('command.update.aiBatchFailed')}`))
-          if (options.verbose) {
-            console.warn(chalk.gray(String(aiError)))
-          }
-        }
-      }
-
-      // Step 3: Apply updates
-      if (!options.dryRun) {
-        // Create new progress bar for applying updates
-        progressBar = new ProgressBar({
-          text: t('command.update.applyingUpdates'),
-          total: finalPlan.updates.length,
-        })
-        progressBar.start(t('command.update.applyingUpdates'))
-
-        const result = await this.updateService.executeUpdates(finalPlan, updateOptions)
-        progressBar.succeed(t('command.update.appliedUpdates', { count: finalPlan.updates.length }))
-
-        console.log(formatter.formatUpdateResult(result))
-
-        // Run pnpm install if enabled (default: true)
-        if (options.install !== false) {
-          await this.runPnpmInstall(updateOptions.workspacePath || process.cwd(), options.verbose)
-        }
-      } else {
-        console.log(StyledText.iconInfo(t('command.update.dryRunHint')))
-        console.log(JSON.stringify(finalPlan, null, 2))
-      }
-
-      console.log(StyledText.iconComplete(t('command.update.processComplete')))
+      cliOutput.print(StyledText.iconComplete(t('command.update.processComplete')))
     } catch (error) {
-      // Handle user cancellation gracefully (Ctrl+C)
-      if (
-        error instanceof Error &&
-        (error.name === 'ExitPromptError' || error.message.includes('force closed'))
-      ) {
-        if (progressBar) {
-          progressBar.stop()
-        }
-        console.log(StyledText.iconWarning(t('command.update.cancelled')))
-        return
-      }
-
-      logger.error('Update command failed', error instanceof Error ? error : undefined, { options })
-      if (progressBar) {
-        progressBar.fail(t('progress.operationFailed'))
-      }
-
-      if (error instanceof Error) {
-        console.error(StyledText.iconError(`${t('cli.error')} ${error.message}`))
-      } else {
-        console.error(StyledText.iconError(t('error.unknown')))
-      }
-      throw error
+      this.handleExecuteError(error, progressBar, options)
     }
+  }
+
+  /**
+   * Create and initialize progress bar
+   */
+  private createProgressBar(): ProgressBar {
+    initializeTheme('default')
+    const progressBar = new ProgressBar({
+      text: t('command.update.planningUpdates'),
+      total: 4,
+    })
+    progressBar.start(t('command.update.loadingConfig'))
+    return progressBar
+  }
+
+  /**
+   * Plan updates with progress tracking
+   */
+  private async planUpdates(
+    progressBar: ProgressBar,
+    updateOptions: UpdateOptions
+  ): Promise<UpdatePlan> {
+    progressBar.update(t('command.update.checkingVersions'), 1, 4)
+    const plan = await this.updateService.planUpdates(updateOptions)
+    progressBar.update(t('command.update.analyzingUpdates'), 2, 4)
+    return plan
+  }
+
+  /**
+   * Process optional features (changelog, interactive selection, AI analysis)
+   * @returns Final plan or null if user cancelled
+   */
+  private async processOptionalFeatures(
+    plan: UpdatePlan,
+    options: UpdateCommandOptions
+  ): Promise<UpdatePlan | null> {
+    // Display changelog if enabled (uses ChangelogHandler)
+    if (options.changelog) {
+      await this.changelogHandler.displayChangelogs(plan, options.verbose)
+    }
+
+    // Interactive selection if enabled
+    let finalPlan = plan
+    if (options.interactive) {
+      finalPlan = await this.interactiveSelection(plan)
+      if (!finalPlan.updates.length) {
+        cliOutput.print(StyledText.iconWarning(t('command.update.noUpdatesSelected')))
+        return null
+      }
+    }
+
+    // AI batch analysis if enabled (uses AIAnalysisHandler)
+    if (options.ai) {
+      await this.aiAnalysisHandler.analyzeAndDisplay(finalPlan, {
+        workspace: options.workspace,
+        provider: options.provider,
+        analysisType: options.analysisType,
+        skipCache: options.skipCache,
+        verbose: options.verbose,
+        force: options.force,
+      })
+    }
+
+    return finalPlan
+  }
+
+  /**
+   * Handle errors during execute()
+   */
+  private handleExecuteError(
+    error: unknown,
+    progressBar: ProgressBar,
+    options: UpdateCommandOptions
+  ): never | undefined {
+    // Handle user cancellation gracefully (Ctrl+C)
+    if (this.isUserCancellation(error)) {
+      progressBar.stop()
+      cliOutput.print(StyledText.iconWarning(t('command.update.cancelled')))
+      return
+    }
+
+    // Log and display error
+    logger.error('Update command failed', error instanceof Error ? error : undefined, { options })
+    progressBar.fail(t('progress.operationFailed'))
+
+    const errorMessage = error instanceof Error ? error.message : t('error.unknown')
+    cliOutput.error(StyledText.iconError(`${t('cli.error')} ${errorMessage}`))
+
+    throw error
+  }
+
+  /**
+   * Check if error is a user cancellation
+   */
+  private isUserCancellation(error: unknown): boolean {
+    return (
+      error instanceof Error &&
+      (error.name === 'ExitPromptError' || error.message.includes('force closed'))
+    )
   }
 
   /**
@@ -317,185 +239,83 @@ export class UpdateCommand {
   }
 
   /**
-   * Perform batch AI analysis for all packages in the update plan
-   * This analyzes ALL packages in a single AI request for efficiency
+   * Prepare update context by loading config and merging with CLI options
    */
-  private async performBatchAIAnalysis(plan: UpdatePlan, options: UpdateCommandOptions) {
-    const workspacePath = options.workspace || process.cwd()
+  private async prepareUpdateContext(options: UpdateCommandOptions): Promise<{
+    config: PackageFilterConfig
+    updateOptions: UpdateOptions
+    formatter: OutputFormatter
+  }> {
+    // Load configuration using shared helper
+    const config = await loadConfiguration(options.workspace)
 
-    // Create workspace service to get workspace info
-    const fileSystemService = new FileSystemService()
-    const workspaceRepository = new FileWorkspaceRepository(fileSystemService)
-    const workspaceService = new WorkspaceService(workspaceRepository)
-    const workspaceInfo = await workspaceService.getWorkspaceInfo(workspacePath)
+    // Create output formatter using shared helper
+    const formatter = createFormatter(options.format, config, options.color !== false)
 
-    // Create AI service
-    const aiService = new AIAnalysisService({
-      config: {
-        preferredProvider: options.provider === 'auto' ? 'auto' : options.provider,
-        cache: { enabled: !options.skipCache, ttl: 3600 },
-        fallback: { enabled: true, useRuleEngine: true },
-      },
-    })
-
-    // Convert all planned updates to PackageUpdateInfo format for batch analysis
-    const packages = plan.updates.map((update) => ({
-      name: update.packageName,
-      currentVersion: update.currentVersion,
-      targetVersion: update.newVersion,
-      updateType: update.updateType,
-      catalogName: update.catalogName,
-    }))
-
-    // Build workspace info for AI
-    const wsInfo = {
-      name: workspaceInfo.name,
-      path: workspaceInfo.path,
-      packageCount: workspaceInfo.packageCount,
-      catalogCount: workspaceInfo.catalogCount,
+    // Merge CLI options with configuration file settings using shared helpers
+    const updateOptions: UpdateOptions = {
+      workspacePath: options.workspace,
+      catalogName: options.catalog,
+      target: getEffectiveTarget(options.target, config.defaults?.target),
+      includePrerelease: mergeWithConfig(
+        options.prerelease,
+        config.defaults?.includePrerelease,
+        false
+      ),
+      include: getEffectivePatterns(options.include, config.include),
+      exclude: getEffectivePatterns(options.exclude, config.exclude),
+      interactive: mergeWithConfig(options.interactive, config.defaults?.interactive, false),
+      dryRun: mergeWithConfig(options.dryRun, config.defaults?.dryRun, false),
+      force: options.force ?? false,
+      createBackup: mergeWithConfig(options.createBackup, config.defaults?.createBackup, true),
+      noSecurity: options.noSecurity,
     }
 
-    // Perform single batch analysis for ALL packages
-    const result = await aiService.analyzeUpdates(packages, wsInfo, {
-      analysisType: options.analysisType || 'impact',
-      skipCache: options.skipCache,
-    })
-
-    return result
+    return { config, updateOptions, formatter }
   }
 
   /**
-   * Display changelogs for all planned updates
+   * Execute updates or show dry-run preview
    */
-  private async displayChangelogs(plan: UpdatePlan, verbose?: boolean): Promise<void> {
-    const changelogService = new ChangelogService({ cacheMinutes: 30 })
-    const npmRegistry = new NpmRegistryService()
+  private async executeUpdatesOrDryRun(
+    finalPlan: UpdatePlan,
+    updateOptions: UpdateOptions,
+    options: UpdateCommandOptions,
+    formatter: OutputFormatter
+  ): Promise<void> {
+    if (!options.dryRun) {
+      // Create new progress bar for applying updates
+      const progressBar = new ProgressBar({
+        text: t('command.update.applyingUpdates'),
+        total: finalPlan.updates.length,
+      })
+      progressBar.start(t('command.update.applyingUpdates'))
 
-    console.log(chalk.blue(`\n📋 ${t('command.update.fetchingChangelogs')}`))
+      const result = await this.updateService.executeUpdates(finalPlan, updateOptions)
+      progressBar.succeed(t('command.update.appliedUpdates', { count: finalPlan.updates.length }))
 
-    for (const update of plan.updates) {
-      try {
-        // Get package info to find repository URL
-        const packageInfo = await npmRegistry.getPackageInfo(update.packageName)
-        const repository = packageInfo.repository
-          ? {
-              type:
-                typeof packageInfo.repository === 'string'
-                  ? 'git'
-                  : packageInfo.repository.type || 'git',
-              url:
-                typeof packageInfo.repository === 'string'
-                  ? packageInfo.repository
-                  : packageInfo.repository.url || '',
-            }
-          : undefined
+      cliOutput.print(formatter.formatUpdateResult(result))
 
-        // Fetch changelog between versions
-        const changelog = await changelogService.getChangelog(
-          update.packageName,
-          update.currentVersion,
-          update.newVersion,
-          repository
-        )
-
-        // Display formatted changelog
-        console.log(chalk.yellow(`\n📦 ${update.packageName}`))
-        console.log(chalk.gray(`   ${update.currentVersion} → ${update.newVersion}`))
-        console.log(changelogService.formatChangelog(changelog, verbose))
-      } catch (error) {
-        logger.debug('Failed to fetch changelog', {
-          package: update.packageName,
-          error: error instanceof Error ? error.message : String(error),
-        })
-        console.log(chalk.yellow(`\n📦 ${update.packageName}`))
-        console.log(chalk.gray(`   ${update.currentVersion} → ${update.newVersion}`))
-        console.log(
-          chalk.gray(
-            `   📋 ${t('command.update.changelogUnavailable')}: https://www.npmjs.com/package/${update.packageName}?activeTab=versions`
-          )
+      // Run pnpm install if enabled (default: true)
+      // ARCH-002: Delegated to InstallHandler
+      if (options.install !== false) {
+        await this.installHandler.runInstall(
+          updateOptions.workspacePath || process.cwd(),
+          options.verbose
         )
       }
+    } else {
+      cliOutput.print(StyledText.iconInfo(t('command.update.dryRunHint')))
+      cliOutput.print(formatter.formatUpdatePlan(finalPlan))
     }
-
-    console.log(chalk.gray(`\n${'─'.repeat(60)}`))
-  }
-
-  /**
-   * Run pnpm install to update lock file after catalog updates
-   */
-  private async runPnpmInstall(workspacePath: string, verbose?: boolean): Promise<void> {
-    console.log(chalk.blue(`\n📦 ${t('command.update.runningPnpmInstall')}`))
-
-    return new Promise((resolve) => {
-      const pnpmProcess = spawn('pnpm', ['install'], {
-        cwd: workspacePath,
-        stdio: verbose ? 'inherit' : 'pipe',
-      })
-
-      let stdout = ''
-      let stderr = ''
-
-      if (!verbose && pnpmProcess.stdout) {
-        pnpmProcess.stdout.on('data', (data) => {
-          stdout += data.toString()
-        })
-      }
-
-      if (!verbose && pnpmProcess.stderr) {
-        pnpmProcess.stderr.on('data', (data) => {
-          stderr += data.toString()
-        })
-      }
-
-      pnpmProcess.on('close', (code) => {
-        if (code === 0) {
-          console.log(chalk.green(`✅ ${t('command.update.pnpmInstallSuccess')}`))
-          resolve()
-        } else {
-          console.error(chalk.red(`❌ ${t('command.update.pnpmInstallFailed')}`))
-          if (stderr) {
-            console.error(chalk.gray(stderr))
-          }
-          // Don't reject, just warn - the catalog update was successful
-          logger.warn('pnpm install failed', { code, stderr })
-          resolve()
-        }
-      })
-
-      pnpmProcess.on('error', (error) => {
-        console.error(chalk.red(`❌ ${t('command.update.pnpmInstallFailed')}`))
-        logger.error('pnpm install error', error)
-        // Don't reject, just warn
-        resolve()
-      })
-    })
   }
 
   /**
    * Validate command options
+   * QUAL-002: Uses unified validator from validators/
    */
   static validateOptions(options: UpdateCommandOptions): string[] {
-    const errors: string[] = []
-
-    // Validate format
-    if (options.format && !['table', 'json', 'yaml', 'minimal'].includes(options.format)) {
-      errors.push(t('validation.invalidFormat'))
-    }
-
-    // Validate target
-    if (
-      options.target &&
-      !['latest', 'greatest', 'minor', 'patch', 'newest'].includes(options.target)
-    ) {
-      errors.push(t('validation.invalidTarget'))
-    }
-
-    // Interactive and dry-run conflict
-    if (options.interactive && options.dryRun) {
-      errors.push(t('validation.interactiveWithDryRun'))
-    }
-
-    return errors
+    return errorsOnly(validateUpdateOptions)(options)
   }
 
   /**
@@ -519,16 +339,18 @@ Options:
   --prerelease           Include prerelease versions
   --include <pattern>    Include packages matching pattern (can be used multiple times)
   --exclude <pattern>    Exclude packages matching pattern (can be used multiple times)
-  --create-backup        Create backup files before updating
+  --create-backup        Create backup files before updating (default: true)
+  --no-backup            Skip creating backup before updating
   --install              Run pnpm install after update (default: true)
   --no-install           Skip pnpm install after update
   --verbose              Show detailed information
   --no-color             Disable colored output
 
 Examples:
-  pcu update                          # Update all catalogs and run pnpm install
+  pcu update                          # Update all catalogs (with backup and pnpm install)
   pcu update --interactive            # Interactive update selection
   pcu update --dry-run               # Preview updates without applying
+  pcu update --no-backup             # Update without creating backup
   pcu update --no-install            # Update catalogs without running pnpm install
   pcu update --catalog react17       # Update specific catalog
   pcu update --target minor          # Update to latest minor versions only

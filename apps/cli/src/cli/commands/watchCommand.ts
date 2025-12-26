@@ -7,11 +7,18 @@
 
 import path from 'node:path'
 import type { CatalogUpdateService, CheckOptions, OutdatedReport } from '@pcu/core'
-import { WatchService } from '@pcu/core'
-import { ConfigLoader, logger, t } from '@pcu/utils'
+import { countUpdateTypesFromCatalogs, WatchService } from '@pcu/core'
+import { CommandExitError, logger, t } from '@pcu/utils'
 import chalk from 'chalk'
 import type { OutputFormat } from '../formatters/outputFormatter.js'
-import { StyledText, ThemeManager } from '../themes/colorTheme.js'
+import { StyledText } from '../themes/colorTheme.js'
+import {
+  getEffectivePatterns,
+  getEffectiveTarget,
+  initializeTheme,
+  loadConfiguration,
+  mergeWithConfig,
+} from '../utils/commandHelpers.js'
 
 export interface WatchCommandOptions {
   workspace?: string
@@ -42,8 +49,8 @@ export class WatchCommand {
     const workspacePath = options.workspace || process.cwd()
     const workspaceConfigPath = path.join(workspacePath, 'pnpm-workspace.yaml')
 
-    // Initialize theme
-    ThemeManager.setTheme('default')
+    // Initialize theme using shared helper
+    initializeTheme('default')
 
     console.log(chalk.blue(`\n${t('command.watch.starting')}`))
     console.log(chalk.gray(`${t('command.watch.watching')}: ${workspaceConfigPath}`))
@@ -97,7 +104,7 @@ export class WatchCommand {
       } else {
         console.error(StyledText.iconError(t('error.unknown')))
       }
-      throw error
+      throw CommandExitError.failure('Watch command failed')
     }
   }
 
@@ -119,17 +126,21 @@ export class WatchCommand {
     console.log(chalk.gray('─'.repeat(60)))
 
     try {
-      // Load configuration
-      const config = await ConfigLoader.loadConfig(options.workspace || process.cwd())
+      // Load configuration using shared helper
+      const config = await loadConfiguration(options.workspace)
 
-      // Build check options
+      // Build check options using shared helpers
       const checkOptions: CheckOptions = {
         workspacePath: options.workspace,
         catalogName: options.catalog,
-        target: options.target || config.defaults?.target || 'latest',
-        includePrerelease: options.prerelease ?? config.defaults?.includePrerelease ?? false,
-        include: options.include?.length ? options.include : config.include,
-        exclude: options.exclude?.length ? options.exclude : config.exclude,
+        target: getEffectiveTarget(options.target, config.defaults?.target),
+        includePrerelease: mergeWithConfig(
+          options.prerelease,
+          config.defaults?.includePrerelease,
+          false
+        ),
+        include: getEffectivePatterns(options.include, config.include),
+        exclude: getEffectivePatterns(options.exclude, config.exclude),
       }
 
       // Run check
@@ -162,13 +173,7 @@ export class WatchCommand {
     console.log('')
 
     // Count update types across all catalogs
-    const updateTypes = { major: 0, minor: 0, patch: 0 }
-
-    for (const catalog of report.catalogs) {
-      for (const dep of catalog.outdatedDependencies) {
-        updateTypes[dep.updateType as keyof typeof updateTypes]++
-      }
-    }
+    const updateTypes = countUpdateTypesFromCatalogs(report.catalogs)
 
     if (updateTypes.major > 0) {
       console.log(chalk.red(`  ${t('command.check.majorUpdates', { count: updateTypes.major })}`))

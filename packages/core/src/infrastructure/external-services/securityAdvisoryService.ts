@@ -37,6 +37,16 @@ interface OSVQueryResponse {
   vulns?: OSVVulnerability[]
 }
 
+/**
+ * PERF-003: OSV Batch Query Response
+ * @see https://google.github.io/osv.dev/api/#operation/OSV_QueryAffectedBatch
+ */
+interface OSVBatchQueryResponse {
+  results: Array<{
+    vulns?: OSVVulnerability[]
+  }>
+}
+
 interface OSVVulnerability {
   id: string
   aliases?: string[]
@@ -71,24 +81,33 @@ export class SecurityAdvisoryService {
     new Map()
   private readonly cacheTimeout: number
   private readonly timeout: number
+  private readonly discoveryTimeout: number
   private readonly checkEcosystem: boolean
   private readonly maxEcosystemPackages: number
   private readonly maxVersionsToCheck: number
+  private readonly concurrency: number
 
   constructor(
     options: {
       cacheMinutes?: number
+      /** Main API request timeout in ms (default: 10000) */
       timeout?: number
+      /** Discovery request timeout in ms (default: 80% of main timeout) */
+      discoveryTimeout?: number
       checkEcosystem?: boolean
       maxEcosystemPackages?: number
       maxVersionsToCheck?: number
+      concurrency?: number
     } = {}
   ) {
     this.cacheTimeout = (options.cacheMinutes ?? 30) * 60 * 1000 // Default 30 minutes
     this.timeout = options.timeout ?? 10000 // Default 10 seconds
+    // Discovery timeout defaults to 80% of main timeout for secondary requests
+    this.discoveryTimeout = options.discoveryTimeout ?? Math.floor(this.timeout * 0.8)
     this.checkEcosystem = options.checkEcosystem ?? true // Default to checking ecosystem packages
     this.maxEcosystemPackages = options.maxEcosystemPackages ?? 20 // Limit ecosystem packages to prevent excessive API calls
     this.maxVersionsToCheck = options.maxVersionsToCheck ?? 10 // Default max versions to check for safe version
+    this.concurrency = options.concurrency ?? 5 // Default 5 concurrent queries
   }
 
   /**
@@ -101,7 +120,7 @@ export class SecurityAdvisoryService {
 
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 8000)
+      const timeoutId = setTimeout(() => controller.abort(), this.discoveryTimeout)
 
       // Fetch the package's package.json from npm registry
       const response = await fetch(
@@ -197,10 +216,12 @@ export class SecurityAdvisoryService {
 
       const foundPackages = new Set<string>()
 
+      // Use shorter timeout for search queries (50% of discovery timeout)
+      const searchTimeout = Math.floor(this.discoveryTimeout * 0.5)
       for (const query of searchQueries) {
         try {
           const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 5000)
+          const timeoutId = setTimeout(() => controller.abort(), searchTimeout)
 
           const response = await fetch(
             `https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}&size=50`,
@@ -235,7 +256,7 @@ export class SecurityAdvisoryService {
       for (const pkgName of foundPackages) {
         try {
           const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 5000)
+          const timeoutId = setTimeout(() => controller.abort(), searchTimeout)
 
           const response = await fetch(
             `https://registry.npmjs.org/${encodeURIComponent(pkgName)}/${encodeURIComponent(version)}`,
@@ -380,6 +401,76 @@ export class SecurityAdvisoryService {
   }
 
   /**
+   * PERF-003: Query OSV API for multiple packages in a single batch request
+   * Uses the querybatch endpoint to reduce API calls by 80-90%
+   * @see https://google.github.io/osv.dev/api/#operation/OSV_QueryAffectedBatch
+   */
+  private async queryOSVBatch(
+    packages: Array<{ name: string; version: string }>
+  ): Promise<Map<string, OSVQueryResponse>> {
+    const results = new Map<string, OSVQueryResponse>()
+
+    if (packages.length === 0) {
+      return results
+    }
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+
+    try {
+      const queries = packages.map((pkg) => ({
+        package: {
+          name: pkg.name,
+          ecosystem: 'npm',
+        },
+        version: pkg.version,
+      }))
+
+      const response = await fetch('https://api.osv.dev/v1/querybatch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ queries }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        throw new ExternalServiceError(
+          'OSV',
+          'querybatch',
+          `API returned ${response.status}: ${response.statusText}`
+        )
+      }
+
+      const data = (await response.json()) as OSVBatchQueryResponse
+
+      // Map results back to package keys (results are in same order as queries)
+      for (let i = 0; i < packages.length; i++) {
+        const pkg = packages[i]
+        if (!pkg) continue
+        const key = `${pkg.name}@${pkg.version}`
+        const result = data.results[i]
+        results.set(key, { vulns: result?.vulns })
+      }
+
+      return results
+    } catch (error) {
+      clearTimeout(timeoutId)
+
+      if ((error as Error).name === 'AbortError') {
+        throw new NetworkError(
+          'OSV',
+          `batch request timed out after ${this.timeout}ms for ${packages.length} packages`
+        )
+      }
+      throw error
+    }
+  }
+
+  /**
    * Query OSV API for vulnerabilities
    * @see https://google.github.io/osv.dev/api/
    */
@@ -419,7 +510,10 @@ export class SecurityAdvisoryService {
       clearTimeout(timeoutId)
 
       if ((error as Error).name === 'AbortError') {
-        throw new NetworkError('OSV', 'request timed out')
+        throw new NetworkError(
+          'OSV',
+          `request timed out after ${this.timeout}ms for ${packageName}@${version}. Consider increasing timeout in config.`
+        )
       }
       throw error
     }
@@ -618,27 +712,126 @@ export class SecurityAdvisoryService {
 
   /**
    * Batch query multiple packages
+   * PERF-003: Uses OSV batch API to reduce API calls by 80-90%
+   * ERROR-001: Uses timeout protection to prevent hangs
    */
   async queryMultiplePackages(
     packages: Array<{ name: string; version: string }>
   ): Promise<Map<string, SecurityAdvisoryReport>> {
     const results = new Map<string, SecurityAdvisoryReport>()
 
-    // Query in parallel with concurrency limit
-    const concurrency = 5
-    const chunks: Array<Array<{ name: string; version: string }>> = []
-
-    for (let i = 0; i < packages.length; i += concurrency) {
-      chunks.push(packages.slice(i, i + concurrency))
+    if (packages.length === 0) {
+      return results
     }
 
-    for (const chunk of chunks) {
-      const promises = chunk.map(async (pkg) => {
-        const report = await this.queryVulnerabilities(pkg.name, pkg.version)
-        results.set(`${pkg.name}@${pkg.version}`, report)
-      })
+    // PERF-003: Separate cached and uncached packages
+    const uncachedPackages: Array<{ name: string; version: string }> = []
 
-      await Promise.all(promises)
+    for (const pkg of packages) {
+      const cacheKey = `${pkg.name}@${pkg.version}`
+      const cached = this.cache.get(cacheKey)
+      if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+        results.set(cacheKey, cached.data)
+      } else {
+        uncachedPackages.push(pkg)
+      }
+    }
+
+    if (uncachedPackages.length === 0) {
+      return results
+    }
+
+    // PERF-003: Use batch API for uncached packages
+    // OSV recommends batches of up to 1000 queries, we use smaller chunks for reliability
+    const batchSize = 100
+    const batches: Array<Array<{ name: string; version: string }>> = []
+
+    for (let i = 0; i < uncachedPackages.length; i += batchSize) {
+      batches.push(uncachedPackages.slice(i, i + batchSize))
+    }
+
+    for (const batch of batches) {
+      try {
+        // Query all packages in this batch with a single API call
+        const batchResponses = await this.queryOSVBatch(batch)
+
+        // Parse responses and build reports
+        for (const pkg of batch) {
+          const key = `${pkg.name}@${pkg.version}`
+          const osvResponse = batchResponses.get(key)
+
+          if (osvResponse) {
+            const report = this.parseOSVResponse(pkg.name, pkg.version, osvResponse)
+
+            // Cache the result
+            this.cache.set(key, {
+              data: report,
+              timestamp: Date.now(),
+            })
+
+            results.set(key, report)
+          } else {
+            // No response for this package, create empty report
+            const emptyReport: SecurityAdvisoryReport = {
+              packageName: pkg.name,
+              version: pkg.version,
+              vulnerabilities: [],
+              hasCriticalVulnerabilities: false,
+              hasHighVulnerabilities: false,
+              totalVulnerabilities: 0,
+              queriedAt: new Date(),
+              source: 'osv',
+            }
+            results.set(key, emptyReport)
+          }
+        }
+      } catch (error) {
+        // On batch failure, fall back to individual queries for this batch
+        logger.warn('OSV batch query failed, falling back to individual queries', {
+          error: error instanceof Error ? error.message : String(error),
+          packagesInBatch: batch.length,
+        })
+
+        // ERROR-001: Use Promise.allSettled with concurrency limit to prevent indefinite hangs
+        const fallbackChunks: Array<Array<{ name: string; version: string }>> = []
+        for (let i = 0; i < batch.length; i += this.concurrency) {
+          fallbackChunks.push(batch.slice(i, i + this.concurrency))
+        }
+
+        for (const chunk of fallbackChunks) {
+          const chunkTimeout = chunk.length * (this.timeout + 1000)
+          const promises = chunk.map(async (pkg) => {
+            const report = await this.queryVulnerabilities(pkg.name, pkg.version)
+            return { pkg, report }
+          })
+
+          const chunkResults = await Promise.race([
+            Promise.allSettled(promises),
+            new Promise<
+              PromiseSettledResult<{
+                pkg: { name: string; version: string }
+                report: SecurityAdvisoryReport
+              }>[]
+            >((_, reject) => {
+              setTimeout(() => reject(new Error('Fallback query timeout')), chunkTimeout)
+            }),
+          ]).catch(() => {
+            return [] as PromiseSettledResult<{
+              pkg: { name: string; version: string }
+              report: SecurityAdvisoryReport
+            }>[]
+          })
+
+          for (const result of chunkResults) {
+            if (result.status === 'fulfilled') {
+              results.set(
+                `${result.value.pkg.name}@${result.value.pkg.version}`,
+                result.value.report
+              )
+            }
+          }
+        }
+      }
     }
 
     return results

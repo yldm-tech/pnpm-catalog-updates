@@ -1,0 +1,557 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`OutputFormatter > formatOutdatedReport > should format empty outdated report 1`] = `
+"
+format.workspace: test-workspace
+format.path: /path/to/workspace
+
+✅ format.allUpToDate"
+`;
+
+exports[`OutputFormatter > formatOutdatedReport > should format outdated report as json 1`] = `
+"{
+  "workspace": {
+    "name": "test-workspace",
+    "path": "/path/to/workspace"
+  },
+  "hasUpdates": true,
+  "totalOutdated": 3,
+  "catalogs": [
+    {
+      "catalogName": "default",
+      "totalDependencies": 10,
+      "outdatedCount": 3,
+      "outdatedDependencies": [
+        {
+          "packageName": "lodash",
+          "currentVersion": "^4.17.0",
+          "latestVersion": "^4.17.21",
+          "updateType": "patch",
+          "isSecurityUpdate": false,
+          "affectedPackages": [
+            "app1",
+            "app2"
+          ]
+        },
+        {
+          "packageName": "react",
+          "currentVersion": "^17.0.0",
+          "latestVersion": "^18.2.0",
+          "updateType": "major",
+          "isSecurityUpdate": false,
+          "affectedPackages": [
+            "app1"
+          ]
+        },
+        {
+          "packageName": "axios",
+          "currentVersion": "^0.21.0",
+          "latestVersion": "^1.6.0",
+          "updateType": "major",
+          "isSecurityUpdate": true,
+          "affectedPackages": [
+            "app2",
+            "lib1"
+          ]
+        }
+      ]
+    }
+  ]
+}"
+`;
+
+exports[`OutputFormatter > formatOutdatedReport > should format outdated report as minimal 1`] = `
+"lodash       ^4.17.0 → ^4.17.21
+react        ^17.0.0 → ^18.2.0
+[SEC] axios  ^0.21.0 → ^1.6.0"
+`;
+
+exports[`OutputFormatter > formatOutdatedReport > should format outdated report as table 1`] = `
+"
+format.workspace: test-workspace
+format.path: /path/to/workspace
+
+format.foundOutdated
+
+format.catalog: default
+┌─────────────────────────┬───────────────┬───────────────┬────────┬────────────────────┐
+│ table.header.package    │ table.header… │ table.header… │ table… │ table.header.pack… │
+├─────────────────────────┼───────────────┼───────────────┼────────┼────────────────────┤
+│ lodash                  │ ^4.17.0       │ ^4.17.21      │ patch  │ common.packagesCo… │
+├─────────────────────────┼───────────────┼───────────────┼────────┼────────────────────┤
+│ react                   │ ^17.0.0       │ ^18.2.0       │ major  │ common.packagesCo… │
+├─────────────────────────┼───────────────┼───────────────┼────────┼────────────────────┤
+│ [SEC] axios             │ ^0.21.0       │ ^1.6.0        │ major  │ common.packagesCo… │
+└─────────────────────────┴───────────────┴───────────────┴────────┴────────────────────┘
+"
+`;
+
+exports[`OutputFormatter > formatOutdatedReport > should format outdated report as yaml 1`] = `
+"workspace:
+  name: test-workspace
+  path: /path/to/workspace
+hasUpdates: true
+totalOutdated: 3
+catalogs:
+  - catalogName: default
+    totalDependencies: 10
+    outdatedCount: 3
+    outdatedDependencies:
+      - packageName: lodash
+        currentVersion: ^4.17.0
+        latestVersion: ^4.17.21
+        updateType: patch
+        isSecurityUpdate: false
+        affectedPackages:
+          - app1
+          - app2
+      - packageName: react
+        currentVersion: ^17.0.0
+        latestVersion: ^18.2.0
+        updateType: major
+        isSecurityUpdate: false
+        affectedPackages:
+          - app1
+      - packageName: axios
+        currentVersion: ^0.21.0
+        latestVersion: ^1.6.0
+        updateType: major
+        isSecurityUpdate: true
+        affectedPackages:
+          - app2
+          - lib1
+"
+`;
+
+exports[`OutputFormatter > formatUpdatePlan > should format update plan as json 1`] = `
+"{
+  "workspace": {
+    "name": "test-workspace",
+    "path": "/path/to/workspace"
+  },
+  "totalUpdates": 2,
+  "hasConflicts": false,
+  "conflicts": [],
+  "updates": [
+    {
+      "catalogName": "default",
+      "packageName": "lodash",
+      "currentVersion": "^4.17.0",
+      "newVersion": "^4.17.21",
+      "updateType": "patch"
+    },
+    {
+      "catalogName": "default",
+      "packageName": "express",
+      "currentVersion": "^4.17.0",
+      "newVersion": "^4.18.2",
+      "updateType": "minor"
+    }
+  ]
+}"
+`;
+
+exports[`OutputFormatter > formatUpdatePlan > should format update plan as minimal 1`] = `
+"lodash   ^4.17.0 → ^4.17.21
+express  ^4.17.0 → ^4.18.2"
+`;
+
+exports[`OutputFormatter > formatUpdatePlan > should format update plan as table 1`] = `
+"
+format.workspace: test-workspace
+format.path: /path/to/workspace
+
+format.plannedUpdates
+
+┌───────────────┬──────────────────────────────┬───────────────┬───────────────┬────────┐
+│ table.header… │ table.header.package         │ table.header… │ table.header… │ table… │
+├───────────────┼──────────────────────────────┼───────────────┼───────────────┼────────┤
+│ default       │ lodash                       │ ^4.17.0       │ ^4.17.21      │ patch  │
+├───────────────┼──────────────────────────────┼───────────────┼───────────────┼────────┤
+│ default       │ express                      │ ^4.17.0       │ ^4.18.2       │ minor  │
+└───────────────┴──────────────────────────────┴───────────────┴───────────────┴────────┘
+
+format.summary:
+  • command.check.minorUpdates
+  • command.check.patchUpdates"
+`;
+
+exports[`OutputFormatter > formatUpdatePlan > should format update plan as yaml 1`] = `
+"workspace:
+  name: test-workspace
+  path: /path/to/workspace
+totalUpdates: 2
+hasConflicts: false
+conflicts: []
+updates:
+  - catalogName: default
+    packageName: lodash
+    currentVersion: ^4.17.0
+    newVersion: ^4.17.21
+    updateType: patch
+  - catalogName: default
+    packageName: express
+    currentVersion: ^4.17.0
+    newVersion: ^4.18.2
+    updateType: minor
+"
+`;
+
+exports[`OutputFormatter > formatUpdatePlan > should format update plan with conflicts 1`] = `
+"
+format.workspace: test-workspace
+format.path: /path/to/workspace
+
+format.plannedUpdates
+
+┌───────────────┬──────────────────────────────┬───────────────┬───────────────┬────────┐
+│ table.header… │ table.header.package         │ table.header… │ table.header… │ table… │
+├───────────────┼──────────────────────────────┼───────────────┼───────────────┼────────┤
+│ default       │ lodash                       │ ^4.17.0       │ ^4.17.21      │ patch  │
+└───────────────┴──────────────────────────────┴───────────────┴───────────────┴────────┘
+
+⚠️ format.versionConflicts:
+
+  typescript:
+    default: 4.9.0 → 5.0.0
+    legacy: 4.5.0 → 4.9.0
+    format.recommendation: Consider aligning TypeScript versions across catalogs
+
+format.summary:
+  • command.check.patchUpdates"
+`;
+
+exports[`OutputFormatter > formatUpdatePlan > should handle empty update plan 1`] = `
+"
+format.workspace: test-workspace
+format.path: /path/to/workspace
+
+✅ format.noUpdatesPlanned"
+`;
+
+exports[`OutputFormatter > formatUpdateResult > should format failed update result 1`] = `
+"
+format.workspace: test-workspace
+❌ format.updateFailed
+
+❌ format.errorCount:
+  !! default:broken-pkg - Network error while fetching version"
+`;
+
+exports[`OutputFormatter > formatUpdateResult > should format update result as json 1`] = `
+"{
+  "workspace": {
+    "name": "test-workspace",
+    "path": "/path/to/workspace"
+  },
+  "success": true,
+  "totalUpdated": 2,
+  "totalSkipped": 1,
+  "totalErrors": 0,
+  "updatedDependencies": [
+    {
+      "catalogName": "default",
+      "packageName": "lodash",
+      "fromVersion": "^4.17.0",
+      "toVersion": "^4.17.21",
+      "updateType": "patch"
+    },
+    {
+      "catalogName": "default",
+      "packageName": "express",
+      "fromVersion": "^4.17.0",
+      "toVersion": "^4.18.2",
+      "updateType": "minor"
+    }
+  ],
+  "skippedDependencies": [
+    {
+      "catalogName": "default",
+      "packageName": "react",
+      "reason": "Major version update requires --force flag"
+    }
+  ],
+  "errors": []
+}"
+`;
+
+exports[`OutputFormatter > formatUpdateResult > should format update result as minimal 1`] = `
+"format.updatedCount
+lodash   ^4.17.0 → ^4.17.21
+express  ^4.17.0 → ^4.18.2"
+`;
+
+exports[`OutputFormatter > formatUpdateResult > should format update result as table 1`] = `
+"
+format.workspace: test-workspace
+✅ format.updateCompleted
+
+format.updatedCount:
+┌───────────────┬─────────────────────────┬───────────────┬───────────────┬────────┐
+│ table.header… │ table.header.package    │ table.header… │ table.header… │ table… │
+├───────────────┼─────────────────────────┼───────────────┼───────────────┼────────┤
+│ default       │ lodash                  │ ^4.17.0       │ ^4.17.21      │ patch  │
+├───────────────┼─────────────────────────┼───────────────┼───────────────┼────────┤
+│ default       │ express                 │ ^4.17.0       │ ^4.18.2       │ minor  │
+└───────────────┴─────────────────────────┴───────────────┴───────────────┴────────┘
+
+⚠️ format.skippedDeps (1):
+  default:react - Major version update requires --force flag
+"
+`;
+
+exports[`OutputFormatter > formatUpdateResult > should format update result as yaml 1`] = `
+"workspace:
+  name: test-workspace
+  path: /path/to/workspace
+success: true
+totalUpdated: 2
+totalSkipped: 1
+totalErrors: 0
+updatedDependencies:
+  - catalogName: default
+    packageName: lodash
+    fromVersion: ^4.17.0
+    toVersion: ^4.17.21
+    updateType: patch
+  - catalogName: default
+    packageName: express
+    fromVersion: ^4.17.0
+    toVersion: ^4.18.2
+    updateType: minor
+skippedDependencies:
+  - catalogName: default
+    packageName: react
+    reason: Major version update requires --force flag
+errors: []
+"
+`;
+
+exports[`OutputFormatter > formatValidationReport > should format invalid validation report 1`] = `
+"
+❌ format.workspaceValidation
+format.status: format.invalid
+
+format.workspaceInfo:
+  format.path: /path/to/workspace
+  format.name: test-workspace
+  format.packages: 5
+  format.catalogs: 2
+
+❌ format.errors:
+  • Missing required catalog "default"
+  • Invalid version range for package "broken-pkg"
+
+⚠️ format.warnings:
+  • Consider updating deprecated package "old-package"
+
+format.recommendations:
+  • Fix the errors above before proceeding"
+`;
+
+exports[`OutputFormatter > formatValidationReport > should format valid report as json 1`] = `
+"{
+  "workspace": {
+    "path": "/path/to/workspace",
+    "name": "test-workspace",
+    "packageCount": 5,
+    "catalogCount": 2
+  },
+  "isValid": true,
+  "errors": [],
+  "warnings": [
+    "Consider updating deprecated package \\"old-package\\""
+  ],
+  "recommendations": [
+    "Add catalog entries for commonly used packages",
+    "Consider using stricter version ranges"
+  ]
+}"
+`;
+
+exports[`OutputFormatter > formatValidationReport > should format valid report as minimal 1`] = `"format.valid (0 format.errors, 1 format.warnings)"`;
+
+exports[`OutputFormatter > formatValidationReport > should format valid report as table 1`] = `
+"
+✅ format.workspaceValidation
+format.status: format.valid
+
+format.workspaceInfo:
+  format.path: /path/to/workspace
+  format.name: test-workspace
+  format.packages: 5
+  format.catalogs: 2
+
+⚠️ format.warnings:
+  • Consider updating deprecated package "old-package"
+
+format.recommendations:
+  • Add catalog entries for commonly used packages
+  • Consider using stricter version ranges"
+`;
+
+exports[`OutputFormatter > formatValidationReport > should format valid report as yaml 1`] = `
+"workspace:
+  path: /path/to/workspace
+  name: test-workspace
+  packageCount: 5
+  catalogCount: 2
+isValid: true
+errors: []
+warnings:
+  - Consider updating deprecated package "old-package"
+recommendations:
+  - Add catalog entries for commonly used packages
+  - Consider using stricter version ranges
+"
+`;
+
+exports[`OutputFormatter > formatWorkspaceInfo > should format workspace info as json 1`] = `
+"{
+  "name": "test-workspace",
+  "path": "/path/to/workspace",
+  "packageCount": 5,
+  "catalogCount": 2,
+  "catalogNames": [
+    "default",
+    "legacy"
+  ],
+  "isValid": true
+}"
+`;
+
+exports[`OutputFormatter > formatWorkspaceInfo > should format workspace info as minimal 1`] = `
+"test-workspace (/path/to/workspace)
+command.workspace.packages: 5, command.workspace.catalogs: 2
+command.workspace.catalogNames: default, legacy"
+`;
+
+exports[`OutputFormatter > formatWorkspaceInfo > should format workspace info as table 1`] = `
+"
+╭────────────────────────────────────────────────────────────────────────────╮
+│                                 WORKSPACE                                  │
+├────────────────────┬───────────────────────────────────────────────────────┤
+│ Name               │ test-workspace                                        │
+├────────────────────┼───────────────────────────────────────────────────────┤
+│ Path               │ /path/to/workspace                                    │
+├────────────────────┼───────────────────────────────────────────────────────┤
+│ Status             │ ✓ Valid                                               │
+├────────────────────┼───────────────────────────────────────────────────────┤
+│ Packages           │ 5                                                     │
+├────────────────────┼───────────────────────────────────────────────────────┤
+│ Catalogs           │ 2                                                     │
+├────────────────────┼───────────────────────────────────────────────────────┤
+│ Catalog Names      │ default, legacy                                       │
+╰────────────────────┴───────────────────────────────────────────────────────╯
+"
+`;
+
+exports[`OutputFormatter > formatWorkspaceInfo > should format workspace info as yaml 1`] = `
+"name: test-workspace
+path: /path/to/workspace
+packageCount: 5
+catalogCount: 2
+catalogNames:
+  - default
+  - legacy
+isValid: true
+"
+`;
+
+exports[`OutputFormatter > formatWorkspaceInfo > should format workspace info without catalog names 1`] = `
+"
+╭────────────────────────────────────────────────────────────────────────────╮
+│                                 WORKSPACE                                  │
+├────────────────────┬───────────────────────────────────────────────────────┤
+│ Name               │ test-workspace                                        │
+├────────────────────┼───────────────────────────────────────────────────────┤
+│ Path               │ /path/to/workspace                                    │
+├────────────────────┼───────────────────────────────────────────────────────┤
+│ Status             │ ✓ Valid                                               │
+├────────────────────┼───────────────────────────────────────────────────────┤
+│ Packages           │ 5                                                     │
+├────────────────────┼───────────────────────────────────────────────────────┤
+│ Catalogs           │ 2                                                     │
+╰────────────────────┴───────────────────────────────────────────────────────╯
+"
+`;
+
+exports[`OutputFormatter > formatWorkspaceStats > should format workspace stats as json 1`] = `
+"{
+  "workspace": {
+    "name": "test-workspace",
+    "path": "/path/to/workspace"
+  },
+  "packages": {
+    "total": 10,
+    "withCatalogReferences": 8
+  },
+  "catalogs": {
+    "total": 2,
+    "totalEntries": 25
+  },
+  "dependencies": {
+    "total": 50,
+    "catalogReferences": 40,
+    "byType": {
+      "dependencies": 30,
+      "devDependencies": 15,
+      "peerDependencies": 3,
+      "optionalDependencies": 2
+    }
+  }
+}"
+`;
+
+exports[`OutputFormatter > formatWorkspaceStats > should format workspace stats as minimal 1`] = `"format.packages: 10, format.catalogs: 2, stats.totalDependencies: 50"`;
+
+exports[`OutputFormatter > formatWorkspaceStats > should format workspace stats as table 1`] = `
+"
+format.workspaceStatistics
+format.workspace: test-workspace
+
+┌──────────────────────────────┬──────────┐
+│ table.header.metric          │ table.h… │
+├──────────────────────────────┼──────────┤
+│ stats.totalPackages          │ 10       │
+├──────────────────────────────┼──────────┤
+│ stats.packagesWithCatalogRe… │ 8        │
+├──────────────────────────────┼──────────┤
+│ stats.totalCatalogs          │ 2        │
+├──────────────────────────────┼──────────┤
+│ stats.catalogEntries         │ 25       │
+├──────────────────────────────┼──────────┤
+│ stats.totalDependencies      │ 50       │
+├──────────────────────────────┼──────────┤
+│ stats.catalogReferences      │ 40       │
+├──────────────────────────────┼──────────┤
+│ stats.dependencies           │ 30       │
+├──────────────────────────────┼──────────┤
+│ stats.devDependencies        │ 15       │
+├──────────────────────────────┼──────────┤
+│ stats.peerDependencies       │ 3        │
+├──────────────────────────────┼──────────┤
+│ stats.optionalDependencies   │ 2        │
+└──────────────────────────────┴──────────┘"
+`;
+
+exports[`OutputFormatter > formatWorkspaceStats > should format workspace stats as yaml 1`] = `
+"workspace:
+  name: test-workspace
+  path: /path/to/workspace
+packages:
+  total: 10
+  withCatalogReferences: 8
+catalogs:
+  total: 2
+  totalEntries: 25
+dependencies:
+  total: 50
+  catalogReferences: 40
+  byType:
+    dependencies: 30
+    devDependencies: 15
+    peerDependencies: 3
+    optionalDependencies: 2
+"
+`;

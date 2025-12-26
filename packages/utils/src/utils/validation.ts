@@ -12,6 +12,71 @@ export interface ValidationResult {
 }
 
 /**
+ * QUAL-003: Unified ValidationResult class
+ * Single implementation for all domain validation results
+ */
+export class ValidationResultClass implements ValidationResult {
+  public readonly isValid: boolean
+  public readonly errors: string[]
+  public readonly warnings: string[]
+
+  constructor(isValid: boolean, errors: string[] = [], warnings: string[] = []) {
+    this.isValid = isValid
+    this.errors = [...errors]
+    this.warnings = [...warnings]
+  }
+
+  public getIsValid(): boolean {
+    return this.isValid
+  }
+
+  public getErrors(): string[] {
+    return [...this.errors]
+  }
+
+  public getWarnings(): string[] {
+    return [...this.warnings]
+  }
+
+  public hasErrors(): boolean {
+    return this.errors.length > 0
+  }
+
+  public hasWarnings(): boolean {
+    return this.warnings.length > 0
+  }
+
+  /**
+   * Merge multiple validation results into one
+   */
+  public static merge(...results: ValidationResult[]): ValidationResultClass {
+    const allErrors: string[] = []
+    const allWarnings: string[] = []
+
+    for (const result of results) {
+      allErrors.push(...result.errors)
+      allWarnings.push(...result.warnings)
+    }
+
+    return new ValidationResultClass(allErrors.length === 0, allErrors, allWarnings)
+  }
+
+  /**
+   * Create a valid result with no errors
+   */
+  public static valid(warnings: string[] = []): ValidationResultClass {
+    return new ValidationResultClass(true, [], warnings)
+  }
+
+  /**
+   * Create an invalid result with errors
+   */
+  public static invalid(errors: string[], warnings: string[] = []): ValidationResultClass {
+    return new ValidationResultClass(false, errors, warnings)
+  }
+}
+
+/**
  * Create validation result
  */
 export function createValidationResult(
@@ -189,37 +254,37 @@ export function isValidOutputFormat(format: string): boolean {
 /**
  * Validate CLI command options
  */
-export function validateCliOptions(options: Record<string, any>): ValidationResult {
+export function validateCliOptions(options: Record<string, unknown>): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
 
   // Validate workspace path
-  if (options.workspace && !isValidPath(options.workspace)) {
+  if (typeof options.workspace === 'string' && !isValidPath(options.workspace)) {
     errors.push('Invalid workspace path')
   }
 
   // Validate registry URL
-  if (options.registry && !isValidUrl(options.registry)) {
+  if (typeof options.registry === 'string' && !isValidUrl(options.registry)) {
     errors.push('Invalid registry URL')
   }
 
   // Validate timeout
-  if (options.timeout !== undefined && !isValidTimeout(options.timeout)) {
+  if (typeof options.timeout === 'number' && !isValidTimeout(options.timeout)) {
     errors.push('Invalid timeout value (must be between 1 and 300000ms)')
   }
 
   // Validate target
-  if (options.target && !isValidUpdateTarget(options.target)) {
+  if (typeof options.target === 'string' && !isValidUpdateTarget(options.target)) {
     errors.push('Invalid update target (must be: latest, greatest, minor, patch, newest)')
   }
 
   // Validate format
-  if (options.format && !isValidOutputFormat(options.format)) {
+  if (typeof options.format === 'string' && !isValidOutputFormat(options.format)) {
     errors.push('Invalid output format (must be: table, json, yaml, minimal)')
   }
 
   // Validate include patterns
-  if (options.include && Array.isArray(options.include)) {
+  if (Array.isArray(options.include)) {
     for (const pattern of options.include) {
       if (typeof pattern === 'string' && !isValidGlob(pattern)) {
         warnings.push(`Invalid include pattern: ${pattern}`)
@@ -228,7 +293,7 @@ export function validateCliOptions(options: Record<string, any>): ValidationResu
   }
 
   // Validate exclude patterns
-  if (options.exclude && Array.isArray(options.exclude)) {
+  if (Array.isArray(options.exclude)) {
     for (const pattern of options.exclude) {
       if (typeof pattern === 'string' && !isValidGlob(pattern)) {
         warnings.push(`Invalid exclude pattern: ${pattern}`)
@@ -237,7 +302,7 @@ export function validateCliOptions(options: Record<string, any>): ValidationResu
   }
 
   // Validate catalog name
-  if (options.catalog && typeof options.catalog === 'string') {
+  if (typeof options.catalog === 'string') {
     if (options.catalog.trim() === '') {
       errors.push('Catalog name cannot be empty')
     }
@@ -250,48 +315,59 @@ export function validateCliOptions(options: Record<string, any>): ValidationResu
 }
 
 /**
+ * Type guard to check if value is a record object
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
  * Validate configuration object
  */
-export function validateConfig(config: Record<string, any>): ValidationResult {
+export function validateConfig(config: Record<string, unknown>): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
 
   // Validate registry settings
-  if (config.registry) {
-    if (config.registry.url && !isValidUrl(config.registry.url)) {
+  if (isRecord(config.registry)) {
+    const registry = config.registry
+    if (typeof registry.url === 'string' && !isValidUrl(registry.url)) {
       errors.push('Invalid registry URL in configuration')
     }
 
-    if (config.registry.timeout && !isValidTimeout(config.registry.timeout)) {
+    if (typeof registry.timeout === 'number' && !isValidTimeout(registry.timeout)) {
       errors.push('Invalid registry timeout in configuration')
     }
 
-    if (config.registry.retries && (config.registry.retries < 0 || config.registry.retries > 10)) {
+    if (typeof registry.retries === 'number' && (registry.retries < 0 || registry.retries > 10)) {
       warnings.push('Registry retries should be between 0 and 10')
     }
   }
 
   // Validate update settings
-  if (config.update) {
-    if (config.update.target && !isValidUpdateTarget(config.update.target)) {
+  if (isRecord(config.update)) {
+    const update = config.update
+    if (typeof update.target === 'string' && !isValidUpdateTarget(update.target)) {
       errors.push('Invalid update target in configuration')
     }
   }
 
   // Validate output settings
-  if (config.output) {
-    if (config.output.format && !isValidOutputFormat(config.output.format)) {
+  if (isRecord(config.output)) {
+    const output = config.output
+    if (typeof output.format === 'string' && !isValidOutputFormat(output.format)) {
       errors.push('Invalid output format in configuration')
     }
   }
 
   // Validate logging settings
-  if (config.logging) {
-    if (config.logging.level && !isValidLogLevel(config.logging.level)) {
+  if (isRecord(config.logging)) {
+    const logging = config.logging
+    if (typeof logging.level === 'string' && !isValidLogLevel(logging.level)) {
       errors.push('Invalid log level in configuration')
     }
 
-    if (config.logging.file && !isValidPath(config.logging.file)) {
+    if (typeof logging.file === 'string' && !isValidPath(logging.file)) {
       errors.push('Invalid log file path in configuration')
     }
   }

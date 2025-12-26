@@ -8,6 +8,7 @@
 import * as p from '@clack/prompts'
 import { t } from '@pcu/utils'
 import chalk from 'chalk'
+import { commonSchemas, mergeOptions, type OptionsSchema } from './optionUtils.js'
 
 const theme = {
   primary: chalk.cyan,
@@ -38,39 +39,31 @@ export const choices = {
     { value: 'minimal', label: t('prompt.themeMinimal') },
     { value: 'neon', label: t('prompt.themeNeon') },
   ],
-}
-
-/** @deprecated Use choices instead */
-export function getCommonChoices() {
-  return {
-    format: [
-      { value: 'table', label: 'table' },
-      { value: 'json', label: 'json' },
-      { value: 'yaml', label: 'yaml' },
-      { value: 'minimal', label: 'minimal' },
-    ],
-    target: choices.target,
-    severity: [
-      { value: undefined, label: 'all' },
-      { value: 'critical', label: 'critical' },
-      { value: 'high', label: 'high' },
-      { value: 'medium', label: 'medium' },
-      { value: 'low', label: 'low' },
-    ],
-    analysisType: [
-      { value: 'impact', label: 'impact' },
-      { value: 'security', label: 'security' },
-      { value: 'compatibility', label: 'compatibility' },
-      { value: 'recommend', label: 'recommend' },
-    ],
-    provider: [
-      { value: 'auto', label: 'auto' },
-      { value: 'claude', label: 'claude' },
-      { value: 'gemini', label: 'gemini' },
-      { value: 'codex', label: 'codex' },
-    ],
-    theme: choices.theme,
-  }
+  format: [
+    { value: 'table', label: 'table' },
+    { value: 'json', label: 'json' },
+    { value: 'yaml', label: 'yaml' },
+    { value: 'minimal', label: 'minimal' },
+  ],
+  severity: [
+    { value: undefined, label: 'all' },
+    { value: 'critical', label: 'critical' },
+    { value: 'high', label: 'high' },
+    { value: 'medium', label: 'medium' },
+    { value: 'low', label: 'low' },
+  ],
+  analysisType: [
+    { value: 'impact', label: 'impact' },
+    { value: 'security', label: 'security' },
+    { value: 'compatibility', label: 'compatibility' },
+    { value: 'recommend', label: 'recommend' },
+  ],
+  provider: [
+    { value: 'auto', label: 'auto' },
+    { value: 'claude', label: 'claude' },
+    { value: 'gemini', label: 'gemini' },
+    { value: 'codex', label: 'codex' },
+  ],
 }
 
 /**
@@ -84,7 +77,7 @@ interface CommanderOption {
  * Commander Command interface for type safety
  */
 interface CommanderCommand {
-  options?: CommanderOption[]
+  options?: readonly CommanderOption[]
   getOptionValueSource?: (key: string) => string | undefined
 }
 
@@ -118,53 +111,155 @@ export function hasProvidedOptions(
 }
 
 /**
+ * Option schemas for each command
+ */
+const checkOptionsSchema = {
+  catalog: commonSchemas.catalog,
+  format: commonSchemas.format,
+  target: commonSchemas.target,
+  prerelease: commonSchemas.prerelease,
+  include: commonSchemas.include,
+  exclude: commonSchemas.exclude,
+  exitCode: { type: 'boolean' as const, default: false },
+} satisfies OptionsSchema<CheckOptions>
+
+type CheckOptions = {
+  catalog?: string
+  format: string
+  target: string
+  prerelease: boolean
+  include: string[]
+  exclude: string[]
+  exitCode: boolean
+}
+
+type UpdateOptions = {
+  catalog?: string
+  format: string
+  target: string
+  interactive: boolean
+  dryRun: boolean
+  force: boolean
+  prerelease: boolean
+  include: string[]
+  exclude: string[]
+  createBackup: boolean
+  ai: boolean
+  provider: string
+  analysisType: string
+  install: boolean
+  changelog: boolean
+}
+
+const updateOptionsSchema = {
+  catalog: commonSchemas.catalog,
+  format: commonSchemas.format,
+  target: commonSchemas.target,
+  interactive: { type: 'boolean' as const, default: true },
+  dryRun: commonSchemas.dryRun,
+  force: commonSchemas.force,
+  prerelease: commonSchemas.prerelease,
+  include: commonSchemas.include,
+  exclude: commonSchemas.exclude,
+  createBackup: { type: 'boolean' as const, default: true },
+  ai: commonSchemas.ai,
+  provider: commonSchemas.provider,
+  analysisType: commonSchemas.analysisType,
+  install: { type: 'boolean' as const, default: true },
+  changelog: { type: 'boolean' as const, default: false },
+} satisfies OptionsSchema<UpdateOptions>
+
+type WorkspaceOptions = {
+  validate: boolean
+  stats: boolean
+  format: string
+}
+
+const workspaceOptionsSchema = {
+  validate: { type: 'boolean' as const, default: false },
+  stats: { type: 'boolean' as const, default: true },
+  format: commonSchemas.format,
+} satisfies OptionsSchema<WorkspaceOptions>
+
+type SecurityOptions = {
+  format: string
+  audit: boolean
+  fixVulns: boolean
+  severity?: string
+  includeDev: boolean
+  snyk: boolean
+}
+
+const securityOptionsSchema = {
+  format: commonSchemas.format,
+  audit: { type: 'boolean' as const, default: true },
+  fixVulns: { type: 'boolean' as const, default: false },
+  severity: commonSchemas.catalog, // optional-string
+  includeDev: { type: 'boolean' as const, default: false },
+  snyk: { type: 'boolean' as const, default: false },
+} satisfies OptionsSchema<SecurityOptions>
+
+type InitOptions = {
+  force: boolean
+  full: boolean
+  createWorkspace: boolean
+}
+
+const initOptionsSchema = {
+  force: commonSchemas.force,
+  full: { type: 'boolean' as const, default: false },
+  createWorkspace: { type: 'boolean' as const, default: true },
+} satisfies OptionsSchema<InitOptions>
+
+type CacheOptions = {
+  stats: boolean
+  clear: boolean
+}
+
+const cacheOptionsSchema = {
+  stats: { type: 'boolean' as const, default: true },
+  clear: { type: 'boolean' as const, default: false },
+} satisfies OptionsSchema<CacheOptions>
+
+type WatchOptions = {
+  catalog?: string
+  format: string
+  target: string
+  prerelease: boolean
+  include: string[]
+  exclude: string[]
+  debounce: number
+  clear: boolean
+}
+
+const watchOptionsSchema = {
+  catalog: commonSchemas.catalog,
+  format: commonSchemas.format,
+  target: commonSchemas.target,
+  prerelease: commonSchemas.prerelease,
+  include: commonSchemas.include,
+  exclude: commonSchemas.exclude,
+  debounce: { type: 'number' as const, default: 300 },
+  clear: { type: 'boolean' as const, default: false },
+} satisfies OptionsSchema<WatchOptions>
+
+/**
  * Interactive Options Collector - Minimal prompts, sensible defaults
  */
 export class InteractiveOptionsCollector {
   /**
    * Check command - no interaction needed, just use defaults
    */
-  async collectCheckOptions(existingOptions: Record<string, unknown> = {}): Promise<{
-    catalog?: string
-    format: string
-    target: string
-    prerelease: boolean
-    include: string[]
-    exclude: string[]
-    exitCode: boolean
-  }> {
-    // No questions - just return defaults merged with existing options
-    return {
-      catalog: (existingOptions.catalog as string) || undefined,
-      format: (existingOptions.format as string) || 'table',
-      target: (existingOptions.target as string) || 'latest',
-      prerelease: (existingOptions.prerelease as boolean) ?? false,
-      include: (existingOptions.include as string[]) || [],
-      exclude: (existingOptions.exclude as string[]) || [],
-      exitCode: (existingOptions.exitCode as boolean) ?? false,
-    }
+  async collectCheckOptions(existingOptions: Record<string, unknown> = {}): Promise<CheckOptions> {
+    return mergeOptions(existingOptions, checkOptionsSchema)
   }
 
   /**
    * Update command - only ask for target version strategy
    */
-  async collectUpdateOptions(existingOptions: Record<string, unknown> = {}): Promise<{
-    catalog?: string
-    format: string
-    target: string
-    interactive: boolean
-    dryRun: boolean
-    force: boolean
-    prerelease: boolean
-    include: string[]
-    exclude: string[]
-    createBackup: boolean
-    ai: boolean
-    provider: string
-    analysisType: string
-    install: boolean
-    changelog: boolean
-  }> {
+  async collectUpdateOptions(
+    existingOptions: Record<string, unknown> = {}
+  ): Promise<UpdateOptions> {
     p.intro(theme.primary('pcu update'))
 
     // Only ask for target if not already provided
@@ -181,23 +276,8 @@ export class InteractiveOptionsCollector {
 
     p.outro(theme.success(t('interactive.update.ready')))
 
-    return {
-      catalog: (existingOptions.catalog as string) || undefined,
-      format: (existingOptions.format as string) || 'table',
-      target,
-      interactive: true,
-      dryRun: (existingOptions.dryRun as boolean) ?? false,
-      force: (existingOptions.force as boolean) ?? false,
-      prerelease: (existingOptions.prerelease as boolean) ?? false,
-      include: (existingOptions.include as string[]) || [],
-      exclude: (existingOptions.exclude as string[]) || [],
-      createBackup: true,
-      ai: (existingOptions.ai as boolean) ?? false,
-      provider: (existingOptions.provider as string) || 'auto',
-      analysisType: (existingOptions.analysisType as string) || 'impact',
-      install: (existingOptions.install as boolean) ?? true,
-      changelog: (existingOptions.changelog as boolean) ?? false,
-    }
+    // Merge with schema defaults, override target with user selection
+    return { ...mergeOptions(existingOptions, updateOptionsSchema), target }
   }
 
   /**
@@ -245,16 +325,10 @@ export class InteractiveOptionsCollector {
   /**
    * Workspace command - no interaction needed, use defaults
    */
-  async collectWorkspaceOptions(existingOptions: Record<string, unknown> = {}): Promise<{
-    validate: boolean
-    stats: boolean
-    format: string
-  }> {
-    return {
-      validate: (existingOptions.validate as boolean) ?? false,
-      stats: (existingOptions.stats as boolean) ?? true,
-      format: (existingOptions.format as string) || 'table',
-    }
+  async collectWorkspaceOptions(
+    existingOptions: Record<string, unknown> = {}
+  ): Promise<WorkspaceOptions> {
+    return mergeOptions(existingOptions, workspaceOptionsSchema)
   }
 
   /**
@@ -286,50 +360,24 @@ export class InteractiveOptionsCollector {
   /**
    * Security command - no interaction needed, defaults to audit
    */
-  async collectSecurityOptions(existingOptions: Record<string, unknown> = {}): Promise<{
-    format: string
-    audit: boolean
-    fixVulns: boolean
-    severity?: string
-    includeDev: boolean
-    snyk: boolean
-  }> {
-    return {
-      format: (existingOptions.format as string) || 'table',
-      audit: (existingOptions.audit as boolean) ?? true,
-      fixVulns: (existingOptions.fixVulns as boolean) ?? false,
-      severity: (existingOptions.severity as string) || undefined,
-      includeDev: (existingOptions.includeDev as boolean) ?? false,
-      snyk: (existingOptions.snyk as boolean) ?? false,
-    }
+  async collectSecurityOptions(
+    existingOptions: Record<string, unknown> = {}
+  ): Promise<SecurityOptions> {
+    return mergeOptions(existingOptions, securityOptionsSchema)
   }
 
   /**
    * Init command - no interaction needed, use quick mode
    */
-  async collectInitOptions(existingOptions: Record<string, unknown> = {}): Promise<{
-    force: boolean
-    full: boolean
-    createWorkspace: boolean
-  }> {
-    return {
-      force: (existingOptions.force as boolean) ?? false,
-      full: (existingOptions.full as boolean) ?? false,
-      createWorkspace: (existingOptions.createWorkspace as boolean) ?? true,
-    }
+  async collectInitOptions(existingOptions: Record<string, unknown> = {}): Promise<InitOptions> {
+    return mergeOptions(existingOptions, initOptionsSchema)
   }
 
   /**
    * Cache command - no interaction needed, defaults to stats
    */
-  async collectCacheOptions(existingOptions: Record<string, unknown> = {}): Promise<{
-    stats: boolean
-    clear: boolean
-  }> {
-    return {
-      stats: (existingOptions.stats as boolean) ?? true,
-      clear: (existingOptions.clear as boolean) ?? false,
-    }
+  async collectCacheOptions(existingOptions: Record<string, unknown> = {}): Promise<CacheOptions> {
+    return mergeOptions(existingOptions, cacheOptionsSchema)
   }
 
   /**
@@ -371,26 +419,8 @@ export class InteractiveOptionsCollector {
   /**
    * Watch command - no interaction needed, use defaults
    */
-  async collectWatchOptions(existingOptions: Record<string, unknown> = {}): Promise<{
-    catalog?: string
-    format: string
-    target: string
-    prerelease: boolean
-    include: string[]
-    exclude: string[]
-    debounce: number
-    clear: boolean
-  }> {
-    return {
-      catalog: (existingOptions.catalog as string) || undefined,
-      format: (existingOptions.format as string) || 'table',
-      target: (existingOptions.target as string) || 'latest',
-      prerelease: (existingOptions.prerelease as boolean) ?? false,
-      include: (existingOptions.include as string[]) || [],
-      exclude: (existingOptions.exclude as string[]) || [],
-      debounce: (existingOptions.debounce as number) ?? 300,
-      clear: (existingOptions.clear as boolean) ?? false,
-    }
+  async collectWatchOptions(existingOptions: Record<string, unknown> = {}): Promise<WatchOptions> {
+    return mergeOptions(existingOptions, watchOptionsSchema)
   }
 }
 

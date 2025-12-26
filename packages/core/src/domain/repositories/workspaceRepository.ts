@@ -13,11 +13,19 @@ import type { WorkspacePath } from '../value-objects/workspacePath.js'
 export interface WorkspaceRepository {
   /**
    * Find a workspace by its path
+   * Returns null if not found
    */
   findByPath(path: WorkspacePath): Promise<Workspace | null>
 
   /**
+   * Get a workspace by its path
+   * Throws WorkspaceNotFoundError if not found
+   */
+  getByPath(path: WorkspacePath): Promise<Workspace>
+
+  /**
    * Find a workspace by its ID
+   * Returns null if not found
    */
   findById(id: WorkspaceId): Promise<Workspace | null>
 

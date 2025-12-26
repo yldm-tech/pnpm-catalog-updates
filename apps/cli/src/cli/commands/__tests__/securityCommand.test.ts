@@ -34,6 +34,14 @@ const mocks = vi.hoisted(() => {
 
   return {
     spawnSync: vi.fn(),
+    exec: vi.fn(
+      (
+        _cmd: string,
+        callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+      ) => {
+        callback(null, { stdout: '', stderr: '' })
+      }
+    ),
     pathExists: vi.fn(),
     formatSecurityReport: vi.fn().mockReturnValue('Formatted security report'),
     CommandExitError: MockCommandExitError,
@@ -55,6 +63,7 @@ vi.mock('@pcu/utils', () => ({
 // Mock child_process
 vi.mock('node:child_process', () => ({
   spawnSync: mocks.spawnSync,
+  exec: mocks.exec,
 }))
 
 // Mock fs-extra
@@ -217,7 +226,7 @@ describe('SecurityCommand', () => {
       }
 
       expect(mocks.spawnSync).toHaveBeenCalledWith(
-        'npm',
+        'pnpm',
         expect.arrayContaining(['audit']),
         expect.objectContaining({
           cwd: '/custom/workspace',
@@ -354,7 +363,7 @@ describe('SecurityCommand', () => {
       }
 
       expect(mocks.spawnSync).toHaveBeenCalledWith(
-        'npm',
+        'pnpm',
         expect.not.arrayContaining(['--omit=dev']),
         expect.any(Object)
       )
@@ -400,7 +409,7 @@ describe('SecurityCommand', () => {
         format: 'invalid' as never,
       })
 
-      expect(errors).toContain('Invalid format. Must be one of: table, json, yaml, minimal')
+      expect(errors).toContain('validation.invalidFormat')
     })
 
     it('should return error for invalid severity', () => {
@@ -408,7 +417,7 @@ describe('SecurityCommand', () => {
         severity: 'invalid' as never,
       })
 
-      expect(errors).toContain('Invalid severity. Must be one of: low, moderate, high, critical')
+      expect(errors).toContain('validation.invalidSeverity')
     })
   })
 

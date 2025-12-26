@@ -376,7 +376,7 @@ export interface ThemeConfig {
   name: string
   colors: Partial<ColorTheme>
   icons: Record<string, string>
-  styles: Record<string, any>
+  styles: Record<string, string | number | boolean>
 }
 
 /**

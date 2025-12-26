@@ -22,6 +22,7 @@ PCU fournit plusieurs commandes principales avec des noms complets et des raccou
 | `pcu theme`       | `pcu t`, `pcu -t`, `pcu --theme`          | Configurer les thèmes couleur et paramètres d'interface        |
 | `pcu security`    | `pcu sec`                                 | Analyse et corrections des vulnérabilités de sécurité          |
 | `pcu cache`       | -                                         | Gestion du cache (statistiques et nettoyage)                   |
+| `pcu ai`          | -                                         | Gestion des fournisseurs AI et tests d'analyse                 |
 | `pcu rollback`    | -                                         | Restaurer les mises à jour du catalogue à un état précédent    |
 | `pcu watch`       | -                                         | Surveiller les changements et vérifier les mises à jour        |
 | `pcu help`        | `pcu h`, `pcu -h`                         | Afficher l'aide                                                |
@@ -68,6 +69,7 @@ Le mode hybride est disponible pour les commandes suivantes :
 | `theme`      | Sélection de thème, style de barre de progression      |
 | `security`   | Format, sévérité, correction automatique               |
 | `init`       | Modèle, options de framework, assistant interactif     |
+| `ai`         | Statut du fournisseur, test, opérations de cache       |
 | `cache`      | Sélection statistiques/nettoyage                       |
 | `rollback`   | Sélection de version, format                           |
 | `watch`      | Intervalle, format, options de notification            |
@@ -951,6 +953,70 @@ pcu -t -i
 ```
 
 Lance un assistant de sélection de thème guidé qui permet de prévisualiser les thèmes et configurer les paramètres d'interface de manière interactive.
+
+---
+
+## `pcu ai` - Gestion des Fournisseurs AI
+
+Vérifier le statut des fournisseurs AI et gérer le cache d'analyse AI.
+
+<CodeGroup>
+
+```bash {{ title: 'Vérifier le Statut' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'Test et Cache' }}
+pcu ai --test
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### Options
+
+<Properties>
+  <Property name="--status" type="boolean">
+    Afficher le statut de tous les fournisseurs AI (comportement par défaut)
+  </Property>
+  <Property name="--test" type="boolean">
+    Tester l'analyse AI avec une requête exemple
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    Afficher les statistiques du cache d'analyse AI
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    Vider le cache d'analyse AI
+  </Property>
+</Properties>
+
+### Détection des Fournisseurs
+
+La commande détecte automatiquement les fournisseurs AI disponibles :
+
+| Fournisseur | Priorité | Méthode de Détection |
+| ----------- | -------- | -------------------- |
+| Claude      | 100      | CLI `claude`         |
+| Gemini      | 80       | CLI `gemini`         |
+| Codex       | 60       | CLI `codex`          |
+
+### Exemples d'utilisation
+
+```bash
+# Voir le statut des fournisseurs AI
+pcu ai
+
+# Tester l'analyse AI avec le fournisseur par défaut
+pcu ai --test
+
+# Voir les statistiques du cache
+pcu ai --cache-stats
+
+# Vider le cache en cas de problèmes
+pcu ai --clear-cache
+```
 
 ---
 

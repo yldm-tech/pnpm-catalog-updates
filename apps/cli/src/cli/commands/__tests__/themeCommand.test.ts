@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   setTheme: vi.fn(),
   getTheme: vi.fn(),
   configurationWizard: vi.fn(),
+  selectTheme: vi.fn(),
 }))
 
 // Mock the theme module
@@ -57,6 +58,7 @@ vi.mock('../../themes/colorTheme.js', () => ({
 vi.mock('../../interactive/interactivePrompts.js', () => {
   const InteractivePromptsMock = vi.fn(function (this: Record<string, unknown>) {
     this.configurationWizard = mocks.configurationWizard
+    this.selectTheme = mocks.selectTheme
   })
 
   return {
@@ -85,8 +87,13 @@ describe('ThemeCommand', () => {
       major: (text: string) => `[major]${text}`,
       minor: (text: string) => `[minor]${text}`,
       patch: (text: string) => `[patch]${text}`,
+      primary: (text: string) => `[primary]${text}`,
+      text: (text: string) => `[text]${text}`,
+      muted: (text: string) => `[muted]${text}`,
+      prerelease: (text: string) => `[prerelease]${text}`,
     })
     mocks.configurationWizard.mockResolvedValue({ theme: 'modern' })
+    mocks.selectTheme.mockResolvedValue('modern')
 
     consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -130,7 +137,7 @@ describe('ThemeCommand', () => {
     it('should run interactive mode when --interactive flag is set', async () => {
       await command.execute({ interactive: true })
 
-      expect(mocks.configurationWizard).toHaveBeenCalled()
+      expect(mocks.selectTheme).toHaveBeenCalled()
       expect(mocks.setTheme).toHaveBeenCalledWith('modern')
     })
 

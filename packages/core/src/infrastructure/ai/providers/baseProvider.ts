@@ -5,10 +5,17 @@
  * Provides common functionality for executing CLI commands and parsing responses.
  */
 
-import { exec as execCallback } from 'node:child_process'
+import { exec as execCallback, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 
-import { logger } from '@pcu/utils'
+import {
+  buildSafeCommand,
+  ExternalServiceError,
+  getCommandVersion,
+  logger,
+  NetworkError,
+  whichCommand,
+} from '@pcu/utils'
 import type {
   AIProvider,
   AIProviderConfig,
@@ -19,6 +26,7 @@ import type {
   Recommendation,
   RiskLevel,
 } from '../../../domain/interfaces/aiProvider.js'
+import { AI_LIMITS, AI_TIMEOUTS, calculateBackoffDelay } from '../constants.js'
 
 const exec = promisify(execCallback)
 
@@ -27,7 +35,10 @@ const exec = promisify(execCallback)
  */
 export interface BaseProviderOptions {
   config?: AIProviderConfig
+  /** Timeout for analysis operations in milliseconds (default: 300000) */
   timeout?: number
+  /** Timeout for CLI detection/version checks in milliseconds (default: 3000) */
+  detectionTimeout?: number
   maxRetries?: number
 }
 
@@ -59,6 +70,7 @@ interface ParsedAIResponse {
 
 /**
  * Abstract base class for AI providers
+ * QUAL-001: Consolidated common functionality to eliminate duplicate code
  */
 export abstract class BaseAIProvider implements AIProvider {
   abstract readonly name: string
@@ -67,43 +79,266 @@ export abstract class BaseAIProvider implements AIProvider {
 
   protected readonly config: AIProviderConfig
   protected readonly timeout: number
+  protected readonly detectionTimeout: number
   protected readonly maxRetries: number
+
+  // QUAL-001: Common caching for all providers
+  private cachedAvailability: boolean | null = null
+  private cachedInfo: AIProviderInfo | null = null
 
   constructor(options: BaseProviderOptions = {}) {
     this.config = options.config ?? { enabled: true }
-    this.timeout = options.timeout ?? 3000000 // 300 seconds default
-    this.maxRetries = options.maxRetries ?? 2
+    this.timeout = options.timeout ?? AI_TIMEOUTS.ANALYSIS_DEFAULT
+    this.detectionTimeout = options.detectionTimeout ?? AI_TIMEOUTS.DETECTION_DEFAULT
+    this.maxRetries = options.maxRetries ?? AI_LIMITS.DEFAULT_RETRIES
   }
 
   /**
-   * Check if the provider is available
+   * QUAL-001: Get display name (capitalized) for user-facing messages
    */
-  abstract isAvailable(): Promise<boolean>
+  protected get displayName(): string {
+    return this.name.charAt(0).toUpperCase() + this.name.slice(1)
+  }
 
   /**
-   * Get provider information
+   * Get the CLI command name for this provider
+   * Subclasses should override to specify their command
    */
-  abstract getInfo(): Promise<AIProviderInfo>
+  protected abstract getCliCommand(): string
 
   /**
-   * Perform analysis
+   * Get alternate CLI command names to try
+   * Subclasses can override to provide alternates (e.g., 'gemini-cli')
    */
-  abstract analyze(context: AnalysisContext): Promise<AnalysisResult>
+  protected getAlternateCommands(): string[] {
+    return []
+  }
 
   /**
-   * Clear cached availability and info data
+   * Build CLI arguments for analysis
+   * Subclasses must implement to build provider-specific args
    */
-  abstract clearCache(): void
+  protected abstract buildCliArgs(prompt: string): string[]
+
+  /**
+   * QUAL-001: Check if the provider is available (with caching)
+   */
+  async isAvailable(): Promise<boolean> {
+    if (this.cachedAvailability !== null) {
+      return this.cachedAvailability
+    }
+
+    const isAvailable = await this.checkCliAvailability(
+      this.getCliCommand(),
+      this.getAlternateCommands()
+    )
+    this.cachedAvailability = isAvailable
+    return isAvailable
+  }
+
+  /**
+   * QUAL-001: Get provider information (with caching)
+   */
+  async getInfo(): Promise<AIProviderInfo> {
+    if (this.cachedInfo) {
+      return this.cachedInfo
+    }
+
+    const available = await this.isAvailable()
+    let version: string | undefined
+    let path: string | undefined
+
+    if (available) {
+      const details = await this.getCliDetails(this.getCliCommand())
+      version = details.version
+      path = details.path
+    }
+
+    const info: AIProviderInfo = {
+      name: this.name,
+      version,
+      path,
+      available,
+      priority: available ? this.priority : 0,
+      capabilities: this.capabilities,
+    }
+    this.cachedInfo = info
+
+    return info
+  }
+
+  /**
+   * QUAL-001: Perform analysis using template method pattern
+   */
+  async analyze(context: AnalysisContext): Promise<AnalysisResult> {
+    const startTime = Date.now()
+
+    // Check availability first
+    if (!(await this.isAvailable())) {
+      throw new ExternalServiceError(
+        this.displayName,
+        'analyze',
+        `${this.displayName} CLI is not available`
+      )
+    }
+
+    // Build the prompt
+    const prompt = this.buildPrompt(context)
+
+    // Execute CLI
+    try {
+      const { stdout, stderr } = await this.executeCliWithRetry(prompt)
+
+      // Parse the response
+      const result = this.parseResponse(stdout || stderr, context)
+      result.processingTimeMs = Date.now() - startTime
+
+      return result
+    } catch (error) {
+      return this.createDegradedResult(context, error as Error, startTime)
+    }
+  }
+
+  /**
+   * QUAL-001: Clear cached availability and info data
+   */
+  clearCache(): void {
+    this.cachedAvailability = null
+    this.cachedInfo = null
+  }
+
+  /**
+   * QUAL-001: Create degraded result when analysis fails
+   */
+  protected createDegradedResult(
+    context: AnalysisContext,
+    error: Error,
+    startTime: number
+  ): AnalysisResult {
+    logger.warn(`${this.displayName} analysis failed, returning degraded result`, {
+      error: error.message,
+      packages: context.packages.length,
+    })
+
+    return {
+      provider: this.name,
+      analysisType: context.analysisType,
+      recommendations: context.packages.map((pkg) => ({
+        package: pkg.name,
+        currentVersion: pkg.currentVersion,
+        targetVersion: pkg.targetVersion,
+        action: 'review' as const,
+        reason: `${this.displayName} analysis failed: ${error.message}`,
+        riskLevel: 'medium' as const,
+      })),
+      summary: 'Analysis failed, manual review recommended',
+      confidence: 0.1,
+      warnings: [`${this.displayName} CLI error: ${error.message}`],
+      timestamp: new Date(),
+      processingTimeMs: Date.now() - startTime,
+    }
+  }
+
+  /**
+   * QUAL-001: Execute CLI command with retry logic
+   */
+  protected async executeCliWithRetry(prompt: string): Promise<{ stdout: string; stderr: string }> {
+    let lastError: Error | null = null
+
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        const result = await this.spawnCliProcess(prompt)
+        return result
+      } catch (error) {
+        lastError = error as Error
+
+        // Don't retry timeout errors
+        if ((error as Error).message.includes('timed out')) {
+          throw error
+        }
+
+        // Retry on other errors with exponential backoff
+        if (attempt < this.maxRetries) {
+          await this.sleep(1000 * 2 ** (attempt - 1))
+        }
+      }
+    }
+
+    throw (
+      lastError ??
+      new ExternalServiceError(this.name, 'execute', `${this.name} CLI execution failed`)
+    )
+  }
+
+  /**
+   * QUAL-001: Spawn CLI process with timeout handling
+   */
+  protected spawnCliProcess(prompt: string): Promise<{ stdout: string; stderr: string }> {
+    const args = this.buildCliArgs(prompt)
+
+    return new Promise((resolve, reject) => {
+      const child = spawn(this.getCliCommand(), args, {
+        env: {
+          ...process.env,
+          NO_COLOR: '1',
+          FORCE_COLOR: '0',
+        },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+
+      // Close stdin immediately - CLI waits for stdin to close before processing
+      child.stdin?.end()
+
+      let stdout = ''
+      let stderr = ''
+      let timedOut = false
+
+      const timeoutId = setTimeout(() => {
+        timedOut = true
+        child.kill('SIGTERM')
+        reject(new NetworkError(`${this.name} CLI`, `timed out after ${this.timeout}ms`))
+      }, this.timeout)
+
+      child.stdout?.on('data', (data: Buffer) => {
+        stdout += data.toString()
+      })
+
+      child.stderr?.on('data', (data: Buffer) => {
+        stderr += data.toString()
+      })
+
+      child.on('close', (code: number | null) => {
+        clearTimeout(timeoutId)
+        if (timedOut) return
+
+        if (code === 0) {
+          resolve({ stdout, stderr })
+        } else {
+          reject(new Error(`${this.name} CLI exited with code ${code}: ${stderr || stdout}`))
+        }
+      })
+
+      child.on('error', (error: Error) => {
+        clearTimeout(timeoutId)
+        if (!timedOut) {
+          reject(error)
+        }
+      })
+    })
+  }
 
   /**
    * Execute a CLI command with timeout and retry
+   *
+   * SECURITY: Uses buildSafeCommand to prevent command injection
    */
   protected async executeCommand(
     command: string,
     args: string[],
     _input?: string
   ): Promise<{ stdout: string; stderr: string }> {
-    const fullCommand = `${command} ${args.map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`
+    // SECURITY: Use safe command building to prevent injection
+    const fullCommand = buildSafeCommand(command, args)
 
     let lastError: Error | null = null
 
@@ -111,7 +346,7 @@ export abstract class BaseAIProvider implements AIProvider {
       try {
         const result = await exec(fullCommand, {
           timeout: this.timeout,
-          maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+          maxBuffer: AI_LIMITS.MAX_BUFFER,
           env: { ...process.env, NO_COLOR: '1' },
         })
 
@@ -121,7 +356,7 @@ export abstract class BaseAIProvider implements AIProvider {
 
         if (attempt < this.maxRetries) {
           // Exponential backoff
-          await this.sleep(1000 * 2 ** (attempt - 1))
+          await this.sleep(calculateBackoffDelay(attempt))
         }
       }
     }
@@ -336,18 +571,17 @@ Respond in JSON format with prioritized recommendations.`,
 
   /**
    * Parse the AI response into structured recommendations
+   * MAINT-001: Improved JSON extraction with multiple fallback strategies
    */
   protected parseResponse(response: string, context: AnalysisContext): AnalysisResult {
     const startTime = Date.now()
 
     try {
-      // Try to extract JSON from the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
+      // MAINT-001: Try multiple strategies to extract valid JSON
+      const parsed = this.extractJsonFromResponse(response)
+      if (!parsed) {
         return this.createFallbackResult(context, response)
       }
-
-      const parsed = JSON.parse(jsonMatch[0]) as ParsedAIResponse
 
       const recommendations: Recommendation[] = (parsed.recommendations || []).map(
         (rec: RawAIRecommendation) => ({
@@ -406,6 +640,91 @@ Respond in JSON format with prioritized recommendations.`,
       warnings: ['AI response could not be fully parsed'],
       timestamp: new Date(),
     }
+  }
+
+  /**
+   * MAINT-001: Extract valid JSON from AI response with multiple fallback strategies
+   *
+   * Strategies tried in order:
+   * 1. Parse response directly as JSON
+   * 2. Extract JSON from markdown code blocks (```json ... ```)
+   * 3. Find balanced JSON object using bracket matching
+   * 4. Use greedy regex as last resort
+   */
+  private extractJsonFromResponse(response: string): ParsedAIResponse | null {
+    const trimmed = response.trim()
+
+    // Strategy 1: Try parsing the whole response as JSON
+    try {
+      return JSON.parse(trimmed) as ParsedAIResponse
+    } catch {
+      // Not direct JSON, try other strategies
+    }
+
+    // Strategy 2: Extract from markdown code blocks
+    const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (codeBlockMatch?.[1]) {
+      try {
+        return JSON.parse(codeBlockMatch[1].trim()) as ParsedAIResponse
+      } catch {
+        // Code block content is not valid JSON
+      }
+    }
+
+    // Strategy 3: Find balanced JSON object using bracket matching
+    const jsonStart = trimmed.indexOf('{')
+    if (jsonStart !== -1) {
+      let depth = 0
+      let inString = false
+      let escape = false
+
+      for (let i = jsonStart; i < trimmed.length; i++) {
+        const char = trimmed[i]
+
+        if (escape) {
+          escape = false
+          continue
+        }
+
+        if (char === '\\') {
+          escape = true
+          continue
+        }
+
+        if (char === '"' && !escape) {
+          inString = !inString
+          continue
+        }
+
+        if (!inString) {
+          if (char === '{') depth++
+          else if (char === '}') {
+            depth--
+            if (depth === 0) {
+              const jsonStr = trimmed.slice(jsonStart, i + 1)
+              try {
+                return JSON.parse(jsonStr) as ParsedAIResponse
+              } catch {
+                // Balanced brackets but invalid JSON, continue searching
+                break
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Strategy 4: Greedy regex as last resort (original behavior)
+    const greedyMatch = trimmed.match(/\{[\s\S]*\}/)
+    if (greedyMatch) {
+      try {
+        return JSON.parse(greedyMatch[0]) as ParsedAIResponse
+      } catch {
+        // Greedy match failed
+      }
+    }
+
+    return null
   }
 
   /**
@@ -472,5 +791,65 @@ Respond in JSON format with prioritized recommendations.`,
    */
   protected sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  /**
+   * DUP-001: Check if a CLI command is available
+   *
+   * Uses cross-platform command detection (which/where) with fallback to version check.
+   * This consolidates the duplicate availability check logic from all providers.
+   *
+   * @param primaryCommand - The main command name to check (e.g., 'claude', 'gemini')
+   * @param alternateCommands - Alternative command names to try (e.g., 'gemini-cli')
+   * @param versionFlag - Flag to use for version check fallback (default: '--version')
+   */
+  protected async checkCliAvailability(
+    primaryCommand: string,
+    alternateCommands: string[] = [],
+    versionFlag = '--version'
+  ): Promise<boolean> {
+    try {
+      // Try primary command first
+      const primaryPath = await whichCommand(primaryCommand, this.detectionTimeout)
+      if (primaryPath) {
+        return true
+      }
+
+      // Try alternate command names
+      for (const altCommand of alternateCommands) {
+        const altPath = await whichCommand(altCommand, this.detectionTimeout)
+        if (altPath) {
+          return true
+        }
+      }
+
+      // Fallback: try to get version directly (might work if command is aliased)
+      const version = await getCommandVersion(primaryCommand, versionFlag, this.detectionTimeout)
+      return version !== null
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * DUP-001: Get CLI path and version information
+   *
+   * Retrieves the executable path and version for a CLI command.
+   * This consolidates the duplicate getInfo logic from all providers.
+   *
+   * @param primaryCommand - The main command name (e.g., 'claude', 'gemini')
+   * @param versionFlag - Flag to use for version retrieval (default: '--version')
+   */
+  protected async getCliDetails(
+    primaryCommand: string,
+    versionFlag = '--version'
+  ): Promise<{ path: string | undefined; version: string | undefined }> {
+    const version = await getCommandVersion(primaryCommand, versionFlag, this.detectionTimeout)
+    const path = await whichCommand(primaryCommand, this.detectionTimeout)
+
+    return {
+      version: version ?? undefined,
+      path: path ?? 'alias',
+    }
   }
 }

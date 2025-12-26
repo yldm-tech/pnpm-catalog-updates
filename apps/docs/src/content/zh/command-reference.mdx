@@ -21,6 +21,7 @@ PCU 提供几个主要命令，既有全名也有便捷的简写：
 | `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | 配置颜色主题和 UI 设置          |
 | `pcu security`  | `pcu sec`                                 | 安全漏洞扫描和修复              |
 | `pcu cache`     | -                                         | 缓存管理（统计和清除）          |
+| `pcu ai`        | -                                         | AI 提供者管理和分析测试         |
 | `pcu rollback`  | -                                         | 将目录更新回滚到之前的状态      |
 | `pcu watch`     | -                                         | 监视更改并自动检查更新          |
 | `pcu help`      | `pcu h`, `pcu -h`                         | 显示帮助信息                    |
@@ -65,7 +66,7 @@ pcu theme --set modern
 
 ### 支持的命令
 
-混合模式适用于所有 10 个主要命令：
+混合模式适用于所有 11 个主要命令：
 
 | 命令           | 交互选项                                                 |
 | -------------- | -------------------------------------------------------- |
@@ -76,6 +77,7 @@ pcu theme --set modern
 | `pcu theme`    | 主题选择、进度条样式、预览                               |
 | `pcu security` | 格式、严重性过滤、修复选项、开发依赖                     |
 | `pcu init`     | 模板、框架选项、工作空间创建                             |
+| `pcu ai`       | 提供者状态、测试、缓存操作                               |
 | `pcu cache`    | 统计查看、清除选项                                       |
 | `pcu rollback` | 备份选择、确认                                           |
 | `pcu watch`    | 目录、格式、目标、防抖、清除选项                         |
@@ -892,6 +894,70 @@ pcu -t -i
 ```
 
 启动引导式主题选择向导，允许您预览主题并交互式配置 UI 设置。
+
+---
+
+## `pcu ai` - AI 提供者管理
+
+检查 AI 提供者状态并管理 AI 分析缓存。
+
+<CodeGroup>
+
+```bash {{ title: '检查状态' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: '测试和缓存' }}
+pcu ai --test
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### 选项
+
+<Properties>
+  <Property name="--status" type="boolean">
+    显示所有 AI 提供者的状态（默认行为）
+  </Property>
+  <Property name="--test" type="boolean">
+    使用示例请求测试 AI 分析
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    显示 AI 分析缓存统计
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    清除 AI 分析缓存
+  </Property>
+</Properties>
+
+### 提供者检测
+
+命令自动检测可用的 AI 提供者：
+
+| 提供者 | 优先级 | 检测方法       |
+| ------ | ------ | -------------- |
+| Claude | 100    | `claude` CLI   |
+| Gemini | 80     | `gemini` CLI   |
+| Codex  | 60     | `codex` CLI    |
+
+### 使用示例
+
+```bash
+# 查看 AI 提供者状态
+pcu ai
+
+# 使用默认提供者测试 AI 分析
+pcu ai --test
+
+# 查看缓存统计
+pcu ai --cache-stats
+
+# 如有问题清除缓存
+pcu ai --clear-cache
+```
 
 ---
 

@@ -47,6 +47,7 @@ export {
   mockCriticalVulnerability,
   mockNpmPackageMetadata,
   mockVulnerability,
+  setMockDownloadStats,
   setMockPackageMetadata,
   setMockVulnerabilities,
 } from './handlers.js'

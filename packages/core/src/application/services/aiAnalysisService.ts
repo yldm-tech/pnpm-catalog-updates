@@ -41,6 +41,31 @@ export interface AIAnalysisServiceOptions {
 }
 
 /**
+ * Chunking configuration for large package sets
+ */
+export interface ChunkingConfig {
+  /** Enable chunking for large package sets (default: true) */
+  enabled?: boolean
+  /** Maximum packages per chunk (default: 30) */
+  chunkSize?: number
+  /** Threshold to trigger chunking (default: 50) */
+  threshold?: number
+  /** Progress callback for chunked analysis */
+  onProgress?: (progress: ChunkProgress) => void
+}
+
+/**
+ * Chunk progress information
+ */
+export interface ChunkProgress {
+  currentChunk: number
+  totalChunks: number
+  processedPackages: number
+  totalPackages: number
+  percentComplete: number
+}
+
+/**
  * Analysis request options
  */
 export interface AnalysisRequestOptions {
@@ -48,6 +73,8 @@ export interface AnalysisRequestOptions {
   provider?: string // Specific provider to use
   skipCache?: boolean
   timeout?: number
+  /** Chunking configuration for large package sets */
+  chunking?: ChunkingConfig
 }
 
 /**
@@ -80,7 +107,11 @@ export class AIAnalysisService {
     this.cache = options.cache ?? analysisCache
     this.detector = options.detector ?? new AIDetector()
     this.ruleEngine = new RuleEngine()
-    this.securityService = new SecurityAdvisoryService({ cacheMinutes: 30, timeout: 10000 })
+    this.securityService = new SecurityAdvisoryService({
+      cacheMinutes: 30,
+      timeout: this.config.securityData?.timeout ?? 10000,
+      concurrency: this.config.securityData?.concurrency ?? 5,
+    })
 
     if (options.providers) {
       for (const provider of options.providers) {
@@ -120,28 +151,34 @@ export class AIAnalysisService {
 
   /**
    * Initialize providers (lazy initialization)
+   * PERF-004: Parallelized provider availability checks
    */
   private async initializeProviders(): Promise<void> {
     if (this.providersInitialized) {
       return
     }
 
-    // Initialize Claude provider (priority: 100)
-    const claudeProvider = new ClaudeProvider(this.config.providers.claude)
-    if (await claudeProvider.isAvailable()) {
-      this.providers.set('claude', claudeProvider)
-    }
+    // Create all provider instances
+    const providerCandidates: Array<{ name: string; provider: AIProvider }> = [
+      { name: 'claude', provider: new ClaudeProvider(this.config.providers.claude) },
+      { name: 'gemini', provider: new GeminiProvider(this.config.providers.gemini) },
+      { name: 'codex', provider: new CodexProvider(this.config.providers.codex) },
+    ]
 
-    // Initialize Gemini provider (priority: 80)
-    const geminiProvider = new GeminiProvider(this.config.providers.gemini)
-    if (await geminiProvider.isAvailable()) {
-      this.providers.set('gemini', geminiProvider)
-    }
+    // PERF-004: Check availability in parallel
+    const availabilityChecks = await Promise.all(
+      providerCandidates.map(async ({ name, provider }) => ({
+        name,
+        provider,
+        available: await provider.isAvailable(),
+      }))
+    )
 
-    // Initialize Codex provider (priority: 60)
-    const codexProvider = new CodexProvider(this.config.providers.codex)
-    if (await codexProvider.isAvailable()) {
-      this.providers.set('codex', codexProvider)
+    // Register available providers
+    for (const { name, provider, available } of availabilityChecks) {
+      if (available) {
+        this.providers.set(name, provider)
+      }
     }
 
     // Future: Initialize additional providers
@@ -339,26 +376,25 @@ export class AIAnalysisService {
 
   /**
    * Perform comprehensive analysis (all types)
+   * PERF-004: Parallelized analysis execution for all types
    */
   async analyzeComprehensive(
     packages: PackageUpdateInfo[],
     workspaceInfo: WorkspaceInfo,
     options: Omit<AnalysisRequestOptions, 'analysisType'> = {}
   ): Promise<MultiAnalysisResult> {
-    const results: AnalysisResult[] = []
-    const providers: string[] = []
+    // PERF-004: Run all analysis types in parallel
+    const results = await Promise.all(
+      this.config.analysisTypes.map((analysisType) =>
+        this.analyzeUpdates(packages, workspaceInfo, {
+          ...options,
+          analysisType,
+        })
+      )
+    )
 
-    // Run all analysis types
-    for (const analysisType of this.config.analysisTypes) {
-      const result = await this.analyzeUpdates(packages, workspaceInfo, {
-        ...options,
-        analysisType,
-      })
-      results.push(result)
-      if (!providers.includes(result.provider)) {
-        providers.push(result.provider)
-      }
-    }
+    // Collect unique providers
+    const providers = [...new Set(results.map((r) => r.provider))]
 
     // Merge results
     const merged = this.mergeResults(results)
@@ -384,7 +420,28 @@ export class AIAnalysisService {
       return results[0]!
     }
 
-    // Merge recommendations by package
+    const recommendations = this.mergeRecommendations(results)
+    const avgConfidence = this.calculateAverageConfidence(results)
+    const warnings = this.collectUniqueWarnings(results)
+    const totalProcessingTime = this.calculateTotalProcessingTime(results)
+
+    return {
+      provider: results.map((r) => r.provider).join(', '),
+      analysisType: 'recommend',
+      recommendations,
+      summary: `Comprehensive analysis from ${results.length} analysis types`,
+      confidence: avgConfidence,
+      warnings,
+      timestamp: new Date(),
+      processingTimeMs: totalProcessingTime,
+    }
+  }
+
+  /**
+   * Merge recommendations from multiple results by package.
+   * Extracted from mergeResults for better readability.
+   */
+  private mergeRecommendations(results: AnalysisResult[]): Recommendation[] {
     const recommendationMap = new Map<string, Recommendation>()
 
     for (const result of results) {
@@ -394,44 +451,63 @@ export class AIAnalysisService {
         if (!existing) {
           recommendationMap.set(rec.package, { ...rec })
         } else {
-          // Merge: take higher risk level, combine reasons
-          const mergedRec: Recommendation = {
-            ...existing,
-            riskLevel: this.higherRisk(existing.riskLevel, rec.riskLevel),
-            action: this.moreConservativeAction(existing.action, rec.action),
-            reason: `${existing.reason}; ${rec.reason}`,
-            breakingChanges: [
-              ...(existing.breakingChanges || []),
-              ...(rec.breakingChanges || []),
-            ].filter((v, i, a) => a.indexOf(v) === i),
-            securityFixes: [...(existing.securityFixes || []), ...(rec.securityFixes || [])].filter(
-              (v, i, a) => a.indexOf(v) === i
-            ),
-          }
-          recommendationMap.set(rec.package, mergedRec)
+          recommendationMap.set(rec.package, this.mergeRecommendation(existing, rec))
         }
       }
     }
 
-    // Calculate average confidence
-    const avgConfidence = results.reduce((sum, r) => sum + r.confidence, 0) / results.length
+    return Array.from(recommendationMap.values())
+  }
 
-    // Collect all warnings
-    const allWarnings = results.flatMap((r) => r.warnings || [])
-
-    // Total processing time
-    const totalProcessingTime = results.reduce((sum, r) => sum + (r.processingTimeMs || 0), 0)
-
+  /**
+   * Merge two recommendations for the same package
+   * Takes higher risk level, more conservative action, combines reasons and arrays
+   */
+  private mergeRecommendation(existing: Recommendation, incoming: Recommendation): Recommendation {
     return {
-      provider: results.map((r) => r.provider).join(', '),
-      analysisType: 'recommend', // Merged analysis is essentially recommendations
-      recommendations: Array.from(recommendationMap.values()),
-      summary: `Comprehensive analysis from ${results.length} analysis types`,
-      confidence: avgConfidence,
-      warnings: allWarnings.filter((v, i, a) => a.indexOf(v) === i),
-      timestamp: new Date(),
-      processingTimeMs: totalProcessingTime,
+      ...existing,
+      riskLevel: this.higherRisk(existing.riskLevel, incoming.riskLevel),
+      action: this.moreConservativeAction(existing.action, incoming.action),
+      reason: `${existing.reason}; ${incoming.reason}`,
+      breakingChanges: this.dedupeArray([
+        ...(existing.breakingChanges || []),
+        ...(incoming.breakingChanges || []),
+      ]),
+      securityFixes: this.dedupeArray([
+        ...(existing.securityFixes || []),
+        ...(incoming.securityFixes || []),
+      ]),
     }
+  }
+
+  /**
+   * Calculate average confidence from results
+   */
+  private calculateAverageConfidence(results: AnalysisResult[]): number {
+    return results.reduce((sum, r) => sum + r.confidence, 0) / results.length
+  }
+
+  /**
+   * Collect unique warnings from all results
+   */
+  private collectUniqueWarnings(results: AnalysisResult[]): string[] {
+    const allWarnings = results.flatMap((r) => r.warnings || [])
+    return this.dedupeArray(allWarnings)
+  }
+
+  /**
+   * Calculate total processing time from all results
+   */
+  private calculateTotalProcessingTime(results: AnalysisResult[]): number {
+    return results.reduce((sum, r) => sum + (r.processingTimeMs || 0), 0)
+  }
+
+  /**
+   * Remove duplicates from an array.
+   * Optimized from O(n²) to O(n) using Set.
+   */
+  private dedupeArray<T>(arr: T[]): T[] {
+    return [...new Set(arr)]
   }
 
   /**
@@ -509,6 +585,159 @@ export class AIAnalysisService {
         'No AI CLI tools detected. Install Claude, Gemini, or Codex for AI-powered analysis.',
       ],
       timestamp: new Date(),
+    }
+  }
+
+  /**
+   * Default chunking configuration
+   */
+  private readonly defaultChunkingConfig: Required<Omit<ChunkingConfig, 'onProgress'>> = {
+    enabled: true,
+    chunkSize: 30,
+    threshold: 50,
+  }
+
+  /**
+   * Analyze packages with automatic chunking for large sets
+   */
+  async analyzeWithChunking(
+    packages: PackageUpdateInfo[],
+    workspaceInfo: WorkspaceInfo,
+    options: AnalysisRequestOptions = {}
+  ): Promise<AnalysisResult> {
+    const chunkConfig = {
+      ...this.defaultChunkingConfig,
+      ...options.chunking,
+    }
+
+    // Use regular analysis if chunking is disabled or package count is below threshold
+    if (!chunkConfig.enabled || packages.length < chunkConfig.threshold) {
+      return this.analyzeUpdates(packages, workspaceInfo, options)
+    }
+
+    logger.info('Using chunked analysis for large package set', {
+      totalPackages: packages.length,
+      chunkSize: chunkConfig.chunkSize,
+    })
+
+    // Split packages into chunks
+    const chunks = this.splitIntoChunks(packages, chunkConfig.chunkSize)
+    const chunkResults: AnalysisResult[] = []
+    const totalPackages = packages.length
+
+    // Process each chunk
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i]!
+      const processedPackages = i * chunkConfig.chunkSize + chunk.length
+
+      // Report progress
+      if (options.chunking?.onProgress) {
+        options.chunking.onProgress({
+          currentChunk: i + 1,
+          totalChunks: chunks.length,
+          processedPackages,
+          totalPackages,
+          percentComplete: Math.round((processedPackages / totalPackages) * 100),
+        })
+      }
+
+      logger.debug('Processing chunk', {
+        chunk: i + 1,
+        totalChunks: chunks.length,
+        packagesInChunk: chunk.length,
+      })
+
+      // Analyze chunk (skip cache for intermediate chunks to avoid partial results)
+      const chunkResult = await this.analyzeUpdates(chunk, workspaceInfo, {
+        ...options,
+        skipCache: true, // Don't cache individual chunks
+      })
+
+      chunkResults.push(chunkResult)
+    }
+
+    // Merge all chunk results
+    const mergedResult = this.mergeChunkResults(chunkResults, packages.length)
+
+    // Cache the final merged result
+    if (this.config.cache.enabled && !options.skipCache) {
+      const context: AnalysisContext = {
+        packages,
+        workspaceInfo,
+        analysisType: options.analysisType ?? 'impact',
+        options: { timeout: options.timeout },
+      }
+      this.cache.set(context, mergedResult.provider, mergedResult)
+    }
+
+    // Final progress report
+    if (options.chunking?.onProgress) {
+      options.chunking.onProgress({
+        currentChunk: chunks.length,
+        totalChunks: chunks.length,
+        processedPackages: totalPackages,
+        totalPackages,
+        percentComplete: 100,
+      })
+    }
+
+    return mergedResult
+  }
+
+  /**
+   * Split packages into chunks of specified size
+   */
+  private splitIntoChunks(packages: PackageUpdateInfo[], chunkSize: number): PackageUpdateInfo[][] {
+    const chunks: PackageUpdateInfo[][] = []
+
+    for (let i = 0; i < packages.length; i += chunkSize) {
+      chunks.push(packages.slice(i, i + chunkSize))
+    }
+
+    return chunks
+  }
+
+  /**
+   * Merge results from multiple chunks
+   */
+  private mergeChunkResults(results: AnalysisResult[], totalPackages: number): AnalysisResult {
+    if (results.length === 0) {
+      throw new AIAnalysisError('merge', 'No chunk results to merge')
+    }
+
+    if (results.length === 1) {
+      return results[0]!
+    }
+
+    // Collect all recommendations
+    const allRecommendations: Recommendation[] = []
+    const allWarnings: string[] = []
+    let totalProcessingTime = 0
+    let totalConfidence = 0
+    const providers = new Set<string>()
+
+    for (const result of results) {
+      allRecommendations.push(...result.recommendations)
+      if (result.warnings) {
+        allWarnings.push(...result.warnings)
+      }
+      totalProcessingTime += result.processingTimeMs ?? 0
+      totalConfidence += result.confidence
+      providers.add(result.provider.replace(' (cached)', ''))
+    }
+
+    const avgConfidence = totalConfidence / results.length
+    const providerList = Array.from(providers).join(', ')
+
+    return {
+      provider: providerList,
+      analysisType: results[0]!.analysisType,
+      recommendations: allRecommendations,
+      summary: `Chunked analysis completed: ${totalPackages} packages analyzed in ${results.length} chunks`,
+      confidence: avgConfidence,
+      warnings: this.dedupeArray(allWarnings), // Use O(n) deduplication
+      timestamp: new Date(),
+      processingTimeMs: totalProcessingTime,
     }
   }
 

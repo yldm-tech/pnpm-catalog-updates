@@ -119,9 +119,32 @@ export function parseBoolean(value: string | boolean): boolean {
 }
 
 /**
+ * Parse boolean flag from CLI input (handles unknown types from Commander.js)
+ * More robust version that handles null, undefined, numbers, and various string formats.
+ * Unknown non-empty strings are treated as truthy (for Commander env() compatibility).
+ */
+export function parseBooleanFlag(value: unknown): boolean {
+  if (value === undefined || value === null) return false
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (normalized === '') return false
+    if (['false', '0', 'no', 'off', 'n'].includes(normalized)) return false
+    if (['true', '1', 'yes', 'on', 'y'].includes(normalized)) return true
+    // Commander env() passes arbitrary non-empty strings; treat unknown strings as enabled
+    return true
+  }
+  return Boolean(value)
+}
+
+/**
  * Format template string with variables
  */
-export function template(str: string, variables: Record<string, any>): string {
+export function template(
+  str: string,
+  variables: Record<string, string | number | boolean | undefined>
+): string {
   return str.replace(/\{\{(\w+)\}\}/g, (match, key) => {
     return variables[key] !== undefined ? String(variables[key]) : match
   })

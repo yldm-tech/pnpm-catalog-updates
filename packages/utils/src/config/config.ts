@@ -12,6 +12,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { ConfigurationError } from '../error-handling/index.js'
+import { logger } from '../logger/logger.js'
 
 export interface PcuConfig {
   // Registry settings
@@ -270,7 +271,10 @@ export class ConfigManager {
       this.config = this.deepMerge(this.config, fileConfig)
       this.configPath = filePath
     } catch (error) {
-      console.warn(`Failed to load config from ${filePath}:`, error)
+      logger.warn(
+        `Failed to load config from ${filePath}`,
+        error instanceof Error ? error : undefined
+      )
     }
   }
 

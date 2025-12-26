@@ -52,29 +52,42 @@ export async function retry<T>(
 
 /**
  * Execute functions in parallel with concurrency limit
+ *
+ * Uses a worker pool pattern where each worker processes items sequentially,
+ * but multiple workers run in parallel up to the concurrency limit.
+ * This ensures correct concurrent execution without race condition bugs.
  */
 export async function parallelLimit<T, R>(
   items: T[],
   fn: (item: T, index: number) => Promise<R>,
   limit: number = 5
 ): Promise<R[]> {
+  if (items.length === 0) {
+    return []
+  }
+
   const results: R[] = new Array(items.length)
-  const executing: Promise<void>[] = []
+  let nextIndex = 0
 
-  for (let i = 0; i < items.length; i++) {
-    const promise = fn(items[i]!, i).then((result) => {
-      results[i] = result
-    })
+  // Worker function that processes items one at a time
+  const worker = async (): Promise<void> => {
+    while (true) {
+      // Atomically get the next index to process
+      const currentIndex = nextIndex++
+      if (currentIndex >= items.length) {
+        return
+      }
 
-    executing.push(promise)
-
-    if (executing.length >= limit) {
-      await Promise.race(executing)
-      executing.splice(executing.indexOf(promise), 1)
+      const item = items[currentIndex]!
+      results[currentIndex] = await fn(item, currentIndex)
     }
   }
 
-  await Promise.all(executing)
+  // Create workers up to the limit (or item count if smaller)
+  const workerCount = Math.min(limit, items.length)
+  const workers = Array.from({ length: workerCount }, () => worker())
+
+  await Promise.all(workers)
   return results
 }
 
@@ -236,11 +249,147 @@ export class CircuitBreaker<TArgs extends unknown[], TReturn> {
 }
 
 /**
+ * Rate limiter using token bucket algorithm
+ *
+ * Limits the rate of operations to prevent hitting API rate limits.
+ * Uses a token bucket algorithm that refills tokens at a fixed rate.
+ */
+export class RateLimiter {
+  private tokens: number
+  private lastRefill: number
+
+  /**
+   * Create a new rate limiter
+   * @param tokensPerSecond Maximum operations per second
+   * @param maxBurst Maximum burst size (defaults to 2x tokensPerSecond)
+   */
+  constructor(
+    private readonly tokensPerSecond: number,
+    private readonly maxBurst: number = tokensPerSecond * 2
+  ) {
+    this.tokens = maxBurst
+    this.lastRefill = Date.now()
+  }
+
+  /**
+   * Refill tokens based on elapsed time
+   */
+  private refill(): void {
+    const now = Date.now()
+    const elapsed = (now - this.lastRefill) / 1000
+    const newTokens = elapsed * this.tokensPerSecond
+    this.tokens = Math.min(this.maxBurst, this.tokens + newTokens)
+    this.lastRefill = now
+  }
+
+  /**
+   * Wait until a token is available, then consume it
+   */
+  async acquire(): Promise<void> {
+    this.refill()
+
+    if (this.tokens >= 1) {
+      this.tokens -= 1
+      return
+    }
+
+    // Calculate wait time for next token
+    const tokensNeeded = 1 - this.tokens
+    const waitTimeMs = (tokensNeeded / this.tokensPerSecond) * 1000
+
+    await delay(waitTimeMs)
+    this.refill()
+    this.tokens -= 1
+  }
+
+  /**
+   * Try to acquire a token without waiting
+   * @returns true if token was acquired, false otherwise
+   */
+  tryAcquire(): boolean {
+    this.refill()
+    if (this.tokens >= 1) {
+      this.tokens -= 1
+      return true
+    }
+    return false
+  }
+
+  /**
+   * Get current available tokens
+   */
+  getAvailableTokens(): number {
+    this.refill()
+    return this.tokens
+  }
+}
+
+/**
+ * Execute functions in parallel with both concurrency and rate limiting
+ *
+ * Combines concurrency control (how many can run at once) with rate limiting
+ * (how many can start per second). This prevents overwhelming external APIs.
+ *
+ * @param items Items to process
+ * @param fn Function to apply to each item
+ * @param options Concurrency and rate limiting options
+ */
+export async function parallelLimitWithRateLimit<T, R>(
+  items: T[],
+  fn: (item: T, index: number) => Promise<R>,
+  options: {
+    /** Maximum concurrent operations (default: 5) */
+    concurrency?: number
+    /** Maximum operations per second (default: 10) */
+    rateLimit?: number
+    /** Maximum burst size (default: 2x rateLimit) */
+    maxBurst?: number
+  } = {}
+): Promise<R[]> {
+  const { concurrency = 5, rateLimit = 10, maxBurst } = options
+
+  if (items.length === 0) {
+    return []
+  }
+
+  const rateLimiter = new RateLimiter(rateLimit, maxBurst ?? rateLimit * 2)
+  const results: R[] = new Array(items.length)
+  let nextIndex = 0
+
+  // Worker function that processes items one at a time with rate limiting
+  const worker = async (): Promise<void> => {
+    while (true) {
+      // Atomically get the next index to process
+      const currentIndex = nextIndex++
+      if (currentIndex >= items.length) {
+        return
+      }
+
+      // Wait for rate limiter before starting work
+      await rateLimiter.acquire()
+
+      const item = items[currentIndex]!
+      results[currentIndex] = await fn(item, currentIndex)
+    }
+  }
+
+  // Create workers up to the limit (or item count if smaller)
+  const workerCount = Math.min(concurrency, items.length)
+  const workers = Array.from({ length: workerCount }, () => worker())
+
+  await Promise.all(workers)
+  return results
+}
+
+/**
  * Async queue with concurrency control
+ * CONC-002: Fixed race condition in process() method
  */
 export class AsyncQueue {
   private queue: Array<() => Promise<unknown>> = []
   private running = 0
+  // CONC-002: Flag to prevent race condition in process scheduling
+  private isProcessing = false
 
   constructor(private concurrency: number = 1) {}
 
@@ -257,23 +406,52 @@ export class AsyncQueue {
         }
       })
 
-      this.process()
+      this.scheduleProcess()
     })
   }
 
-  private async process(): Promise<void> {
-    if (this.running >= this.concurrency || this.queue.length === 0) {
+  /**
+   * CONC-002: Use synchronous scheduling with queueMicrotask to prevent race conditions
+   * This ensures process() is called in a controlled manner without overlapping checks
+   */
+  private scheduleProcess(): void {
+    if (this.isProcessing) {
       return
     }
+    this.isProcessing = true
 
-    this.running++
-    const fn = this.queue.shift()!
+    // Use queueMicrotask to batch process calls and prevent race conditions
+    queueMicrotask(() => {
+      this.isProcessing = false
+      this.processAll()
+    })
+  }
 
+  /**
+   * CONC-002: Process all available slots synchronously to prevent race conditions
+   * This method grabs all available work atomically before any async operations
+   */
+  private processAll(): void {
+    // Synchronously claim all available slots
+    while (this.running < this.concurrency && this.queue.length > 0) {
+      this.running++
+      const fn = this.queue.shift()!
+
+      // Start the task (don't await - we want to claim all slots first)
+      this.runTask(fn)
+    }
+  }
+
+  /**
+   * CONC-002: Run a single task and schedule more work when done
+   */
+  private async runTask(fn: () => Promise<unknown>): Promise<void> {
     try {
       await fn()
     } finally {
       this.running--
-      this.process()
+      // Schedule more work after task completes
+      this.scheduleProcess()
     }
   }
 
@@ -283,5 +461,12 @@ export class AsyncQueue {
 
   clear(): void {
     this.queue.length = 0
+  }
+
+  /**
+   * CONC-002: Get current number of running tasks
+   */
+  getRunning(): number {
+    return this.running
   }
 }

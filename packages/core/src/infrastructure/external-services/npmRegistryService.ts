@@ -8,8 +8,10 @@
 import {
   type AdvancedConfig,
   InvalidVersionRangeError,
-  parallelLimit,
+  isValidPackageName,
+  parallelLimitWithRateLimit,
   RegistryError,
+  timeout,
   UserFriendlyErrorHandler,
 } from '@pcu/utils'
 import npmRegistryFetch from 'npm-registry-fetch'
@@ -84,6 +86,27 @@ interface NpmVersionManifest {
 }
 
 /**
+ * Type guard to safely extract author from pacote manifest.
+ * Pacote's manifest type is complex, this helper provides type-safe access.
+ */
+function extractAuthorFromManifest(
+  manifest: unknown
+): string | { name: string; email?: string } | undefined {
+  if (!manifest || typeof manifest !== 'object') {
+    return undefined
+  }
+  const obj = manifest as Record<string, unknown>
+  const author = obj.author
+  if (typeof author === 'string') {
+    return author
+  }
+  if (author && typeof author === 'object' && 'name' in author) {
+    return author as { name: string; email?: string }
+  }
+  return undefined
+}
+
+/**
  * NPM audit advisory structure
  */
 interface NpmAuditAdvisory {
@@ -130,6 +153,26 @@ interface PackageVersionsData {
   time?: Record<string, string>
 }
 
+/**
+ * Batch query failure information
+ */
+export interface BatchQueryFailure {
+  packageName: string
+  error: Error
+  errorMessage: string
+}
+
+/**
+ * Batch query result with success and failure information
+ */
+export interface BatchQueryResult {
+  results: Map<string, PackageInfo>
+  failures: BatchQueryFailure[]
+  totalCount: number
+  successCount: number
+  failureCount: number
+}
+
 export class NpmRegistryService {
   // Differentiated cache timeouts for different data types (in milliseconds)
   private readonly versionCacheTtl: number
@@ -141,17 +184,49 @@ export class NpmRegistryService {
   private readonly timeout: number
   private readonly retries: number
   private readonly cachingEnabled: boolean
+  private readonly rateLimit: number
+
+  // NPM downloads API base URL (configurable for private networks)
+  private readonly npmDownloadsApiUrl: string
 
   // NPM configuration for handling multiple registries
   private readonly npmrcConfig: NpmrcConfig
 
-  constructor(
+  /**
+   * Create a new NpmRegistryService instance with async npmrc parsing
+   * This is the recommended way to create instances as it properly handles async I/O
+   */
+  static async create(
     registryUrl: string = 'https://registry.npmjs.org/',
     options: AdvancedConfig = {},
     workingDirectory: string = process.cwd()
+  ): Promise<NpmRegistryService> {
+    const npmrcConfig = await NpmrcParser.parse(workingDirectory)
+    return new NpmRegistryService(registryUrl, options, npmrcConfig)
+  }
+
+  /**
+   * Constructor that accepts a pre-parsed NpmrcConfig
+   * For async initialization, use the static `create` factory method instead
+   */
+  constructor(
+    registryUrl: string = 'https://registry.npmjs.org/',
+    options: AdvancedConfig = {},
+    npmrcConfigOrWorkDir: NpmrcConfig | string = process.cwd()
   ) {
-    // Parse npmrc configuration for scoped registries
-    this.npmrcConfig = NpmrcParser.parse(workingDirectory)
+    // Support both pre-parsed config and working directory for backward compatibility
+    if (typeof npmrcConfigOrWorkDir === 'string') {
+      // Legacy sync initialization - use default config
+      // This is kept for backward compatibility but create() is preferred
+      this.npmrcConfig = {
+        registry: 'https://registry.npmjs.org/',
+        scopedRegistries: new Map(),
+        authTokens: new Map(),
+        config: new Map(),
+      }
+    } else {
+      this.npmrcConfig = npmrcConfigOrWorkDir
+    }
 
     // Override default registry if specified in npmrc
     if (!registryUrl || registryUrl === 'https://registry.npmjs.org/') {
@@ -165,6 +240,10 @@ export class NpmRegistryService {
     this.concurrency = options.concurrency ?? 8 // Increased from 5 to match NCU performance
     this.timeout = options.timeout ?? 15000 // Reduced from 30s to 15s for faster failure detection
     this.retries = options.retries ?? 2 // Reduced from 3 to 2 for faster overall performance
+    this.rateLimit = options.rateLimit ?? 15
+
+    // NPM downloads API URL (configurable for private networks or custom mirrors)
+    this.npmDownloadsApiUrl = options.npmDownloadsApiUrl ?? 'https://api.npmjs.org'
 
     // Optimized cache TTLs for different data types (in milliseconds)
     const baseCacheMinutes = options.cacheValidityMinutes ?? 10 // Reduced from 60 to 10 minutes
@@ -173,6 +252,20 @@ export class NpmRegistryService {
     this.securityCacheTtl = baseCacheMinutes * 6 * 60 * 1000 // Security info: 60 minutes (changes less frequently)
 
     this.cachingEnabled = baseCacheMinutes > 0 // Disable caching if set to 0
+  }
+
+  /**
+   * Validate package name to prevent path traversal attacks
+   * Throws RegistryError if the package name is invalid
+   */
+  private validatePackageName(packageName: string): void {
+    if (!isValidPackageName(packageName)) {
+      throw new RegistryError(
+        packageName,
+        'validation',
+        `Invalid package name: "${packageName}". Package names must follow npm naming conventions.`
+      )
+    }
   }
 
   /**
@@ -250,6 +343,8 @@ export class NpmRegistryService {
    * Get lightweight package version information (optimized for performance)
    */
   async getPackageVersions(packageName: string): Promise<PackageVersionsData> {
+    this.validatePackageName(packageName)
+
     const registryUrl = this.getRegistryForPackage(packageName)
     const cacheKey = `versions:${registryUrl}:${packageName}`
 
@@ -297,6 +392,8 @@ export class NpmRegistryService {
    * @deprecated Use getPackageVersions() for better performance
    */
   async getPackageInfo(packageName: string): Promise<PackageInfo> {
+    this.validatePackageName(packageName)
+
     const registryUrl = this.getRegistryForPackage(packageName)
     const cacheKey = `package:${registryUrl}:${packageName}`
 
@@ -350,6 +447,8 @@ export class NpmRegistryService {
    * Get the latest version of a package
    */
   async getLatestVersion(packageName: string): Promise<Version> {
+    this.validatePackageName(packageName)
+
     try {
       const versionInfo = await this.getPackageVersions(packageName)
       return Version.fromString(versionInfo.latestVersion)
@@ -366,8 +465,14 @@ export class NpmRegistryService {
 
   /**
    * Get the greatest version that satisfies a range
+   *
+   * Optimized with early termination. Since versions are sorted
+   * descending (greatest first), we return immediately on first match
+   * instead of filtering through all versions.
    */
   async getGreatestVersion(packageName: string, range?: VersionRange): Promise<Version> {
+    this.validatePackageName(packageName)
+
     try {
       const versionInfo = await this.getPackageVersions(packageName)
 
@@ -375,25 +480,21 @@ export class NpmRegistryService {
         return Version.fromString(versionInfo.latestVersion)
       }
 
-      // Find the greatest version that satisfies the range
-      const satisfyingVersions = versionInfo.versions.filter((v) => {
+      // Early termination - versions are sorted descending,
+      // so the first satisfying version is the greatest
+      for (const v of versionInfo.versions) {
         try {
           const version = Version.fromString(v)
-          return version.satisfies(range)
+          if (version.satisfies(range)) {
+            return version // Early return on first match (greatest version)
+          }
         } catch {
-          return false
+          // Skip invalid versions
         }
-      })
-
-      if (satisfyingVersions.length === 0) {
-        throw new InvalidVersionRangeError(range.toString())
       }
 
-      // Return the first (greatest) version
-      if (!satisfyingVersions[0]) {
-        throw new RegistryError(packageName, 'getGreatestVersion', 'No satisfying versions found')
-      }
-      return Version.fromString(satisfyingVersions[0])
+      // No satisfying version found
+      throw new InvalidVersionRangeError(range.toString())
     } catch (error) {
       if (error instanceof RegistryError || error instanceof InvalidVersionRangeError) {
         throw error
@@ -412,6 +513,8 @@ export class NpmRegistryService {
    * Get versions by date (newest versions published)
    */
   async getNewestVersions(packageName: string, count: number = 10): Promise<Version[]> {
+    this.validatePackageName(packageName)
+
     try {
       const versionInfo = await this.getPackageVersions(packageName)
 
@@ -443,6 +546,8 @@ export class NpmRegistryService {
     packageName: string,
     version: string
   ): Promise<SecurityReport> {
+    this.validatePackageName(packageName)
+
     const registryUrl = this.getRegistryForPackage(packageName)
     const cacheKey = `security:${registryUrl}:${packageName}@${version}`
 
@@ -524,24 +629,35 @@ export class NpmRegistryService {
 
   /**
    * Batch query multiple packages with progress tracking
+   * Returns both successful results and failure information
    */
   async batchQueryVersions(
     packages: string[],
     progressCallback?: (completed: number, total: number, currentPackage: string) => void
-  ): Promise<Map<string, PackageInfo>> {
+  ): Promise<BatchQueryResult> {
+    for (const packageName of packages) {
+      this.validatePackageName(packageName)
+    }
+
     const results = new Map<string, PackageInfo>()
+    const failures: BatchQueryFailure[] = []
     let completed = 0
     const total = packages.length
 
-    // Process packages in parallel with configurable concurrency using parallelLimit
-    await parallelLimit(
+    await parallelLimitWithRateLimit(
       packages,
       async (packageName) => {
         try {
           const info = await this.getPackageInfo(packageName)
           results.set(packageName, info)
         } catch (error) {
-          UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error)
+          const err = error as Error
+          failures.push({
+            packageName,
+            error: err,
+            errorMessage: err.message,
+          })
+          UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, err)
         } finally {
           // Update progress for both success and failure
           completed++
@@ -550,10 +666,19 @@ export class NpmRegistryService {
           }
         }
       },
-      this.concurrency
+      {
+        concurrency: this.concurrency,
+        rateLimit: this.rateLimit,
+      }
     )
 
-    return results
+    return {
+      results,
+      failures,
+      totalCount: total,
+      successCount: results.size,
+      failureCount: failures.length,
+    }
   }
 
   /**
@@ -564,6 +689,7 @@ export class NpmRegistryService {
     fromVersion: string,
     toVersion: string
   ): Promise<boolean> {
+    this.validatePackageName(packageName)
     try {
       // const packageInfo = await this.getPackageInfo(packageName);
 
@@ -583,10 +709,9 @@ export class NpmRegistryService {
       })
 
       // Compare authors/maintainers
-      const fromManifest = fromVersionData as unknown as NpmVersionManifest
-      const toManifest = toVersionData as unknown as NpmVersionManifest
-      const fromAuthor = this.normalizeAuthor(fromManifest.author)
-      const toAuthor = this.normalizeAuthor(toManifest.author)
+      // Use type-safe extraction instead of double type assertion
+      const fromAuthor = this.normalizeAuthor(extractAuthorFromManifest(fromVersionData))
+      const toAuthor = this.normalizeAuthor(extractAuthorFromManifest(toVersionData))
 
       return fromAuthor !== toAuthor
     } catch (error) {
@@ -600,17 +725,58 @@ export class NpmRegistryService {
 
   /**
    * Get package download statistics
+   * ERR-003: Enhanced error handling with timeout, specific HTTP status handling, and JSON parse safety
    */
   async getDownloadStats(
     packageName: string,
     period: 'last-day' | 'last-week' | 'last-month' = 'last-week'
   ): Promise<number> {
+    const apiUrl = this.npmDownloadsApiUrl.endsWith('/')
+      ? this.npmDownloadsApiUrl.slice(0, -1)
+      : this.npmDownloadsApiUrl
+    const url = `${apiUrl}/downloads/point/${period}/${packageName}`
+
     try {
-      const response = await fetch(`https://api.npmjs.org/downloads/point/${period}/${packageName}`)
+      // ERR-003: Add timeout to prevent hanging requests
+      const response = await timeout(
+        fetch(url),
+        this.timeout,
+        `Download stats request timed out after ${this.timeout}ms for ${packageName}`
+      )
+
+      // ERR-003: Handle specific HTTP status codes
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const status = response.status
+        if (status === 404) {
+          // Package not found in downloads API - not an error, just no stats available
+          return 0
+        }
+        if (status === 429) {
+          // Rate limited - log and return 0 gracefully
+          UserFriendlyErrorHandler.handlePackageQueryFailure(
+            packageName,
+            new Error(`Rate limited by npm downloads API (HTTP 429)`),
+            { operation: 'download-stats' }
+          )
+          return 0
+        }
+        if (status >= 500) {
+          // Server error - log for debugging
+          throw new Error(`npm downloads API server error (HTTP ${status})`)
+        }
+        throw new Error(`HTTP error from npm downloads API: ${status}`)
       }
-      const data = (await response.json()) as NpmDownloadStats
+
+      // ERR-003: Safe JSON parsing with explicit error handling
+      let data: NpmDownloadStats
+      try {
+        data = (await response.json()) as NpmDownloadStats
+      } catch (parseError) {
+        throw new Error(
+          `Failed to parse download stats response for ${packageName}: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
+        )
+      }
+
       return data.downloads ?? 0
     } catch (error) {
       // Log for debugging, don't show to user as this is not critical

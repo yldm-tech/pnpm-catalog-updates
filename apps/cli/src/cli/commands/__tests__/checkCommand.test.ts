@@ -51,6 +51,9 @@ vi.mock('@pcu/utils', () => ({
     info: vi.fn(),
     debug: vi.fn(),
   },
+  Logger: {
+    setGlobalLevel: vi.fn(),
+  },
   ConfigLoader: {
     loadConfig: mocks.loadConfig,
   },
@@ -376,7 +379,7 @@ describe('CheckCommand', () => {
         format: 'invalid' as never,
       })
 
-      expect(errors).toContain('Invalid format. Must be one of: table, json, yaml, minimal')
+      expect(errors).toContain('validation.invalidFormat')
     })
 
     it('should return error for invalid target', () => {
@@ -384,9 +387,7 @@ describe('CheckCommand', () => {
         target: 'invalid' as never,
       })
 
-      expect(errors).toContain(
-        'Invalid target. Must be one of: latest, greatest, minor, patch, newest'
-      )
+      expect(errors).toContain('validation.invalidTarget')
     })
 
     it('should return error for empty include patterns', () => {
@@ -394,7 +395,7 @@ describe('CheckCommand', () => {
         include: ['lodash', '   '],
       })
 
-      expect(errors).toContain('Include patterns cannot be empty')
+      expect(errors).toContain('validation.includePatternsEmpty')
     })
 
     it('should return error for empty exclude patterns', () => {
@@ -402,7 +403,7 @@ describe('CheckCommand', () => {
         exclude: ['', '@types/*'],
       })
 
-      expect(errors).toContain('Exclude patterns cannot be empty')
+      expect(errors).toContain('validation.excludePatternsEmpty')
     })
   })
 

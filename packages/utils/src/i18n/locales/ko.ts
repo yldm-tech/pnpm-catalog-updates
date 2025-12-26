@@ -31,7 +31,8 @@ export const ko: TranslationDictionary = {
 
   // Validation errors
   'validation.packageNameRequired': '패키지 이름이 필요합니다',
-  'validation.invalidFormat': '잘못된 형식입니다. table, json, yaml, minimal 중 하나여야 합니다',
+  'validation.invalidFormat':
+    '잘못된 형식입니다. table, json, yaml, minimal, github, gitlab, junit, sarif 중 하나여야 합니다',
   'validation.invalidSeverity':
     '잘못된 심각도입니다. low, moderate, high, critical 중 하나여야 합니다',
   'validation.invalidTarget':
@@ -40,6 +41,14 @@ export const ko: TranslationDictionary = {
   'validation.includePatternsEmpty': 'Include 패턴은 비어 있을 수 없습니다',
   'validation.excludePatternsEmpty': 'Exclude 패턴은 비어 있을 수 없습니다',
   'validation.workspaceDirNotExist': '워크스페이스 디렉토리가 존재하지 않습니다: {{path}}',
+  'validation.invalidProvider':
+    '잘못된 프로바이더입니다. 다음 중 하나여야 합니다: auto, claude, gemini, codex',
+  'validation.invalidAnalysisType':
+    '잘못된 분석 유형입니다. 다음 중 하나여야 합니다: impact, security, compatibility, recommend',
+  'validation.invalidGraphType':
+    '잘못된 그래프 유형입니다. 다음 중 하나여야 합니다: {{validTypes}}',
+  'validation.invalidGraphFormat':
+    '잘못된 그래프 형식입니다. 다음 중 하나여야 합니다: {{validFormats}}',
 
   // Success messages
   'success.updateComplete': '업데이트가 성공적으로 완료되었습니다',
@@ -112,6 +121,7 @@ export const ko: TranslationDictionary = {
   'command.update.noUpdatesSelected': '선택된 업데이트 없음',
   'command.update.runningBatchAI': '{{count}}개의 패키지에 대해 AI 일괄 분석 실행 중...',
   'command.update.batchAIHint': '효율성을 위해 모든 패키지를 단일 요청으로 분석합니다.',
+  'command.update.processingChunks': '청크 {{current}}/{{total}} 처리 중...',
   'command.update.aiResults': 'AI 분석 결과:',
   'command.update.provider': '제공자: {{provider}}',
   'command.update.confidence': '신뢰도: {{confidence}}%',
@@ -137,6 +147,14 @@ export const ko: TranslationDictionary = {
   'command.update.fetchingChangelogs': '변경 로그를 가져오는 중...',
   'command.update.changelogUnavailable': '변경 로그를 사용할 수 없습니다',
   'command.update.cancelled': '작업이 취소되었습니다',
+  'command.update.moreLines': '{{count}}줄 더 있음, --verbose로 확인',
+  'command.update.installError': '설치 중 예기치 않은 오류가 발생했습니다',
+  'command.update.suggestFix': '제안:',
+  'command.update.suggestManualInstall': '"{{pm}} install"을 수동으로 실행해 보세요',
+  'command.update.suggestCheckDeps': '워크스페이스에서 종속성 충돌을 확인하세요',
+  'command.update.suggestInstallPm': '{{pm}}이 설치되어 있고 PATH에 있는지 확인하세요',
+  'command.update.suggestRetry': '명령을 다시 실행해 보세요',
+  'command.update.suggestCheckNetwork': '네트워크 연결을 확인하세요',
 
   // Rollback command
   'command.rollback.noBackups': '백업을 찾을 수 없습니다',
@@ -154,6 +172,9 @@ export const ko: TranslationDictionary = {
   'command.rollback.chooseBackup': '백업 선택',
   'command.rollback.warning': '경고: 현재 pnpm-workspace.yaml이 덮어쓰기됩니다',
   'command.rollback.willRestore': '복원할 백업: {{time}}',
+  'command.rollback.autoBackupNote': '복원 전에 현재 상태가 자동으로 백업됩니다',
+  'command.rollback.preRestoreBackupCreated': '복원 전 백업 저장 위치: {{path}}',
+  'command.rollback.safetyNote': '이 롤백을 취소하려면 "pcu rollback"을 다시 실행하세요',
   'command.rollback.deleteWarning': '경고: {{count}}개의 백업이 삭제됩니다',
   'command.rollback.confirmDelete': '모든 백업을 삭제하시겠습니까?',
   'command.rollback.deletedBackups': '{{count}}개의 백업을 삭제했습니다',
@@ -168,6 +189,14 @@ export const ko: TranslationDictionary = {
   'command.watch.foundOutdated': '{{count}}개의 오래된 패키지를 발견했습니다',
   'command.watch.waitingForChanges': '변경 사항을 기다리는 중...',
   'command.watch.runUpdateHint': '"pcu update"를 실행하여 업데이트 적용',
+
+  // Self-update command
+  'command.selfUpdate.checking': 'pcu 업데이트 확인 중...',
+  'command.selfUpdate.updating': 'pcu를 버전 {{version}}으로 업데이트 중...',
+  'command.selfUpdate.success': '버전 {{version}}으로 성공적으로 업데이트되었습니다!',
+  'command.selfUpdate.failed': 'pcu 업데이트 실패',
+  'command.selfUpdate.latestAlready': '이미 최신 버전 ({{version}})을 사용 중입니다',
+  'command.selfUpdate.restartHint': '새 버전을 사용하려면 터미널을 다시 시작하세요.',
 
   // AI command
   'command.ai.cacheCleared': 'AI 분석 캐시 삭제됨',
@@ -230,6 +259,13 @@ export const ko: TranslationDictionary = {
   'command.security.verifyingFixes': '수정 확인을 위해 보안 스캔 재실행 중...',
   'command.security.allFixed': '모든 심각 및 높음 심각도 취약점이 수정되었습니다!',
   'command.security.fixesFailed': '보안 수정 적용 실패:',
+  'command.security.noPackageJson': '{{path}}에서 package.json을 찾을 수 없습니다',
+  'command.security.auditFailed': 'pnpm audit 실패: {{message}}',
+  'command.security.auditParseError': 'pnpm audit 출력 파싱 실패: {{error}}',
+  'command.security.auditExitError': 'pnpm audit가 상태 {{status}}로 실패: {{error}}',
+  'command.security.snykScanExitError': 'Snyk 스캔이 상태 {{status}}로 실패: {{error}}',
+  'command.security.snykScanFailed': 'Snyk 스캔 실패: {{message}}',
+  'command.security.auditFixFailed': 'pnpm audit --fix가 상태 {{status}}로 실패',
 
   // Check command additions
   'command.check.errorChecking': '의존성 확인 중 오류:',
@@ -304,6 +340,8 @@ export const ko: TranslationDictionary = {
   'cli.unexpectedError': '예기치 않은 오류:',
   'cli.fatalError': '치명적인 오류:',
   'cli.cancelled': '취소되었습니다.',
+  'cli.updateAvailable': '업데이트 가능: {{current}} → {{latest}}',
+  'cli.updateHint': '"pcu self-update"를 실행하여 업데이트하세요.',
 
   // Progress bar messages
   'progress.securityAnalyzing': '보안 분석 수행 중...',
@@ -320,6 +358,12 @@ export const ko: TranslationDictionary = {
   'progress.steps': '진행 단계',
   'progress.allStepsCompleted': '모든 단계가 완료되었습니다!',
   'progress.overallProgress': '전체 진행률',
+  'progress.checkingPackages': '{{count}}개의 의존성 패키지를 확인 중...',
+  'progress.checkCompleteWithUpdates':
+    '✅ 확인 완료! {{count}}개의 업데이트 가능한 의존성 패키지를 발견했습니다',
+  'progress.checkCompleteNoUpdates': '✅ 확인 완료! 모든 의존성 패키지가 최신 상태입니다',
+  'progress.checkingPackage': '의존성 패키지 확인 중: {{packageName}}',
+  'progress.skippingPackage': '패키지 {{packageName}} 건너뜀 (확인 실패)',
 
   // Security command additions
   'command.security.criticalVulnsFound': '{{count}}개의 심각한 취약점 발견',
@@ -338,6 +382,8 @@ export const ko: TranslationDictionary = {
   'cli.description.cache': 'PCU 레지스트리 및 워크스페이스 데이터 캐시 관리',
   'cli.description.rollback': '카탈로그 업데이트를 이전 상태로 롤백',
   'cli.description.watch': '변경 사항을 감시하고 업데이트 확인',
+  'cli.description.selfUpdate': 'pcu를 최신 버전으로 업데이트',
+  'cli.description.graph': '카탈로그 종속성 관계 시각화',
   'cli.description.help': '명령에 대한 도움말 표시',
 
   // CLI option descriptions
@@ -351,6 +397,7 @@ export const ko: TranslationDictionary = {
   'cli.option.dryRun': '파일에 쓰지 않고 변경 사항 미리보기',
   'cli.option.force': '위험해도 강제 업데이트',
   'cli.option.createBackup': '업데이트 전 백업 파일 생성',
+  'cli.option.noBackup': '업데이트 전 백업 생성 건너뛰기',
   'cli.option.ai': '모든 업데이트에 AI 일괄 분석 활성화',
   'cli.option.provider': 'AI 공급자: auto, claude, gemini, codex',
   'cli.option.analysisType': 'AI 분석 유형: impact, security, compatibility, recommend',
@@ -415,6 +462,8 @@ export const ko: TranslationDictionary = {
   'cli.option.clearConsole': '각 확인 전 콘솔 지우기',
   'cli.option.exitCode': '업데이트가 있으면 종료 코드 1 반환 (CI/CD용)',
   'cli.option.noSecurity': '보안 취약점 검사 건너뛰기',
+  'cli.option.graphFormat': '출력 형식: text, mermaid, dot, json',
+  'cli.option.graphType': '그래프 유형: catalog, package, full',
 
   // CLI argument descriptions
   'cli.argument.package': '패키지 이름',
@@ -643,6 +692,14 @@ export const ko: TranslationDictionary = {
   'format.workspaceStatistics': '워크스페이스 통계',
   'format.packagesCount': '{{count}}개의 패키지',
   'format.catalogsCount': '{{count}}개의 카탈로그',
+  'format.noUpdatesPlanned': '계획된 업데이트 없음',
+  'format.plannedUpdates': '계획된 업데이트: {{count}}',
+  'format.versionConflicts': '버전 충돌',
+  'format.recommendation': '권장사항',
+  'format.conflictsDetected': '개의 버전 충돌이 감지됨',
+
+  // Table headers
+  'table.header.new': '새 버전',
 
   // Statistics labels (workspaceCommand.ts)
   'stats.totalPackages': '총 패키지',

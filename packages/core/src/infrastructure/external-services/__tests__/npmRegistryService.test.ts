@@ -5,13 +5,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Use vi.hoisted for mocks that need to be available during hoisting
+// Note: Must define all mocks inline, cannot use imported functions here
 const mocks = vi.hoisted(() => ({
+  // External dependency mocks
   packument: vi.fn(),
   manifest: vi.fn(),
   npmFetch: vi.fn(),
-  handleRetryAttempt: vi.fn(),
-  handleSecurityCheckFailure: vi.fn(),
-  handlePackageQueryFailure: vi.fn(),
   npmrcParse: vi.fn(),
   npmrcGetRegistryForPackage: vi.fn(),
   npmrcGetAuthToken: vi.fn(),
@@ -20,7 +19,46 @@ const mocks = vi.hoisted(() => ({
   cacheSet: vi.fn(),
   cacheClear: vi.fn(),
   cacheGetStats: vi.fn(),
+  // @pcu/utils configurable mocks (inline definition)
+  getPackageConfig: vi.fn(),
+  loadConfig: vi.fn(),
+  loadConfigAsync: vi.fn(),
+  handleSecurityCheckFailure: vi.fn(),
+  handlePackageQueryFailure: vi.fn(),
+  handleRetryAttempt: vi.fn(),
+  formatError: vi.fn((e: Error) => e.message),
+  isValidPackageName: vi.fn((name: string) => {
+    // Default: valid for normal names, invalid for path traversal attempts
+    if (!name || typeof name !== 'string') return false
+    if (name.includes('..') || name.includes('/./') || name.startsWith('/')) return false
+    return /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/.test(name)
+  }),
+  parallelLimit: vi.fn(
+    async <T, R>(items: T[], callback: (item: T) => Promise<R>): Promise<R[]> => {
+      const results: R[] = []
+      for (const item of items) {
+        results.push(await callback(item))
+      }
+      return results
+    }
+  ),
+  parallelLimitWithRateLimit: vi.fn(
+    async <T, R>(items: T[], callback: (item: T) => Promise<R>): Promise<R[]> => {
+      const results: R[] = []
+      for (const item of items) {
+        results.push(await callback(item))
+      }
+      return results
+    }
+  ),
+  // ERR-003: Mock for timeout function
+  timeout: vi.fn(async <T>(promise: Promise<T>, _ms: number, _message?: string): Promise<T> => {
+    return promise
+  }),
 }))
+
+// Import error classes from mocked @pcu/utils (after vi.mock factory defines them)
+// Note: These are now defined inline in the vi.mock factory above
 
 // Mock external dependencies
 vi.mock('pacote', () => ({
@@ -44,20 +82,43 @@ vi.mock('../../cache/cache.js', () => ({
   },
 }))
 
-// Override UserFriendlyErrorHandler with test mocks
-// Note: Other @pcu/utils exports are mocked globally in vitest.setup.ts
+// Inline @pcu/utils mock (cannot use imported factory in vi.mock due to hoisting)
 vi.mock('@pcu/utils', () => {
-  // Recreate necessary error classes for this test
-  class InfrastructureError extends Error {
+  // Error codes
+  const ErrorCode = {
+    UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+    VALIDATION_ERROR: 'VALIDATION_ERROR',
+    CATALOG_NOT_FOUND: 'CATALOG_NOT_FOUND',
+    PACKAGE_NOT_FOUND: 'PACKAGE_NOT_FOUND',
+    INVALID_VERSION: 'INVALID_VERSION',
+    INVALID_VERSION_RANGE: 'INVALID_VERSION_RANGE',
+    WORKSPACE_NOT_FOUND: 'WORKSPACE_NOT_FOUND',
+    FILE_SYSTEM_ERROR: 'FILE_SYSTEM_ERROR',
+    REGISTRY_ERROR: 'REGISTRY_ERROR',
+    NETWORK_ERROR: 'NETWORK_ERROR',
+  }
+
+  // Base error class
+  class BaseError extends Error {
     code: string
     context: Record<string, unknown>
-    constructor(message: string, code: string, context: Record<string, unknown> = {}) {
+    cause?: Error
+    constructor(
+      message: string,
+      code: string,
+      context: Record<string, unknown> = {},
+      cause?: Error
+    ) {
       super(message)
-      this.name = 'InfrastructureError'
+      this.name = this.constructor.name
       this.code = code
       this.context = context
+      this.cause = cause
     }
   }
+
+  class DomainError extends BaseError {}
+  class InfrastructureError extends BaseError {}
 
   class RegistryError extends InfrastructureError {
     constructor(
@@ -67,46 +128,69 @@ vi.mock('@pcu/utils', () => {
       statusCode?: number,
       cause?: Error
     ) {
-      super(`Registry ${operation} failed for "${packageName}": ${reason}`, 'REGISTRY_ERROR', {
-        packageName,
-        operation,
-        reason,
-        statusCode,
-      })
-      this.name = 'RegistryError'
-      this.cause = cause
+      super(
+        `Registry ${operation} failed for "${packageName}": ${reason}`,
+        ErrorCode.REGISTRY_ERROR,
+        { packageName, operation, reason, statusCode },
+        cause
+      )
     }
   }
 
-  class InvalidVersionRangeError extends Error {
-    constructor(range: string, reason: string) {
-      super(`Invalid version range "${range}": ${reason}`)
-      this.name = 'InvalidVersionRangeError'
+  class InvalidVersionRangeError extends DomainError {
+    constructor(range: string, reason: string, cause?: Error) {
+      super(
+        `Invalid version range "${range}": ${reason}`,
+        ErrorCode.INVALID_VERSION_RANGE,
+        { range, reason },
+        cause
+      )
     }
+  }
+
+  const logger = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+    setLevel: vi.fn(),
+    child: vi.fn().mockReturnThis(),
   }
 
   return {
+    ErrorCode,
+    BaseError,
+    DomainError,
+    InfrastructureError,
     RegistryError,
     InvalidVersionRangeError,
+    logger,
+    createLogger: vi.fn(() => logger),
+    Logger: {
+      getLogger: vi.fn(() => logger),
+      resetAllLoggers: vi.fn(),
+      instances: new Map(),
+    },
     UserFriendlyErrorHandler: {
-      handleRetryAttempt: mocks.handleRetryAttempt,
       handleSecurityCheckFailure: mocks.handleSecurityCheckFailure,
       handlePackageQueryFailure: mocks.handlePackageQueryFailure,
+      handleRetryAttempt: mocks.handleRetryAttempt,
+      formatError: mocks.formatError,
     },
-    // Add parallelLimit mock for batchQueryVersions
-    parallelLimit: vi.fn(
-      async <T, R>(
-        items: T[],
-        callback: (item: T) => Promise<R>,
-        _concurrency?: number
-      ): Promise<R[]> => {
-        const results: R[] = []
-        for (const item of items) {
-          results.push(await callback(item))
-        }
-        return results
-      }
-    ),
+    ConfigLoader: {
+      loadConfig: mocks.loadConfigAsync,
+      loadConfigSync: mocks.loadConfig,
+      getPackageConfig: mocks.getPackageConfig,
+    },
+    getConfig: vi.fn(() => ({
+      getConfig: vi.fn(() => ({ logLevel: 'info' })),
+    })),
+    ConfigManager: vi.fn(),
+    parallelLimit: mocks.parallelLimit,
+    parallelLimitWithRateLimit: mocks.parallelLimitWithRateLimit,
+    timeout: mocks.timeout,
+    isValidPackageName: mocks.isValidPackageName,
   }
 })
 
@@ -154,6 +238,8 @@ describe('NpmRegistryService', () => {
 
     mocks.npmrcGetRegistryForPackage.mockReturnValue('https://registry.npmjs.org/')
     mocks.npmrcGetAuthToken.mockReturnValue(null)
+
+    mocks.isValidPackageName.mockReturnValue(true)
 
     mocks.packument.mockResolvedValue(mockPackument)
 
@@ -206,6 +292,28 @@ describe('NpmRegistryService', () => {
       await expect(service.getPackageVersions('lodash')).rejects.toThrow(
         'Fetching package versions for lodash failed after 1 attempts: Network error'
       )
+    })
+
+    it('should throw error for invalid package names with path traversal', async () => {
+      mocks.isValidPackageName.mockReturnValue(false)
+
+      await expect(service.getPackageVersions('../../../etc/passwd')).rejects.toThrow(
+        /Invalid package name/
+      )
+    })
+
+    it('should throw error for empty package name', async () => {
+      mocks.isValidPackageName.mockReturnValue(false)
+
+      await expect(service.getPackageVersions('')).rejects.toThrow(/Invalid package name/)
+    })
+
+    it('should accept valid scoped package names', async () => {
+      mocks.isValidPackageName.mockReturnValue(true)
+
+      const result = await service.getPackageVersions('@scope/package')
+
+      expect(result.name).toBeDefined()
     })
   })
 
@@ -359,10 +467,13 @@ describe('NpmRegistryService', () => {
 
       const result = await service.batchQueryVersions(packages)
 
-      expect(result.size).toBe(3)
-      expect(result.has('lodash')).toBe(true)
-      expect(result.has('express')).toBe(true)
-      expect(result.has('react')).toBe(true)
+      expect(result.results.size).toBe(3)
+      expect(result.results.has('lodash')).toBe(true)
+      expect(result.results.has('express')).toBe(true)
+      expect(result.results.has('react')).toBe(true)
+      expect(result.successCount).toBe(3)
+      expect(result.failureCount).toBe(0)
+      expect(result.failures).toHaveLength(0)
     })
 
     it('should call progress callback', async () => {
@@ -381,7 +492,7 @@ describe('NpmRegistryService', () => {
       expect(progressCallback).toHaveBeenLastCalledWith(2, 2, expect.any(String))
     })
 
-    it('should handle errors for individual packages', async () => {
+    it('should handle errors for individual packages and report failures', async () => {
       const packages = ['lodash', 'failing-package']
 
       mocks.packument.mockImplementation(async (name: string) => {
@@ -397,9 +508,29 @@ describe('NpmRegistryService', () => {
 
       const result = await service.batchQueryVersions(packages)
 
-      expect(result.has('lodash')).toBe(true)
-      expect(result.has('failing-package')).toBe(false)
+      // Verify successful result
+      expect(result.results.has('lodash')).toBe(true)
+      expect(result.results.has('failing-package')).toBe(false)
+      expect(result.successCount).toBe(1)
+
+      // Verify failure information
+      expect(result.failureCount).toBe(1)
+      expect(result.failures).toHaveLength(1)
+      expect(result.failures[0]!.packageName).toBe('failing-package')
+      expect(result.failures[0]!.errorMessage).toContain('Package not found')
+      expect(result.failures[0]!.error).toBeInstanceOf(Error)
+
+      // Verify total count
+      expect(result.totalCount).toBe(2)
+
       expect(mocks.handlePackageQueryFailure).toHaveBeenCalled()
+    })
+
+    it('should throw error if any package name is invalid', async () => {
+      const packages = ['lodash', '../malicious']
+      mocks.isValidPackageName.mockImplementation((name: string) => !name.includes('..'))
+
+      await expect(service.batchQueryVersions(packages)).rejects.toThrow(/Invalid package name/)
     })
   })
 

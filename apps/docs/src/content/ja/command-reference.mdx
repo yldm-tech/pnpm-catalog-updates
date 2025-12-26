@@ -22,6 +22,7 @@ PCU はいくつかの主要なコマンドを提供し、完全名と便利な�
 | `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | カラーテーマと UI 設定を構成           |
 | `pcu security`  | `pcu sec`                                 | セキュリティ脆弱性スキャンと修復       |
 | `pcu cache`     | -                                         | キャッシュ管理（統計とクリア）         |
+| `pcu ai`        | -                                         | AIプロバイダー管理と分析テスト         |
 | `pcu rollback`  | -                                         | カタログ更新を以前の状態にロールバック |
 | `pcu watch`     | -                                         | 変更を監視して自動的に更新をチェック   |
 | `pcu help`      | `pcu h`, `pcu -h`                         | ヘルプ情報を表示                       |
@@ -66,7 +67,7 @@ pcu theme --set modern
 
 ### サポートされているコマンド
 
-ハイブリッドモードは 10 個すべての主要コマンドで利用可能です：
+ハイブリッドモードは 11 個すべての主要コマンドで利用可能です：
 
 | コマンド       | インタラクティブオプション                               |
 | -------------- | -------------------------------------------------------- |
@@ -77,6 +78,7 @@ pcu theme --set modern
 | `pcu theme`    | テーマ選択、プログレススタイル、プレビュー               |
 | `pcu security` | フォーマット、重大度フィルター、修復オプション、開発依存関係 |
 | `pcu init`     | テンプレート、フレームワークオプション、ワークスペース作成 |
+| `pcu ai`       | プロバイダーステータス、テスト、キャッシュ操作           |
 | `pcu cache`    | 統計表示、クリアオプション                               |
 | `pcu rollback` | バックアップ選択、確認                                   |
 | `pcu watch`    | カタログ、フォーマット、ターゲット、デバウンス、クリアオプション |
@@ -721,6 +723,70 @@ pcu -t -i
 ```
 
 テーマをプレビューし、UI 設定をインタラクティブに設定できるガイド付きテーマ選択ウィザードを起動。
+
+---
+
+## `pcu ai` - AIプロバイダー管理
+
+AIプロバイダーのステータスを確認し、AI分析キャッシュを管理します。
+
+<CodeGroup>
+
+```bash {{ title: 'ステータス確認' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'テストとキャッシュ' }}
+pcu ai --test
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### オプション
+
+<Properties>
+  <Property name="--status" type="boolean">
+    すべてのAIプロバイダーのステータスを表示（デフォルト動作）
+  </Property>
+  <Property name="--test" type="boolean">
+    サンプルリクエストでAI分析をテスト
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    AI分析キャッシュの統計を表示
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    AI分析キャッシュをクリア
+  </Property>
+</Properties>
+
+### プロバイダー検出
+
+コマンドは利用可能なAIプロバイダーを自動的に検出します：
+
+| プロバイダー | 優先度 | 検出方法       |
+| ------------ | ------ | -------------- |
+| Claude       | 100    | `claude` CLI   |
+| Gemini       | 80     | `gemini` CLI   |
+| Codex        | 60     | `codex` CLI    |
+
+### 使用例
+
+```bash
+# AIプロバイダーのステータスを確認
+pcu ai
+
+# デフォルトプロバイダーでAI分析をテスト
+pcu ai --test
+
+# キャッシュ統計を表示
+pcu ai --cache-stats
+
+# 問題がある場合はキャッシュをクリア
+pcu ai --clear-cache
+```
 
 ---
 

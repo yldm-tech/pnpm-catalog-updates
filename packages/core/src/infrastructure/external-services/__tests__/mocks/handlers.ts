@@ -174,9 +174,11 @@ export const mockNpmPackageMetadata: NpmPackageMetadata = {
 // Handler state for dynamic responses
 type VulnerabilityMap = Map<string, OSVVulnerability[]>
 type PackageMetadataMap = Map<string, NpmPackageMetadata>
+type DownloadStatsMap = Map<string, number>
 
 let vulnerabilityStore: VulnerabilityMap = new Map()
 let packageMetadataStore: PackageMetadataMap = new Map()
+let downloadStatsStore: DownloadStatsMap = new Map()
 
 // Helper functions to set mock data
 export function setMockVulnerabilities(
@@ -191,9 +193,18 @@ export function setMockPackageMetadata(packageName: string, metadata: NpmPackage
   packageMetadataStore.set(packageName, metadata)
 }
 
+export function setMockDownloadStats(
+  packageName: string,
+  period: 'last-day' | 'last-week' | 'last-month',
+  downloads: number
+): void {
+  downloadStatsStore.set(`${packageName}@${period}`, downloads)
+}
+
 export function clearMockData(): void {
   vulnerabilityStore = new Map()
   packageMetadataStore = new Map()
+  downloadStatsStore = new Map()
 }
 
 // Default handlers
@@ -264,6 +275,36 @@ export const handlers = [
       objects: [],
       total: 0,
       time: new Date().toISOString(),
+    })
+  }),
+
+  // npm Downloads API - Get download stats
+  // Use wildcard (*) to match scoped packages like @scope/package
+  http.get('https://api.npmjs.org/downloads/point/:period/*', ({ params, request }) => {
+    const period = params.period as string
+    // Extract package name from URL (handles both regular and scoped packages)
+    const url = new URL(request.url)
+    const pathParts = url.pathname.split('/downloads/point/')
+    const packagePath = pathParts[1] || ''
+    const packageName = packagePath.substring(packagePath.indexOf('/') + 1)
+
+    // Check for stored mock data
+    const downloads = downloadStatsStore.get(`${packageName}@${period}`)
+    if (downloads !== undefined) {
+      return HttpResponse.json({
+        downloads,
+        package: packageName,
+        start: '2024-01-01',
+        end: '2024-01-07',
+      })
+    }
+
+    // Return default download count
+    return HttpResponse.json({
+      downloads: 10000,
+      package: packageName,
+      start: '2024-01-01',
+      end: '2024-01-07',
     })
   }),
 ]

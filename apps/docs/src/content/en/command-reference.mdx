@@ -18,6 +18,7 @@ PCU provides several main commands with both full names and convenient shortcuts
 | `pcu check`     | `pcu chk`, `pcu -c`, `pcu --check` | Check for outdated catalog dependencies         |
 | `pcu update`    | `pcu u`, `pcu -u`, `pcu --update`  | Update catalog dependencies                     |
 | `pcu analyze`   | `pcu a`, `pcu -a`, `pcu --analyze` | Analyze impact of dependency updates            |
+| `pcu ai`        | -                   | Check AI provider status and manage AI cache    |
 | `pcu workspace` | `pcu w`, `pcu -s`, `pcu --workspace-info` | Show workspace information and validation       |
 | `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | Configure color themes and UI settings          |
 | `pcu security`  | `pcu sec`           | Security vulnerability scanning and fixes       |
@@ -66,7 +67,7 @@ pcu theme --set modern
 
 ### Supported Commands
 
-Hybrid Mode is available for all 10 main commands:
+Hybrid Mode is available for all 11 main commands:
 
 | Command        | Interactive Options                                      |
 | -------------- | -------------------------------------------------------- |
@@ -77,6 +78,7 @@ Hybrid Mode is available for all 10 main commands:
 | `pcu theme`    | theme selection, progress style, preview                 |
 | `pcu security` | format, severity filter, fix options, dev dependencies   |
 | `pcu init`     | template, framework options, workspace creation          |
+| `pcu ai`       | provider status, test, cache operations                  |
 | `pcu cache`    | statistics view, clear options                           |
 | `pcu rollback` | backup selection, confirmation                           |
 | `pcu watch`    | catalog, format, target, debounce, clear options         |
@@ -961,6 +963,97 @@ pcu -t -i
 ```
 
 Launches a guided theme selection wizard that allows you to preview themes and configure UI settings interactively.
+
+---
+
+## `pcu ai` - AI Provider Management
+
+Check AI provider status, test AI analysis, and manage AI cache.
+
+<CodeGroup>
+
+```bash {{ title: 'Basic Status' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: 'Test & Cache' }}
+pcu ai --test
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### Options
+
+<Properties>
+  <Property name="--status" type="boolean">
+    Show status of all AI providers (default behavior)
+  </Property>
+  <Property name="--test" type="boolean">
+    Test AI analysis with a sample request
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    Show AI analysis cache statistics
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    Clear AI analysis cache
+  </Property>
+</Properties>
+
+### Provider Detection
+
+PCU automatically detects and prioritizes available AI CLI tools:
+
+| Provider | Priority | Detection Method |
+| -------- | -------- | ---------------- |
+| Claude   | 100      | `claude` CLI     |
+| Gemini   | 80       | `gemini` CLI     |
+| Codex    | 60       | `codex` CLI      |
+
+### Status Output
+
+The status command shows:
+
+- **Available Providers**: Which AI CLI tools are installed
+- **Provider Details**: Path, version, and priority for each provider
+- **Best Provider**: The recommended provider based on priority
+- **Cache Statistics**: Hit rate and entry count (with `--cache-stats`)
+
+### Usage Examples
+
+#### Check AI Provider Status
+
+```bash
+pcu ai
+```
+
+Shows all detected AI providers with their availability and priority.
+
+#### Test AI Analysis
+
+```bash
+pcu ai --test
+```
+
+Runs a test analysis with a sample package update to verify AI integration is working.
+
+#### View Cache Statistics
+
+```bash
+pcu ai --cache-stats
+```
+
+Displays cache statistics including total entries, hits, misses, and hit rate.
+
+#### Clear AI Cache
+
+```bash
+pcu ai --clear-cache
+```
+
+Clears all cached AI analysis results to force fresh analysis.
 
 ---
 

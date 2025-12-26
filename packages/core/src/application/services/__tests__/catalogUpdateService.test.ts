@@ -3,34 +3,44 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Catalog } from '../../../domain/entities/catalog.js'
-import type { CatalogCollection } from '../../../domain/entities/catalogCollection.js'
-import type { Workspace } from '../../../domain/entities/workspace.js'
-import type { WorkspaceRepository } from '../../../domain/repositories/workspaceRepository.js'
-import type { NpmRegistryService } from '../../../infrastructure/external-services/npmRegistryService.js'
 
-// Use vi.hoisted to ensure mocks are available during vi.mock hoisting
+// Use vi.hoisted to define mocks inline (must be before any imports that use these mocks)
 const mocks = vi.hoisted(() => ({
   getPackageConfig: vi.fn(),
   loadConfig: vi.fn(),
   loadConfigAsync: vi.fn(),
   handleSecurityCheckFailure: vi.fn(),
   handlePackageQueryFailure: vi.fn(),
+  handleRetryAttempt: vi.fn(),
+  formatError: vi.fn((e: Error) => e.message),
+  parallelLimit: vi.fn(
+    async (items: [string, unknown][], callback: (item: [string, unknown]) => Promise<void>) => {
+      for (const item of items) {
+        await callback(item)
+      }
+    }
+  ),
 }))
 
-// Comprehensive mock for @pcu/utils to avoid ConfigManager initialization
+// Import shared mock utilities after hoisted block
+import {
+  createMockCatalogCollection,
+  createMockRegistryService,
+  createMockWorkspace,
+  createMockWorkspaceRepository,
+  createMockCatalog as createSharedMockCatalog,
+  setupDefaultMockReturns,
+} from '../../../__tests__/shared/mockUtils.js'
+
+// Inline @pcu/utils mock (cannot use imported factory in vi.mock due to hoisting)
 vi.mock('@pcu/utils', () => {
-  // Define error codes
   const ErrorCode = {
     UNKNOWN_ERROR: 'UNKNOWN_ERROR',
     CATALOG_NOT_FOUND: 'CATALOG_NOT_FOUND',
     PACKAGE_NOT_FOUND: 'PACKAGE_NOT_FOUND',
-    INVALID_VERSION: 'INVALID_VERSION',
-    REGISTRY_ERROR: 'REGISTRY_ERROR',
     WORKSPACE_NOT_FOUND: 'WORKSPACE_NOT_FOUND',
   }
 
-  // Base error class
   class BaseError extends Error {
     code: string
     context: Record<string, unknown>
@@ -62,32 +72,20 @@ vi.mock('@pcu/utils', () => {
     }
   }
 
-  class PackageNotFoundError extends DomainError {
-    constructor(packageName: string, cause?: Error) {
-      super(
-        `Package "${packageName}" not found`,
-        ErrorCode.PACKAGE_NOT_FOUND,
-        { packageName },
-        cause
-      )
-    }
-  }
-
-  class InvalidVersionError extends DomainError {
-    constructor(version: string, reason: string, cause?: Error) {
-      super(
-        `Invalid version "${version}": ${reason}`,
-        ErrorCode.INVALID_VERSION,
-        { version, reason },
-        cause
-      )
-    }
-  }
-
   class WorkspaceNotFoundError extends DomainError {
     constructor(path: string, cause?: Error) {
       super(`No pnpm workspace found at "${path}"`, ErrorCode.WORKSPACE_NOT_FOUND, { path }, cause)
     }
+  }
+
+  const logger = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+    setLevel: vi.fn(),
+    child: vi.fn().mockReturnThis(),
   }
 
   return {
@@ -95,49 +93,28 @@ vi.mock('@pcu/utils', () => {
     BaseError,
     DomainError,
     CatalogNotFoundError,
-    PackageNotFoundError,
-    InvalidVersionError,
     WorkspaceNotFoundError,
+    logger,
+    createLogger: vi.fn(() => logger),
+    Logger: {
+      getLogger: vi.fn(() => logger),
+      resetAllLoggers: vi.fn(),
+      instances: new Map(),
+    },
+    UserFriendlyErrorHandler: {
+      handleSecurityCheckFailure: mocks.handleSecurityCheckFailure,
+      handlePackageQueryFailure: mocks.handlePackageQueryFailure,
+      handleRetryAttempt: mocks.handleRetryAttempt,
+      formatError: mocks.formatError,
+    },
     ConfigLoader: {
       loadConfig: mocks.loadConfigAsync,
       loadConfigSync: mocks.loadConfig,
       getPackageConfig: mocks.getPackageConfig,
     },
-    UserFriendlyErrorHandler: {
-      handleSecurityCheckFailure: mocks.handleSecurityCheckFailure,
-      handlePackageQueryFailure: mocks.handlePackageQueryFailure,
-      handleRetryAttempt: vi.fn(),
-      formatError: vi.fn((e: Error) => e.message),
-    },
-    logger: {
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      fatal: vi.fn(),
-      setLevel: vi.fn(),
-      child: vi.fn().mockReturnThis(),
-    },
-    createLogger: vi.fn(() => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      fatal: vi.fn(),
-      setLevel: vi.fn(),
-      child: vi.fn().mockReturnThis(),
-    })),
-    getConfig: vi.fn(() => ({
-      getConfig: vi.fn(() => ({ logLevel: 'info' })),
-    })),
-    // Add parallelLimit mock for concurrent operations
-    parallelLimit: vi.fn(
-      async (items: [string, unknown][], callback: (item: [string, unknown]) => Promise<void>) => {
-        for (const item of items) {
-          await callback(item)
-        }
-      }
-    ),
+    getConfig: vi.fn(() => ({ getConfig: vi.fn(() => ({ logLevel: 'info' })) })),
+    ConfigManager: vi.fn(),
+    parallelLimit: mocks.parallelLimit,
   }
 })
 
@@ -149,52 +126,21 @@ const { CatalogUpdateService } = await import('../catalogUpdateService.js')
 
 describe('CatalogUpdateService', () => {
   let service: InstanceType<typeof CatalogUpdateService>
-  let mockWorkspaceRepository: WorkspaceRepository
-  let mockRegistryService: NpmRegistryService
-  let mockWorkspace: Workspace
-  let mockCatalog: Catalog
-  let mockCatalogCollection: CatalogCollection
+  let mockWorkspaceRepository: ReturnType<typeof createMockWorkspaceRepository>
+  let mockRegistryService: ReturnType<typeof createMockRegistryService>
+  let mockWorkspace: ReturnType<typeof createMockWorkspace>
+  let mockCatalog: ReturnType<typeof createSharedMockCatalog>
+  let mockCatalogCollection: ReturnType<typeof createMockCatalogCollection>
 
-  const createMockCatalog = (name: string, dependencies: Map<string, string>): Catalog =>
-    ({
-      getName: vi.fn().mockReturnValue(name),
-      getDependencies: vi.fn().mockReturnValue(dependencies),
-      hasDependency: vi.fn((pkg: string) => dependencies.has(pkg)),
-      getDependencyVersion: vi.fn((pkg: string) => dependencies.get(pkg)),
-      setDependency: vi.fn(),
-      removeDependency: vi.fn(),
-    }) as unknown as Catalog
+  // Helper to create catalog with specific dependencies (uses shared factory)
+  const createMockCatalog = (name: string, dependencies: Map<string, string>) =>
+    createSharedMockCatalog(name, dependencies)
 
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Setup default mock return values
-    mocks.getPackageConfig.mockReturnValue({
-      shouldUpdate: true,
-      requireConfirmation: false,
-      autoUpdate: true,
-      groupUpdate: false,
-    })
-
-    mocks.loadConfig.mockReturnValue({
-      advanced: {},
-      monorepo: {},
-      security: { notifyOnSecurityUpdate: false },
-    })
-
-    // Setup async loadConfig mock
-    mocks.loadConfigAsync.mockResolvedValue({
-      include: [],
-      exclude: [],
-      defaults: {},
-      advanced: {
-        concurrency: 8,
-      },
-      security: {
-        enableAudit: true,
-        notifyOnSecurityUpdate: false,
-      },
-    })
+    // Setup default mock return values using shared utility
+    setupDefaultMockReturns(mocks)
 
     // Create mock dependencies map
     const mockDependencies = new Map<string, string>([
@@ -203,65 +149,33 @@ describe('CatalogUpdateService', () => {
       ['react', '^18.0.0'],
     ])
 
-    // Create mock catalog
+    // Create mock catalog using shared factory
     mockCatalog = createMockCatalog('default', mockDependencies)
 
-    // Create mock catalog collection
-    mockCatalogCollection = {
-      get: vi.fn().mockReturnValue(mockCatalog),
-      getAll: vi.fn().mockReturnValue([mockCatalog]),
-      has: vi.fn().mockReturnValue(true),
-      size: vi.fn().mockReturnValue(1),
-      getCatalogNames: vi.fn().mockReturnValue(['default']),
-    } as unknown as CatalogCollection
+    // Create mock catalog collection using shared factory
+    mockCatalogCollection = createMockCatalogCollection([mockCatalog as never])
 
-    // Create mock workspace
-    mockWorkspace = {
-      getId: vi.fn().mockReturnValue({ value: 'workspace-1' }),
-      getPath: vi.fn().mockReturnValue({
-        toString: () => '/test/workspace',
-        getDirectoryName: () => 'workspace',
-      }),
-      getName: vi.fn().mockReturnValue('test-workspace'),
-      getCatalogs: vi.fn().mockReturnValue(mockCatalogCollection),
-      getPackages: vi.fn().mockReturnValue([]),
-      updateCatalogDependency: vi.fn(),
-    } as unknown as Workspace
+    // Create mock workspace using shared factory (with custom catalog collection)
+    mockWorkspace = createMockWorkspace('/test/workspace', 'test-workspace')
+    mockWorkspace.getCatalogs = vi.fn().mockReturnValue(mockCatalogCollection)
+    mockWorkspace.getPackages = vi.fn().mockReturnValue([])
+    mockWorkspace.updateCatalogDependency = vi.fn()
 
-    // Create mock workspace repository
-    mockWorkspaceRepository = {
-      findByPath: vi.fn().mockResolvedValue(mockWorkspace),
-      findById: vi.fn().mockResolvedValue(mockWorkspace),
-      save: vi.fn().mockResolvedValue(undefined),
-      loadConfiguration: vi.fn().mockResolvedValue({}),
-      saveConfiguration: vi.fn().mockResolvedValue(undefined),
-      isValidWorkspace: vi.fn().mockResolvedValue(true),
-      discoverWorkspace: vi.fn().mockResolvedValue(mockWorkspace),
-    }
+    // Create mock workspace repository using shared factory
+    mockWorkspaceRepository = createMockWorkspaceRepository(mockWorkspace as never)
 
-    // Create mock registry service
-    mockRegistryService = {
-      getLatestVersion: vi.fn().mockImplementation(async (packageName: string) => {
-        const versions: Record<string, string> = {
-          lodash: '4.17.21',
-          typescript: '5.3.0',
-          react: '18.2.0',
-        }
-        return versions[packageName] || '1.0.0'
-      }),
-      checkSecurityVulnerabilities: vi.fn().mockResolvedValue({
-        hasVulnerabilities: false,
-        vulnerabilities: [],
-      }),
-      getPackageInfo: vi.fn().mockResolvedValue({
-        name: 'test-package',
-        version: '1.0.0',
-        versions: ['1.0.0'],
-      }),
-    } as unknown as NpmRegistryService
+    // Create mock registry service using shared factory
+    mockRegistryService = createMockRegistryService({
+      lodash: '4.17.21',
+      typescript: '5.3.0',
+      react: '18.2.0',
+    })
 
     // Create service instance
-    service = new CatalogUpdateService(mockWorkspaceRepository, mockRegistryService)
+    service = new CatalogUpdateService(
+      mockWorkspaceRepository as never,
+      mockRegistryService as never
+    )
   })
 
   afterEach(() => {
@@ -284,7 +198,10 @@ describe('CatalogUpdateService', () => {
     })
 
     it('should throw error when no workspace found', async () => {
-      mockWorkspaceRepository.findByPath = vi.fn().mockResolvedValue(null)
+      // getByPath throws WorkspaceNotFoundError when workspace not found
+      mockWorkspaceRepository.getByPath = vi
+        .fn()
+        .mockRejectedValue(new Error('No pnpm workspace found at "/invalid/path"'))
 
       const options: CheckOptions = {
         workspacePath: '/invalid/path',

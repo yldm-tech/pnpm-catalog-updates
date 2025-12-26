@@ -63,11 +63,12 @@
         "noUnusedImports": "warn"
       },
       "suspicious": {
-        "noExplicitAny": "off",
+        "noExplicitAny": "warn",
         "noArrayIndexKey": "off",
         "noControlCharactersInRegex": "off",
         "noShadowRestrictedNames": "off",
-        "useIterableCallbackReturn": "off"
+        "useIterableCallbackReturn": "off",
+        "useAdjacentOverloadSignatures": "off"
       },
       "style": {
         "noNonNullAssertion": "off",

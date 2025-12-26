@@ -12,9 +12,18 @@ import type {
   OutdatedDependencyInfo,
   OutdatedReport,
 } from '@pcu/core'
-import { CommandExitError, ConfigLoader, logger, t } from '@pcu/utils'
-import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
+import { countUpdateTypesFromCatalogs } from '@pcu/core'
+import { CommandExitError, t } from '@pcu/utils'
+import type { OutputFormat } from '../formatters/outputFormatter.js'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
+import {
+  getEffectivePatterns,
+  getEffectiveTarget,
+  handleCommandError,
+  initializeCommand,
+  mergeWithConfig,
+} from '../utils/commandHelpers.js'
+import { errorsOnly, validateCheckOptions } from '../validators/index.js'
 
 export interface CheckCommandOptions {
   workspace?: string
@@ -39,50 +48,29 @@ export class CheckCommand {
    */
   async execute(options: CheckCommandOptions = {}): Promise<void> {
     try {
-      // Initialize theme
-      ThemeManager.setTheme('default')
+      // Initialize command with shared helper (theme, config, formatter)
+      const { config, formatter } = await initializeCommand(options, {
+        showVerboseInfo: true,
+        verboseInfo: {
+          [t('command.check.catalogLabel', { catalog: '' }).replace(': ', '')]:
+            options.catalog || undefined,
+          [t('command.check.targetLabel', { target: '' }).replace(': ', '')]:
+            options.target && options.target !== 'latest' ? options.target : undefined,
+        },
+      })
 
-      if (options.verbose) {
-        console.log(StyledText.iconAnalysis(t('info.checkingUpdates')))
-        console.log(
-          StyledText.muted(`${t('command.workspace.title')}: ${options.workspace || process.cwd()}`)
-        )
-
-        if (options.catalog) {
-          console.log(
-            StyledText.muted(t('command.check.catalogLabel', { catalog: options.catalog }))
-          )
-        }
-
-        if (options.target && options.target !== 'latest') {
-          console.log(StyledText.muted(t('command.check.targetLabel', { target: options.target })))
-        }
-
-        console.log('')
-      }
-
-      // Load configuration file first
-      const config = await ConfigLoader.loadConfig(options.workspace || process.cwd())
-
-      // Use format from CLI options first, then config file, then default
-      const effectiveFormat = options.format || config.defaults?.format || 'table'
-
-      // Create output formatter with effective format
-      const formatter = new OutputFormatter(
-        effectiveFormat as OutputFormat,
-        options.color !== false
-      )
-
-      // Merge CLI options with configuration file settings
+      // Build check options using shared helpers
       const checkOptions: CheckOptions = {
         workspacePath: options.workspace,
         catalogName: options.catalog,
-        target: options.target || config.defaults?.target || 'latest',
-        includePrerelease: options.prerelease ?? config.defaults?.includePrerelease ?? false,
-        // CLI include/exclude options take priority over config file
-        include: options.include?.length ? options.include : config.include,
-        exclude: options.exclude?.length ? options.exclude : config.exclude,
-        // Skip security checks if --no-security flag is set
+        target: getEffectiveTarget(options.target, config.defaults?.target),
+        includePrerelease: mergeWithConfig(
+          options.prerelease,
+          config.defaults?.includePrerelease,
+          false
+        ),
+        include: getEffectivePatterns(options.include, config.include),
+        exclude: getEffectivePatterns(options.exclude, config.exclude),
         noSecurity: options.noSecurity,
       }
 
@@ -111,17 +99,8 @@ export class CheckCommand {
         throw error
       }
 
-      logger.error('Check dependencies failed', error instanceof Error ? error : undefined, {
-        options,
-      })
+      handleCommandError(error, 'Check dependencies failed', options, { options })
       console.error(StyledText.iconError(t('command.check.errorChecking')))
-      console.error(StyledText.error(String(error)))
-
-      if (options.verbose && error instanceof Error) {
-        console.error(StyledText.muted(t('common.stackTrace')))
-        console.error(StyledText.muted(error.stack || t('common.noStackTrace')))
-      }
-
       throw CommandExitError.failure('Check command failed')
     }
   }
@@ -147,13 +126,7 @@ export class CheckCommand {
       lines.push(`  • ${t('command.check.totalCatalogEntries', { count: totalPackages })}`)
 
       // Show breakdown by update type
-      const updateTypes = { major: 0, minor: 0, patch: 0 }
-
-      for (const catalog of report.catalogs) {
-        for (const dep of catalog.outdatedDependencies) {
-          updateTypes[dep.updateType as keyof typeof updateTypes]++
-        }
-      }
+      const updateTypes = countUpdateTypesFromCatalogs(report.catalogs)
 
       if (updateTypes.major > 0) {
         lines.push(
@@ -197,33 +170,10 @@ export class CheckCommand {
 
   /**
    * Validate command options
+   * QUAL-002: Uses unified validator from validators/
    */
   static validateOptions(options: CheckCommandOptions): string[] {
-    const errors: string[] = []
-
-    // Validate format
-    if (options.format && !['table', 'json', 'yaml', 'minimal'].includes(options.format)) {
-      errors.push(t('validation.invalidFormat'))
-    }
-
-    // Validate target
-    if (
-      options.target &&
-      !['latest', 'greatest', 'minor', 'patch', 'newest'].includes(options.target)
-    ) {
-      errors.push(t('validation.invalidTarget'))
-    }
-
-    // Validate include/exclude patterns
-    if (options.include?.some((pattern) => !pattern.trim())) {
-      errors.push(t('validation.includePatternsEmpty'))
-    }
-
-    if (options.exclude?.some((pattern) => !pattern.trim())) {
-      errors.push(t('validation.excludePatternsEmpty'))
-    }
-
-    return errors
+    return errorsOnly(validateCheckOptions)(options)
   }
 
   /**

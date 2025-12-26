@@ -39,6 +39,12 @@ export interface AdvancedConfig {
   retries?: number
   cacheValidityMinutes?: number
   checkForUpdates?: boolean
+  /** NPM registry URL (default: https://registry.npmjs.org/) */
+  registry?: string
+  /** NPM downloads API base URL (default: https://api.npmjs.org) */
+  npmDownloadsApiUrl?: string
+  /** Rate limit for API requests per second (default: 15) */
+  rateLimit?: number
 }
 
 export interface MonorepoConfig {
@@ -143,6 +149,8 @@ export const DEFAULT_PACKAGE_FILTER_CONFIG: DefaultPackageFilterConfig = {
     retries: 3,
     cacheValidityMinutes: 60,
     checkForUpdates: true,
+    npmDownloadsApiUrl: 'https://api.npmjs.org',
+    rateLimit: 15,
   },
   monorepo: {
     syncVersions: [],

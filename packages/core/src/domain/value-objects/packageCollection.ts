@@ -5,7 +5,7 @@
  * Provides operations for managing and querying multiple packages.
  */
 
-import { PackageNotFoundError } from '@pcu/utils'
+import { PackageNotFoundError, ValidationResultClass } from '@pcu/utils'
 import type { Package, PackageName } from '../entities/package.js'
 
 export class PackageCollection {
@@ -212,7 +212,7 @@ export class PackageCollection {
   /**
    * Validate all packages in the collection
    */
-  public validate(): PackageCollectionValidationResult {
+  public validate(): ValidationResultClass {
     const errors: string[] = []
     const warnings: string[] = []
 
@@ -235,7 +235,7 @@ export class PackageCollection {
       errors.push('Duplicate package names found in collection')
     }
 
-    return new PackageCollectionValidationResult(errors.length === 0, errors, warnings)
+    return new ValidationResultClass(errors.length === 0, errors, warnings)
   }
 
   /**
@@ -285,36 +285,5 @@ export class PackageCollection {
     }
 
     return true
-  }
-}
-
-/**
- * Package Collection Validation Result
- */
-export class PackageCollectionValidationResult {
-  constructor(
-    private readonly isValid: boolean,
-    private readonly errors: string[],
-    private readonly warnings: string[]
-  ) {}
-
-  public getIsValid(): boolean {
-    return this.isValid
-  }
-
-  public getErrors(): string[] {
-    return [...this.errors]
-  }
-
-  public getWarnings(): string[] {
-    return [...this.warnings]
-  }
-
-  public hasErrors(): boolean {
-    return this.errors.length > 0
-  }
-
-  public hasWarnings(): boolean {
-    return this.warnings.length > 0
   }
 }

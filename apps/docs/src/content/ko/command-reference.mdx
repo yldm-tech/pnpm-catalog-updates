@@ -21,6 +21,7 @@ PCU는 전체 이름과 편리한 단축키를 모두 제공하는 여러 주요
 | `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | 색상 테마 및 UI 설정 구성         |
 | `pcu security`  | `pcu sec`                                 | 보안 취약점 스캔 및 수정          |
 | `pcu cache`     | -                                         | 캐시 관리 (통계 및 삭제)          |
+| `pcu ai`        | -                                         | AI 제공자 관리 및 분석 테스트     |
 | `pcu rollback`  | -                                         | 카탈로그 업데이트를 이전 상태로 롤백 |
 | `pcu watch`     | -                                         | 변경 사항 감시 및 자동 업데이트 확인 |
 | `pcu help`      | `pcu h`, `pcu -h`                         | 도움말 정보 표시                  |
@@ -67,6 +68,7 @@ pcu update --target minor   # 지정된 옵션으로 직접 실행
 | `theme`      | 테마 선택, 진행률 스타일                       |
 | `security`   | 형식, 심각도, 자동 수정                        |
 | `init`       | 템플릿, 프레임워크 옵션, 대화형 마법사         |
+| `ai`         | 제공자 상태, 테스트, 캐시 작업                 |
 | `cache`      | 통계/삭제 선택                                 |
 | `rollback`   | 버전 선택, 형식                                |
 | `watch`      | 간격, 형식, 알림 옵션                          |
@@ -950,6 +952,70 @@ pcu -t -i
 ```
 
 테마를 미리보고 UI 설정을 대화형으로 구성할 수 있는 가이드 테마 선택 마법사를 실행합니다.
+
+---
+
+## `pcu ai` - AI 제공자 관리
+
+AI 제공자 상태를 확인하고 AI 분석 캐시를 관리합니다.
+
+<CodeGroup>
+
+```bash {{ title: '상태 확인' }}
+pcu ai
+pcu ai --status
+```
+
+```bash {{ title: '테스트 및 캐시' }}
+pcu ai --test
+pcu ai --cache-stats
+pcu ai --clear-cache
+```
+
+</CodeGroup>
+
+### 옵션
+
+<Properties>
+  <Property name="--status" type="boolean">
+    모든 AI 제공자의 상태 표시 (기본 동작)
+  </Property>
+  <Property name="--test" type="boolean">
+    샘플 요청으로 AI 분석 테스트
+  </Property>
+  <Property name="--cache-stats" type="boolean">
+    AI 분석 캐시 통계 표시
+  </Property>
+  <Property name="--clear-cache" type="boolean">
+    AI 분석 캐시 삭제
+  </Property>
+</Properties>
+
+### 제공자 감지
+
+명령어가 사용 가능한 AI 제공자를 자동으로 감지합니다:
+
+| 제공자 | 우선순위 | 감지 방법      |
+| ------ | -------- | -------------- |
+| Claude | 100      | `claude` CLI   |
+| Gemini | 80       | `gemini` CLI   |
+| Codex  | 60       | `codex` CLI    |
+
+### 사용 예시
+
+```bash
+# AI 제공자 상태 확인
+pcu ai
+
+# 기본 제공자로 AI 분석 테스트
+pcu ai --test
+
+# 캐시 통계 보기
+pcu ai --cache-stats
+
+# 문제가 있을 경우 캐시 삭제
+pcu ai --clear-cache
+```
 
 ---
 

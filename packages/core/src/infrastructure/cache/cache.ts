@@ -6,7 +6,7 @@
  */
 
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { promises as fsPromises } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -42,7 +42,22 @@ export class Cache<T = unknown> {
     misses: 0,
   }
 
+  // Track total size incrementally for O(1) access
+  private _totalSize = 0
+
+  // Index entries by expiration time for efficient cleanup
+  // Sorted array of [expirationTime, key] tuples
+  private expirationIndex: Array<[number, string]> = []
+
   private options: Required<CacheOptions>
+
+  // Track initialization state for async loading
+  private _initialized = false
+  private _initPromise: Promise<void> | null = null
+
+  // RES-001: Store cleanup interval reference for proper resource management
+  private cleanupIntervalId: NodeJS.Timeout | null = null
+  private _destroyed = false
 
   constructor(name: string, options: CacheOptions = {}) {
     this.options = {
@@ -53,18 +68,86 @@ export class Cache<T = unknown> {
       cacheDir: options.cacheDir || join(homedir(), '.pcu', 'cache', name),
     }
 
-    if (this.options.persistToDisk) {
-      this.loadFromDisk()
+    // Defer disk loading to async initialization
+    // Don't block constructor with synchronous I/O
+
+    // Setup cleanup interval with unref() to allow process exit
+    // RES-001: Store reference for proper cleanup
+    this.cleanupIntervalId = setInterval(() => this.cleanup(), 300000) // Clean every 5 minutes
+    this.cleanupIntervalId.unref()
+  }
+
+  /**
+   * RES-001: Destroy the cache and release all resources
+   * Call this when the cache is no longer needed to prevent memory leaks
+   */
+  destroy(): void {
+    if (this._destroyed) {
+      return
+    }
+    this._destroyed = true
+
+    // Clear the cleanup interval
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId)
+      this.cleanupIntervalId = null
     }
 
-    // Setup cleanup interval
-    setInterval(() => this.cleanup(), 300000) // Clean every 5 minutes
+    // Clear all entries and tracking structures
+    this.entries.clear()
+    this._totalSize = 0
+    this.expirationIndex = []
+    this.stats.hits = 0
+    this.stats.misses = 0
+    this._initPromise = null
+  }
+
+  /**
+   * RES-001: Check if the cache has been destroyed
+   */
+  get destroyed(): boolean {
+    return this._destroyed
+  }
+
+  /**
+   * Async initialization for disk-based caches.
+   * Call this before using cache if persistToDisk is enabled.
+   */
+  async initialize(): Promise<void> {
+    if (this._initialized) {
+      return
+    }
+
+    if (this._initPromise) {
+      return this._initPromise
+    }
+
+    this._initPromise = this.loadFromDiskAsync()
+    await this._initPromise
+    this._initialized = true
+  }
+
+  /**
+   * Check if cache is initialized
+   */
+  get initialized(): boolean {
+    return this._initialized || !this.options.persistToDisk
+  }
+
+  /**
+   * RES-001: Check if cache is destroyed and throw if so
+   */
+  private ensureNotDestroyed(): void {
+    if (this._destroyed) {
+      throw new Error('Cache has been destroyed and cannot be used')
+    }
   }
 
   /**
    * Get value from cache
    */
   get(key: string): T | undefined {
+    this.ensureNotDestroyed()
     const entry = this.entries.get(key)
 
     if (!entry) {
@@ -84,23 +167,30 @@ export class Cache<T = unknown> {
   }
 
   /**
-   * Set value in cache
+   * Set value in cache.
+   * Maintains incremental size tracking and expiration index.
    */
   set(key: string, value: T, ttl?: number): void {
+    this.ensureNotDestroyed()
     const entryTtl = ttl || this.options.ttl
     const size = this.estimateSize(value)
+    const timestamp = Date.now()
+    const expirationTime = timestamp + entryTtl
 
     const entry: CacheEntry<T> = {
       key,
       value,
-      timestamp: Date.now(),
+      timestamp,
       ttl: entryTtl,
       size,
     }
 
-    // Remove old entry if exists
+    // Remove old entry if exists (updates _totalSize)
     if (this.entries.has(key)) {
+      const oldEntry = this.entries.get(key)!
+      this._totalSize -= oldEntry.size
       this.entries.delete(key)
+      // Note: old expiration index entry will be cleaned up lazily during cleanup
     }
 
     // Check size limits before adding
@@ -108,9 +198,33 @@ export class Cache<T = unknown> {
 
     this.entries.set(key, entry)
 
+    // Update incremental tracking
+    this._totalSize += size
+    this.addToExpirationIndex(expirationTime, key)
+
     if (this.options.persistToDisk) {
       this.saveToDisk(key, entry)
     }
+  }
+
+  /**
+   * Add entry to expiration index using binary insertion to maintain sorted order
+   */
+  private addToExpirationIndex(expirationTime: number, key: string): void {
+    // Binary search for insertion point to maintain sorted order
+    let low = 0
+    let high = this.expirationIndex.length
+
+    while (low < high) {
+      const mid = (low + high) >>> 1
+      if (this.expirationIndex[mid]![0] < expirationTime) {
+        low = mid + 1
+      } else {
+        high = mid
+      }
+    }
+
+    this.expirationIndex.splice(low, 0, [expirationTime, key])
   }
 
   /**
@@ -133,9 +247,16 @@ export class Cache<T = unknown> {
   }
 
   /**
-   * Delete entry from cache
+   * Delete entry from cache. Updates incremental size tracking.
    */
   delete(key: string): boolean {
+    const entry = this.entries.get(key)
+    if (!entry) {
+      return false
+    }
+
+    // Update size tracking before deletion
+    this._totalSize -= entry.size
     const deleted = this.entries.delete(key)
 
     if (deleted && this.options.persistToDisk) {
@@ -146,12 +267,16 @@ export class Cache<T = unknown> {
   }
 
   /**
-   * Clear all cache entries
+   * Clear all cache entries. Resets all tracking structures.
    */
   clear(): void {
     this.entries.clear()
     this.stats.hits = 0
     this.stats.misses = 0
+
+    // Reset tracking structures
+    this._totalSize = 0
+    this.expirationIndex = []
 
     if (this.options.persistToDisk) {
       this.clearDisk()
@@ -191,20 +316,32 @@ export class Cache<T = unknown> {
   }
 
   /**
-   * Cleanup expired entries
+   * Cleanup expired entries.
+   * Optimized using expiration index - only processes expired entries,
+   * not all entries. Time complexity: O(k) where k = number of expired entries.
    */
   private cleanup(): void {
     const now = Date.now()
-    const expiredKeys: string[] = []
 
-    for (const [key, entry] of this.entries) {
-      if (now - entry.timestamp > entry.ttl) {
-        expiredKeys.push(key)
+    // Process expiration index from the beginning (earliest expirations first)
+    // Only process entries that have actually expired
+    while (this.expirationIndex.length > 0) {
+      const first = this.expirationIndex[0]
+      if (!first || first[0] > now) {
+        // First entry hasn't expired yet, no more to process
+        break
       }
-    }
 
-    for (const key of expiredKeys) {
-      this.delete(key)
+      // Remove from index
+      this.expirationIndex.shift()
+      const [, key] = first
+
+      // Check if the entry still exists and is actually expired
+      // (it might have been updated with a new TTL)
+      const entry = this.entries.get(key)
+      if (entry && now - entry.timestamp > entry.ttl) {
+        this.delete(key)
+      }
     }
   }
 
@@ -243,14 +380,10 @@ export class Cache<T = unknown> {
   }
 
   /**
-   * Get total cache size
+   * Get total cache size. O(1) complexity using incremental tracking.
    */
   private getTotalSize(): number {
-    let totalSize = 0
-    for (const entry of this.entries.values()) {
-      totalSize += entry.size
-    }
-    return totalSize
+    return this._totalSize
   }
 
   /**
@@ -265,36 +398,66 @@ export class Cache<T = unknown> {
   }
 
   /**
-   * Load cache from disk
+   * Load cache from disk asynchronously.
+   * Non-blocking disk cache initialization to avoid blocking CLI startup.
+   * Initializes tracking structures when loading from disk.
    */
-  private loadFromDisk(): void {
+  private async loadFromDiskAsync(): Promise<void> {
+    if (!this.options.persistToDisk) {
+      return
+    }
+
     try {
-      if (!existsSync(this.options.cacheDir)) {
+      // Check if cache directory exists
+      try {
+        await fsPromises.access(this.options.cacheDir)
+      } catch {
+        // Directory doesn't exist, nothing to load
         return
       }
 
       const indexPath = join(this.options.cacheDir, 'index.json')
-      if (!existsSync(indexPath)) {
+
+      // Check if index file exists
+      try {
+        await fsPromises.access(indexPath)
+      } catch {
+        // Index doesn't exist, nothing to load
         return
       }
 
-      const indexContent = readFileSync(indexPath, 'utf-8')
+      const indexContent = await fsPromises.readFile(indexPath, 'utf-8')
       const index = JSON.parse(indexContent)
 
-      for (const key of index.keys || []) {
+      // Load entries in parallel for better performance
+      const loadPromises = (index.keys || []).map(async (key: string) => {
         try {
           const entryPath = join(this.options.cacheDir, this.getFilename(key))
-          if (existsSync(entryPath)) {
-            const entryContent = readFileSync(entryPath, 'utf-8')
-            const entry = JSON.parse(entryContent)
+          const entryContent = await fsPromises.readFile(entryPath, 'utf-8')
+          const entry = JSON.parse(entryContent)
 
-            // Check if entry is still valid
-            if (Date.now() - entry.timestamp <= entry.ttl) {
-              this.entries.set(key, entry)
-            }
+          // Check if entry is still valid
+          if (Date.now() - entry.timestamp <= entry.ttl) {
+            return { key, entry }
           }
         } catch {
           // Skip corrupted entries
+        }
+        return null
+      })
+
+      const results = await Promise.all(loadPromises)
+
+      // Process results synchronously to avoid race conditions
+      for (const result of results) {
+        if (result) {
+          const { key, entry } = result
+          this.entries.set(key, entry)
+
+          // Update tracking structures
+          this._totalSize += entry.size
+          const expirationTime = entry.timestamp + entry.ttl
+          this.addToExpirationIndex(expirationTime, key)
         }
       }
     } catch {
@@ -303,67 +466,76 @@ export class Cache<T = unknown> {
   }
 
   /**
-   * Save entry to disk
+   * Save entry to disk (PERF-002: async to avoid blocking)
+   * Fire-and-forget: errors are silently ignored, disk is just for persistence
    */
   private saveToDisk(key: string, entry: CacheEntry<T>): void {
-    try {
-      if (!existsSync(this.options.cacheDir)) {
-        mkdirSync(this.options.cacheDir, { recursive: true })
-      }
-
-      const entryPath = join(this.options.cacheDir, this.getFilename(key))
-      writeFileSync(entryPath, JSON.stringify(entry), 'utf-8')
-
-      // Update index
-      this.updateDiskIndex()
-    } catch {
-      // Ignore disk saving errors
-    }
+    this.saveToDiskAsync(key, entry).catch(() => {
+      // Ignore disk saving errors - memory cache is source of truth
+    })
   }
 
   /**
-   * Delete entry from disk
+   * Async implementation of disk saving
+   */
+  private async saveToDiskAsync(key: string, entry: CacheEntry<T>): Promise<void> {
+    await fsPromises.mkdir(this.options.cacheDir, { recursive: true })
+    const entryPath = join(this.options.cacheDir, this.getFilename(key))
+    await fsPromises.writeFile(entryPath, JSON.stringify(entry), 'utf-8')
+    await this.updateDiskIndexAsync()
+  }
+
+  /**
+   * Delete entry from disk (PERF-002: async to avoid blocking)
+   * Fire-and-forget: errors are silently ignored
    */
   private deleteFromDisk(key: string): void {
-    try {
-      const entryPath = join(this.options.cacheDir, this.getFilename(key))
-      if (existsSync(entryPath)) {
-        unlinkSync(entryPath)
-      }
-      this.updateDiskIndex()
-    } catch {
+    this.deleteFromDiskAsync(key).catch(() => {
       // Ignore disk deletion errors
-    }
+    })
   }
 
   /**
-   * Clear disk cache
+   * Async implementation of disk deletion
+   */
+  private async deleteFromDiskAsync(key: string): Promise<void> {
+    const entryPath = join(this.options.cacheDir, this.getFilename(key))
+    await fsPromises.unlink(entryPath).catch(() => {
+      // File may not exist, ignore
+    })
+    await this.updateDiskIndexAsync()
+  }
+
+  /**
+   * Clear disk cache (PERF-002: async to avoid blocking)
+   * Fire-and-forget: errors are silently ignored
    */
   private clearDisk(): void {
-    try {
-      if (existsSync(this.options.cacheDir)) {
-        const fs = require('node:fs')
-        fs.rmSync(this.options.cacheDir, { recursive: true, force: true })
-      }
-    } catch {
+    this.clearDiskAsync().catch(() => {
       // Ignore disk clearing errors
-    }
+    })
   }
 
   /**
-   * Update disk index
+   * Async implementation of disk clearing
    */
-  private updateDiskIndex(): void {
-    try {
-      const indexPath = join(this.options.cacheDir, 'index.json')
-      const index = {
-        keys: Array.from(this.entries.keys()),
-        lastUpdated: Date.now(),
-      }
-      writeFileSync(indexPath, JSON.stringify(index), 'utf-8')
-    } catch {
-      // Ignore index update errors
+  private async clearDiskAsync(): Promise<void> {
+    await fsPromises.rm(this.options.cacheDir, { recursive: true, force: true }).catch(() => {
+      // Directory may not exist, ignore
+    })
+  }
+
+  /**
+   * Async implementation of disk index update
+   */
+  private async updateDiskIndexAsync(): Promise<void> {
+    await fsPromises.mkdir(this.options.cacheDir, { recursive: true })
+    const indexPath = join(this.options.cacheDir, 'index.json')
+    const index = {
+      keys: Array.from(this.entries.keys()),
+      lastUpdated: Date.now(),
     }
+    await fsPromises.writeFile(indexPath, JSON.stringify(index), 'utf-8')
   }
 
   /**
@@ -554,3 +726,28 @@ export class WorkspaceCache extends Cache<WorkspaceCacheValue> {
 // Export singleton instances
 export const registryCache = new RegistryCache()
 export const workspaceCache = new WorkspaceCache()
+
+/**
+ * Initialize all disk-based caches asynchronously.
+ * Call this function early in the CLI startup to begin loading cached data
+ * in the background without blocking the main execution.
+ *
+ * @returns Promise that resolves when all caches are initialized
+ */
+export async function initializeCaches(): Promise<void> {
+  await Promise.all([registryCache.initialize(), workspaceCache.initialize()])
+}
+
+/**
+ * Start cache initialization in background (non-blocking).
+ * This starts the initialization without awaiting, allowing the CLI
+ * to continue startup while caches load in the background.
+ *
+ * @returns Promise for tracking (optional to await)
+ */
+export function startCacheInitialization(): Promise<void> {
+  return initializeCaches().catch(() => {
+    // Silently ignore initialization errors
+    // Cache will work with empty state
+  })
+}

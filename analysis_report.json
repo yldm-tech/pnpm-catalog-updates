@@ -1,0 +1,56 @@
+[
+  {
+    "id": "QUAL-001",
+    "location": "packages/core/src/application/services/updateExecutorService.ts:49",
+    "severity": "HIGH",
+    "evidence_level": "E2",
+    "description": "更新命令即使使用了 --create-backup 选项也不会创建备份。虽然该选项被传递给了 `UpdatePlanService`，但执行更新的 `UpdateExecutorService` 并没有使用 `BackupService`，也没有执行任何备份操作。CLI 测试仅验证了选项传递，掩盖了功能缺失。",
+    "evidence": "UpdateExecutorService.executeUpdates 方法中完全没有引用 BackupService 或处理 createBackup 选项的代码。UpdateCommand 测试仅验证了 planUpdates 的调用参数。",
+    "suggestion": "在 UpdateExecutorService.executeUpdates 中注入并调用 BackupService，或者在 UpdateCommand 中在调用 executeUpdates 之前执行备份逻辑。"
+  },
+  {
+    "id": "QUAL-002",
+    "location": "packages/core/src/infrastructure/repositories/fileWorkspaceRepository.ts:79",
+    "severity": "MEDIUM",
+    "evidence_level": "E1",
+    "description": "Workspace 保存操作缺乏原子性。`save` 方法分别调用 `saveConfiguration` (pnpm-workspace.yaml) 和 `savePackages` (package.json)。如果前者成功但后者失败，工作区将处于不一致状态。",
+    "evidence": "FileWorkspaceRepository.save 方法顺序调用了两个独立的保存操作，没有事务或回滚机制。",
+    "suggestion": "实现事务性保存机制，或者在保存前创建临时备份，一旦失败则自动恢复。"
+  },
+  {
+    "id": "QUAL-003",
+    "location": "packages/core/src/infrastructure/external-services/npmRegistryService.ts:316",
+    "severity": "MEDIUM",
+    "evidence_level": "E1",
+    "description": "性能瓶颈风险：`getGreatestVersion` 获取所有版本并在内存中过滤。对于拥有大量版本的包（如 lodash, react），这可能导致显著的性能开销和内存使用。",
+    "evidence": "NpmRegistryService.getGreatestVersion 调用 getPackageVersions 获取完整版本列表，然后在应用层进行过滤。",
+    "suggestion": "如果 registry API 支持，利用服务端过滤。否则，考虑仅获取最近的 N 个版本进行检查，或者优化 Version 对象的创建和比较逻辑。"
+  },
+  {
+    "id": "QUAL-004",
+    "location": "packages/core/src/infrastructure/cache/cache.ts:241",
+    "severity": "LOW",
+    "evidence_level": "E1",
+    "description": "缓存清理性能问题：`evictOldest` 方法遍历整个 Map 来寻找最旧的条目，时间复杂度为 O(N)。随着缓存项增加，清理操作会变慢。",
+    "evidence": "Cache.evictOldest 遍历 this.entries 的所有值来寻找最小 timestamp。",
+    "suggestion": "使用 LRU 缓存结构（如基于 Map + 双向链表）来实现 O(1) 的淘汰策略。"
+  },
+  {
+    "id": "QUAL-005",
+    "location": "packages/core/src/domain/entities/workspace.ts:185",
+    "severity": "LOW",
+    "evidence_level": "E1",
+    "description": "代码重复与概念重叠：`Workspace` 实体中定义了 `OutdatedDependency` 类，而 `CatalogCheckService` 中定义了 `OutdatedDependencyInfo` 接口。两者结构高度相似，造成维护冗余。",
+    "evidence": "packages/core/src/domain/entities/workspace.ts 定义了 OutdatedDependency 类，而 packages/core/src/application/services/catalogCheckService.ts 定义了 OutdatedDependencyInfo 接口。",
+    "suggestion": "统一使用一个定义（推荐在 Domain 层定义核心 Value Object），并在 Service 层复用。"
+  },
+  {
+    "id": "QUAL-006",
+    "location": "packages/core/src/domain/entities/workspace.ts:167",
+    "severity": "LOW",
+    "evidence_level": "E1",
+    "description": "特性依恋 (Feature Envy) / 未实现的方法：`Workspace.getOutdatedCatalogDependencies` 方法是一个空实现，表明这可能不属于 Domain Entity 的职责，或者是遗留代码。",
+    "evidence": "getOutdatedCatalogDependencies 方法仅返回空数组 `[]` 并包含注释说明这是一个占位符。",
+    "suggestion": "移除该方法，确认检查过时依赖的职责由 Domain Service 或 Application Service (CatalogCheckService) 承担。"
+  }
+]

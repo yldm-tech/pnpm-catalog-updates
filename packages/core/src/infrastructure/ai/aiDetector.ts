@@ -57,10 +57,36 @@ export class AIDetector {
    * Initialize provider definitions
    */
   private initializeProviders(): ProviderDefinition[] {
+    // Unix paths
     const npmGlobalBin = join(this.homeDir, '.npm-global', 'bin')
     const localBin = '/usr/local/bin'
     const homebrewBin = '/opt/homebrew/bin'
     // Intel Homebrew uses /usr/local/bin which is already covered by localBin
+
+    // Windows paths
+    const appData = process.env.APPDATA || join(this.homeDir, 'AppData', 'Roaming')
+    const localAppData = process.env.LOCALAPPDATA || join(this.homeDir, 'AppData', 'Local')
+    const windowsNpmGlobal = join(appData, 'npm')
+    const windowsProgramFiles = process.env.ProgramFiles || 'C:\\Program Files'
+
+    // Build platform-specific known paths
+    const getKnownPaths = (command: string): string[] => {
+      if (this.isWindows) {
+        return [
+          join(windowsNpmGlobal, `${command}.cmd`),
+          join(windowsNpmGlobal, command),
+          join(localAppData, 'Programs', command, `${command}.exe`),
+          join(windowsProgramFiles, command, `${command}.exe`),
+          join(this.homeDir, '.npm-global', 'bin', `${command}.cmd`),
+        ]
+      }
+      return [
+        join(homebrewBin, command),
+        join(localBin, command),
+        join(npmGlobalBin, command),
+        join(this.homeDir, '.local', 'bin', command),
+      ]
+    }
 
     // Priority order: gemini > claude > codex > cursor
     return [
@@ -68,12 +94,7 @@ export class AIDetector {
         name: 'gemini',
         command: 'gemini',
         envVar: 'GEMINI_PATH',
-        knownPaths: [
-          join(homebrewBin, 'gemini'),
-          join(localBin, 'gemini'),
-          join(npmGlobalBin, 'gemini'),
-          join(this.homeDir, '.local', 'bin', 'gemini'),
-        ],
+        knownPaths: getKnownPaths('gemini'),
         versionArg: '--version',
         priority: 100,
         capabilities: ['impact', 'security', 'compatibility', 'recommend'],
@@ -82,12 +103,7 @@ export class AIDetector {
         name: 'claude',
         command: 'claude',
         envVar: 'CLAUDE_PATH',
-        knownPaths: [
-          join(homebrewBin, 'claude'),
-          join(localBin, 'claude'),
-          join(npmGlobalBin, 'claude'),
-          join(this.homeDir, '.local', 'bin', 'claude'),
-        ],
+        knownPaths: getKnownPaths('claude'),
         versionArg: '--version',
         priority: 80,
         capabilities: ['impact', 'security', 'compatibility', 'recommend'],
@@ -96,12 +112,7 @@ export class AIDetector {
         name: 'codex',
         command: 'codex',
         envVar: 'CODEX_PATH',
-        knownPaths: [
-          join(homebrewBin, 'codex'),
-          join(localBin, 'codex'),
-          join(npmGlobalBin, 'codex'),
-          join(this.homeDir, '.local', 'bin', 'codex'),
-        ],
+        knownPaths: getKnownPaths('codex'),
         versionArg: '--version',
         priority: 60,
         capabilities: ['impact', 'compatibility', 'recommend'],
@@ -110,9 +121,14 @@ export class AIDetector {
         name: 'cursor',
         command: 'cursor',
         envVar: 'CURSOR_PATH',
-        knownPaths: [join(homebrewBin, 'cursor'), join(localBin, 'cursor')],
+        knownPaths: this.isWindows
+          ? [
+              join(localAppData, 'Programs', 'cursor', 'Cursor.exe'),
+              join(windowsProgramFiles, 'Cursor', 'Cursor.exe'),
+            ]
+          : [join(homebrewBin, 'cursor'), join(localBin, 'cursor')],
         applicationPaths: this.isWindows
-          ? [join(process.env.LOCALAPPDATA || '', 'Programs', 'cursor', 'Cursor.exe')]
+          ? [join(localAppData, 'Programs', 'cursor', 'Cursor.exe')]
           : ['/Applications/Cursor.app/Contents/MacOS/Cursor'],
         versionArg: '--version',
         priority: 40,

@@ -1,50 +1,78 @@
-// Core domain and application exports for pnpm-catalog-updates
+/**
+ * @pcu/core - Core domain and application exports for pnpm-catalog-updates
+ *
+ * ARCH-001: Refactored to use barrel exports reducing God Object pattern.
+ * Consumers can import from specific modules for better tree-shaking:
+ *   - import { ... } from '@pcu/core/application'
+ *   - import { ... } from '@pcu/core/domain'
+ *   - import { ... } from '@pcu/core/infrastructure'
+ */
 
-// Application Interfaces
 export type {
-  ProgressReporter,
-  ProgressReporterOptions,
-} from './application/interfaces/progressReporter'
-export type {
+  // AI Analysis types
   AIAnalysisServiceOptions,
   AnalysisRequestOptions,
-  MultiAnalysisResult,
-} from './application/services/aiAnalysisService'
-// Application Services
-export { AIAnalysisService } from './application/services/aiAnalysisService'
-// Backup Service
-export type { BackupInfo, BackupServiceOptions } from './application/services/backupService'
-export { BackupService } from './application/services/backupService'
-// Application Service Types
-export type {
+  // Backup types
+  BackupInfo,
+  BackupServiceOptions,
+  // Catalog Update types
   CatalogUpdateInfo,
+  CatalogUpdateServiceDeps,
   CheckOptions,
+  ChunkingConfig,
+  ChunkProgress,
   ImpactAnalysis,
+  MultiAnalysisResult,
   OutdatedDependencyInfo,
   OutdatedReport,
+  // Impact Analysis types
+  PackageImpact,
+  PlannedUpdate,
+  // Interface types
+  ProgressReporter,
+  ProgressReporterOptions,
+  SecurityImpact,
+  SkippedDependency,
+  // Update Executor types
+  UpdatedDependency,
+  UpdateError,
   UpdateOptions,
   UpdatePlan,
   UpdateResult,
   UpdateTarget,
-} from './application/services/catalogUpdateService'
-export { CatalogUpdateService } from './application/services/catalogUpdateService'
-// Impact Analysis Service
-export type { PackageImpact, SecurityImpact } from './application/services/impactAnalysisService'
-export { ImpactAnalysisService } from './application/services/impactAnalysisService'
-// Watch Service
-export type { WatchCallbacks, WatchOptions } from './application/services/watchService'
-export { WatchService } from './application/services/watchService'
-export type {
+  // Utility types
+  UpdateTypeCounts,
+  VersionConflict,
+  // Watch types
+  WatchCallbacks,
+  WatchOptions,
+  // Workspace types
   WorkspaceStats,
   WorkspaceValidationReport,
-} from './application/services/workspaceService'
-export { WorkspaceService } from './application/services/workspaceService'
-// Domain Entities
-export { Catalog } from './domain/entities/catalog'
-export { Package } from './domain/entities/package'
-export { Workspace } from './domain/entities/workspace'
-// AI Domain Interfaces
+} from './application/index.js'
+// ============================================================
+// Application Layer
+// Services, interfaces, and utilities for business logic
+// ============================================================
+export {
+  // Services
+  AIAnalysisService,
+  BackupService,
+  CatalogCheckService,
+  CatalogUpdateService,
+  // Interfaces
+  ConcurrentProgressTracker,
+  // Utilities
+  countUpdateTypes,
+  countUpdateTypesFromCatalogs,
+  ImpactAnalysisService,
+  UpdateExecutorService,
+  UpdatePlanService,
+  WatchService,
+  WorkspaceService,
+} from './application/index.js'
 export type {
+  // AI Domain interfaces
   AIConfig,
   AIProvider,
   AIProviderConfig,
@@ -56,57 +84,81 @@ export type {
   Recommendation,
   RiskLevel,
   WorkspaceInfo,
-} from './domain/interfaces/aiProvider'
-// Repository Interface
-export type { WorkspaceRepository } from './domain/repositories/workspaceRepository'
-// Value Objects
-export { CatalogCollection } from './domain/value-objects/catalogCollection'
-export { PackageCollection } from './domain/value-objects/packageCollection'
-export { Version } from './domain/value-objects/version'
-export { WorkspaceConfig } from './domain/value-objects/workspaceConfig'
-export { WorkspaceId } from './domain/value-objects/workspaceId'
-export { WorkspacePath } from './domain/value-objects/workspacePath'
+  // Repository interfaces
+  WorkspaceRepository,
+} from './domain/index.js'
+// ============================================================
+// Domain Layer
+// Core business entities, value objects, and interfaces
+// ============================================================
+export {
+  // Entities
+  Catalog,
+  // Value Objects
+  CatalogCollection,
+  Package,
+  PackageCollection,
+  Version,
+  Workspace,
+  WorkspaceConfig,
+  WorkspaceId,
+  WorkspacePath,
+} from './domain/index.js'
 export type {
+  // AI types
   AnalysisCacheOptions,
   AnalysisCacheStats,
   BaseProviderOptions,
+  // NPM Registry types
+  BatchQueryFailure,
+  BatchQueryResult,
+  // Cache types
+  CacheStats,
+  // Changelog types
+  ChangelogEntry,
   ClaudeProviderOptions,
   CodexProviderOptions,
   GeminiProviderOptions,
-} from './infrastructure/ai/index'
-// AI Infrastructure
+  // Package Manager types
+  IPackageManagerService,
+  PackageChangelog,
+  PackageManagerOptions,
+  PackageManagerResult,
+  // Security Advisory types
+  SecurityAdvisoryReport,
+  VulnerabilityInfo,
+} from './infrastructure/index.js'
+// ============================================================
+// Infrastructure Layer
+// Concrete implementations (use through DI when possible)
+// ============================================================
 export {
+  // AI Infrastructure
   AIDetector,
   AnalysisCache,
   analysisCache,
   BaseAIProvider,
+  // Cache Infrastructure
+  Cache,
+  // External Services
+  ChangelogService,
   ClaudeProvider,
   CodexProvider,
+  // File System
+  FileSystemService,
+  // Repository
+  FileWorkspaceRepository,
   GeminiProvider,
-  RuleEngine,
-} from './infrastructure/ai/index'
-// Infrastructure - Cache
-export type { CacheStats } from './infrastructure/cache/cache'
-export {
-  Cache,
+  initializeCaches,
+  NpmRegistryService,
+  // Utilities
+  NpmrcParser,
+  PnpmPackageManagerService,
   RegistryCache,
+  RuleEngine,
   registryCache,
+  SecurityAdvisoryService,
+  startCacheInitialization,
   WorkspaceCache,
   workspaceCache,
-} from './infrastructure/cache/cache'
-// Changelog Service
-export type {
-  ChangelogEntry,
-  PackageChangelog,
-} from './infrastructure/external-services/changelogService'
-export { ChangelogService } from './infrastructure/external-services/changelogService'
-export { NpmRegistryService } from './infrastructure/external-services/npmRegistryService'
-// Security Advisory Types
-export type {
-  SecurityAdvisoryReport,
-  VulnerabilityInfo,
-} from './infrastructure/external-services/securityAdvisoryService'
-export { SecurityAdvisoryService } from './infrastructure/external-services/securityAdvisoryService'
-export { FileSystemService } from './infrastructure/file-system/fileSystemService'
-export { FileWorkspaceRepository } from './infrastructure/repositories/fileWorkspaceRepository'
-export { NpmrcParser } from './infrastructure/utils/npmrcParser'
+} from './infrastructure/index.js'

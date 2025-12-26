@@ -5,6 +5,9 @@
  * error tracking/statistics, and custom error classes.
  */
 
+// Error Renderer (UI layer for error messages)
+export type { ErrorInfo, SkippedPackagesSummary } from './errorRenderer.js'
+export { ErrorRenderer } from './errorRenderer.js'
 // Custom Error Classes
 export {
   AIAnalysisError,
@@ -18,6 +21,7 @@ export {
   // Enums
   ErrorCode,
   ExternalServiceError,
+  FileSizeExceededError,
   FileSystemError,
   getErrorMessage,
   hasErrorCode,
@@ -43,7 +47,6 @@ export {
   // Utilities
   wrapError,
 } from './errors.js'
-
 // Error Tracker
 export type { SkippedPackage } from './errorTracker.js'
 export { ErrorTracker } from './errorTracker.js'

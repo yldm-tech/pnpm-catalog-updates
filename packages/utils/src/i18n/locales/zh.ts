@@ -31,13 +31,19 @@ export const zh: TranslationDictionary = {
 
   // Validation errors
   'validation.packageNameRequired': '包名是必需的',
-  'validation.invalidFormat': '无效的格式。必须是以下之一：table, json, yaml, minimal',
+  'validation.invalidFormat':
+    '无效的格式。必须是以下之一：table, json, yaml, minimal, github, gitlab, junit, sarif',
   'validation.invalidSeverity': '无效的严重性级别。必须是以下之一：low, moderate, high, critical',
   'validation.invalidTarget': '无效的目标。必须是以下之一：latest, greatest, minor, patch, newest',
   'validation.interactiveWithDryRun': '不能同时使用 --interactive 和 --dry-run',
   'validation.includePatternsEmpty': 'Include 模式不能为空',
   'validation.excludePatternsEmpty': 'Exclude 模式不能为空',
   'validation.workspaceDirNotExist': '工作区目录不存在：{{path}}',
+  'validation.invalidProvider': '无效的提供者。必须是以下之一：auto, claude, gemini, codex',
+  'validation.invalidAnalysisType':
+    '无效的分析类型。必须是以下之一：impact, security, compatibility, recommend',
+  'validation.invalidGraphType': '无效的图类型。必须是以下之一：{{validTypes}}',
+  'validation.invalidGraphFormat': '无效的图格式。必须是以下之一：{{validFormats}}',
 
   // Success messages
   'success.updateComplete': '更新成功完成',
@@ -108,8 +114,10 @@ export const zh: TranslationDictionary = {
   'command.update.foundUpdates': '发现 {{count}} 个可用更新',
   'command.update.noUpdatesSelected': '未选择任何更新',
   'command.update.cancelled': '操作已取消',
+  'command.update.moreLines': '还有 {{count}} 行，使用 --verbose 查看',
   'command.update.runningBatchAI': '正在对 {{count}} 个包进行 AI 批量分析...',
   'command.update.batchAIHint': '这将在单个请求中分析所有包以提高效率。',
+  'command.update.processingChunks': '正在处理第 {{current}}/{{total}} 批...',
   'command.update.aiResults': 'AI 分析结果：',
   'command.update.provider': '提供商：{{provider}}',
   'command.update.confidence': '置信度：{{confidence}}%',
@@ -132,6 +140,13 @@ export const zh: TranslationDictionary = {
   'command.update.runningPnpmInstall': '正在运行 pnpm install 更新锁文件...',
   'command.update.pnpmInstallSuccess': 'pnpm install 成功完成',
   'command.update.pnpmInstallFailed': 'pnpm install 失败（catalog 更新已成功）',
+  'command.update.installError': '安装过程中发生意外错误',
+  'command.update.suggestFix': '建议：',
+  'command.update.suggestManualInstall': '尝试手动运行 "{{pm}} install"',
+  'command.update.suggestCheckDeps': '检查工作区中的依赖冲突',
+  'command.update.suggestInstallPm': '确保 {{pm}} 已安装并在 PATH 中',
+  'command.update.suggestRetry': '尝试重新运行命令',
+  'command.update.suggestCheckNetwork': '检查网络连接',
   'command.update.fetchingChangelogs': '正在获取变更日志...',
   'command.update.changelogUnavailable': '变更日志不可用',
 
@@ -150,6 +165,9 @@ export const zh: TranslationDictionary = {
   'command.rollback.chooseBackup': '选择备份',
   'command.rollback.warning': '警告：这将覆盖当前的 pnpm-workspace.yaml',
   'command.rollback.willRestore': '将恢复自：{{time}}',
+  'command.rollback.autoBackupNote': '恢复前会自动备份当前状态',
+  'command.rollback.preRestoreBackupCreated': '恢复前备份已保存至：{{path}}',
+  'command.rollback.safetyNote': '如需撤销此回滚，请再次运行 "pcu rollback"',
   'command.rollback.deleteWarning': '警告：这将删除 {{count}} 个备份',
   'command.rollback.confirmDelete': '确定要删除所有备份吗？',
   'command.rollback.deletedBackups': '已删除 {{count}} 个备份',
@@ -164,6 +182,14 @@ export const zh: TranslationDictionary = {
   'command.watch.foundOutdated': '发现 {{count}} 个过时的包',
   'command.watch.waitingForChanges': '等待文件变更...',
   'command.watch.runUpdateHint': '运行 "pcu update" 应用更新',
+
+  // Self-update command
+  'command.selfUpdate.checking': '正在检查 pcu 更新...',
+  'command.selfUpdate.updating': '正在更新 pcu 到版本 {{version}}...',
+  'command.selfUpdate.success': '成功更新到版本 {{version}}！',
+  'command.selfUpdate.failed': '更新 pcu 失败',
+  'command.selfUpdate.latestAlready': '您已使用最新版本 ({{version}})',
+  'command.selfUpdate.restartHint': '请重新启动终端以使用新版本。',
 
   // AI command
   'command.ai.cacheCleared': 'AI 分析缓存已清除',
@@ -226,6 +252,13 @@ export const zh: TranslationDictionary = {
   'command.security.verifyingFixes': '重新运行安全扫描以验证修复...',
   'command.security.allFixed': '所有严重和高危漏洞已修复！',
   'command.security.fixesFailed': '应用安全修复失败：',
+  'command.security.noPackageJson': '在 {{path}} 中未找到 package.json',
+  'command.security.auditFailed': 'pnpm audit 失败：{{message}}',
+  'command.security.auditParseError': '解析 pnpm audit 输出失败：{{error}}',
+  'command.security.auditExitError': 'pnpm audit 失败，状态码 {{status}}：{{error}}',
+  'command.security.snykScanExitError': 'Snyk 扫描失败，状态码 {{status}}：{{error}}',
+  'command.security.snykScanFailed': 'Snyk 扫描失败：{{message}}',
+  'command.security.auditFixFailed': 'pnpm audit --fix 失败，状态码 {{status}}',
 
   // Check command additions
   'command.check.errorChecking': '检查依赖时出错：',
@@ -300,6 +333,8 @@ export const zh: TranslationDictionary = {
   'cli.unexpectedError': '意外错误：',
   'cli.fatalError': '致命错误：',
   'cli.cancelled': '已取消。',
+  'cli.updateAvailable': '发现新版本：{{current}} → {{latest}}',
+  'cli.updateHint': '运行 "pcu self-update" 更新。',
 
   // Progress bar messages
   'progress.securityAnalyzing': '正在执行安全分析...',
@@ -316,6 +351,11 @@ export const zh: TranslationDictionary = {
   'progress.steps': '进度步骤',
   'progress.allStepsCompleted': '所有步骤已完成！',
   'progress.overallProgress': '总体进度',
+  'progress.checkingPackages': '正在检查 {{count}} 个依赖包...',
+  'progress.checkCompleteWithUpdates': '✅ 检查完成! 发现 {{count}} 个可更新的依赖包',
+  'progress.checkCompleteNoUpdates': '✅ 检查完成! 所有依赖包都是最新的',
+  'progress.checkingPackage': '正在检查依赖包: {{packageName}}',
+  'progress.skippingPackage': '跳过包 {{packageName}} (检查失败)',
 
   // Security command additions
   'command.security.criticalVulnsFound': '发现 {{count}} 个严重漏洞',
@@ -334,6 +374,8 @@ export const zh: TranslationDictionary = {
   'cli.description.cache': '管理 PCU 注册表和工作区数据缓存',
   'cli.description.rollback': '回滚目录更新到之前的状态',
   'cli.description.watch': '监视文件变更并检查更新',
+  'cli.description.selfUpdate': '更新 pcu 到最新版本',
+  'cli.description.graph': '可视化目录依赖关系',
   'cli.description.help': '显示命令帮助',
 
   // CLI option descriptions
@@ -346,7 +388,8 @@ export const zh: TranslationDictionary = {
   'cli.option.interactive': '交互模式选择更新',
   'cli.option.dryRun': '预览更改但不写入文件',
   'cli.option.force': '即使有风险也强制更新',
-  'cli.option.createBackup': '更新前创建备份文件',
+  'cli.option.createBackup': '更新前创建备份文件（默认）',
+  'cli.option.noBackup': '跳过更新前创建备份',
   'cli.option.ai': '为所有更新启用 AI 批量分析',
   'cli.option.provider': 'AI 提供商：auto、claude、gemini、codex',
   'cli.option.analysisType': 'AI 分析类型：impact、security、compatibility、recommend',
@@ -411,6 +454,8 @@ export const zh: TranslationDictionary = {
   'cli.option.clearConsole': '每次检查前清空控制台',
   'cli.option.exitCode': '有更新时返回退出码 1（用于 CI/CD）',
   'cli.option.noSecurity': '跳过安全漏洞检查',
+  'cli.option.graphFormat': '输出格式：text、mermaid、dot、json',
+  'cli.option.graphType': '图表类型：catalog、package、full',
 
   // CLI argument descriptions
   'cli.argument.package': '包名称',
@@ -633,6 +678,14 @@ export const zh: TranslationDictionary = {
   'format.workspaceStatistics': '工作区统计',
   'format.packagesCount': '{{count}} 个包',
   'format.catalogsCount': '{{count}} 个目录',
+  'format.noUpdatesPlanned': '没有计划的更新',
+  'format.plannedUpdates': '计划更新: {{count}}',
+  'format.versionConflicts': '版本冲突',
+  'format.recommendation': '建议',
+  'format.conflictsDetected': '个版本冲突已检测',
+
+  // Table headers
+  'table.header.new': '新版本',
 
   // Stats labels
   'stats.totalPackages': '总包数',

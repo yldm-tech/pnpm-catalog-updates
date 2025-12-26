@@ -47,6 +47,15 @@ describe('FileWorkspaceRepository', () => {
       readPackageJson: vi.fn().mockResolvedValue(mockPackageJsonData),
       writePackageJson: vi.fn().mockResolvedValue(undefined),
       findNearestWorkspace: vi.fn().mockResolvedValue('/test/workspace'),
+      // Atomic save support methods
+      createBackup: vi.fn().mockImplementation((_filePath: string) => {
+        // Simulate ENOENT for new files (no backup needed)
+        const error = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException
+        error.code = 'ENOENT'
+        return Promise.reject(error)
+      }),
+      restoreFromBackup: vi.fn().mockResolvedValue(undefined),
+      removeFile: vi.fn().mockResolvedValue(undefined),
     } as unknown as FileSystemService
 
     repository = new FileWorkspaceRepository(mockFileSystemService)
@@ -134,6 +143,40 @@ describe('FileWorkspaceRepository', () => {
       const workspace = Workspace.create(workspaceId, mockWorkspacePath, config, catalogs, packages)
 
       await expect(repository.save(workspace)).rejects.toThrow(FileSystemError)
+    })
+
+    it('should fail save when backup creation fails with non-ENOENT error', async () => {
+      // Simulate a permission error (not ENOENT) - this should fail the save
+      const permissionError = new Error('EACCES: permission denied') as NodeJS.ErrnoException
+      permissionError.code = 'EACCES'
+      vi.mocked(mockFileSystemService.createBackup).mockRejectedValue(permissionError)
+
+      const workspaceId = WorkspaceId.fromPath('/test/workspace')
+      const config = WorkspaceConfig.fromWorkspaceData(mockWorkspaceData)
+      const catalogs = CatalogCollection.fromCatalogs([])
+      const packages = PackageCollection.fromPackages([])
+      const workspace = Workspace.create(workspaceId, mockWorkspacePath, config, catalogs, packages)
+
+      // Should fail because createBackup returned EACCES, not ENOENT
+      await expect(repository.save(workspace)).rejects.toThrow(FileSystemError)
+      await expect(repository.save(workspace)).rejects.toThrow('permission denied')
+    })
+
+    it('should succeed when backup creation fails with ENOENT (new file)', async () => {
+      // ENOENT means file doesn't exist - this is OK for new files
+      const notFoundError = new Error('ENOENT: no such file') as NodeJS.ErrnoException
+      notFoundError.code = 'ENOENT'
+      vi.mocked(mockFileSystemService.createBackup).mockRejectedValue(notFoundError)
+
+      const workspaceId = WorkspaceId.fromPath('/test/workspace')
+      const config = WorkspaceConfig.fromWorkspaceData(mockWorkspaceData)
+      const catalogs = CatalogCollection.fromCatalogs([])
+      const packages = PackageCollection.fromPackages([])
+      const workspace = Workspace.create(workspaceId, mockWorkspacePath, config, catalogs, packages)
+
+      // Should succeed because ENOENT is ignored (file is new)
+      await expect(repository.save(workspace)).resolves.toBeUndefined()
+      expect(mockFileSystemService.writePnpmWorkspaceConfig).toHaveBeenCalled()
     })
   })
 

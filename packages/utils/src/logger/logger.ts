@@ -1,11 +1,20 @@
 /**
  * Logging System
  *
+ * Uses fs.createWriteStream for non-blocking file writes.
  * Provides structured logging with multiple output targets and log levels.
  * Integrates with the configuration system for runtime control.
  */
 
-import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+  type WriteStream,
+} from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug'
@@ -62,6 +71,12 @@ export class Logger {
     json: boolean
   }
   private static instances = new Map<string, Logger>()
+
+  // File stream for non-blocking writes
+  private fileStream: WriteStream | null = null
+  private currentFilePath: string | null = null
+  private writeCount = 0
+  private static readonly ROTATION_CHECK_INTERVAL = 100 // Check rotation every N writes
 
   private constructor(context: string, options: Partial<LoggerOptions> = {}) {
     this.context = context
@@ -127,6 +142,16 @@ export class Logger {
    */
   debug(message: string, data?: unknown): void {
     this.log('debug', message, { data })
+  }
+
+  /**
+   * Log debug message with error (preserves stack trace)
+   */
+  debugError(message: string, error?: Error, data?: unknown): void {
+    const extra: { error?: Error; data?: unknown } = {}
+    if (error) extra.error = error
+    if (data !== undefined) extra.data = data
+    this.log('debug', message, extra)
   }
 
   /**
@@ -223,6 +248,10 @@ export class Logger {
 
   /**
    * Write to file
+   *
+   * Uses fs.createWriteStream for non-blocking writes instead of writeFileSync.
+   * The stream is reused across writes, avoiding repeated file open/close overhead.
+   * Rotation is checked periodically rather than on every write for better performance.
    */
   private writeToFile(entry: LogEntry): void {
     if (!this.options.file) return
@@ -230,14 +259,50 @@ export class Logger {
     try {
       const filePath = resolve(this.options.file)
 
-      // Ensure directory exists
-      const dir = dirname(filePath)
-      if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true })
+      // Initialize or recreate stream if needed
+      if (!this.fileStream || this.currentFilePath !== filePath) {
+        // Ensure directory exists (only on first write or path change)
+        const dir = dirname(filePath)
+        if (!existsSync(dir)) {
+          mkdirSync(dir, { recursive: true })
+        }
+
+        // Close existing stream if any
+        if (this.fileStream) {
+          this.fileStream.end()
+        }
+
+        // Create new write stream (append mode)
+        this.fileStream = createWriteStream(filePath, { flags: 'a', encoding: 'utf-8' })
+        this.currentFilePath = filePath
+        this.writeCount = 0
+
+        this.fileStream.on('error', (err: NodeJS.ErrnoException) => {
+          // Close the failed stream
+          this.fileStream = null
+          this.currentFilePath = null
+
+          // Log error with context for debugging
+          // Use console.error as we can't use the logger itself here
+          const errorMessage = err.code
+            ? `Log file stream error [${err.code}]: ${err.message}`
+            : `Log file stream error: ${err.message}`
+          console.error(errorMessage)
+
+          // For permission errors, disable file logging to prevent repeated failures
+          if (err.code === 'EACCES' || err.code === 'EPERM') {
+            this.options.file = undefined
+            console.warn('File logging disabled due to permission error')
+          }
+        })
       }
 
-      // Check file size and rotate if necessary
-      this.rotateLogFile(filePath)
+      // Check file size and rotate periodically (not on every write)
+      this.writeCount++
+      if (this.writeCount >= Logger.ROTATION_CHECK_INTERVAL) {
+        this.writeCount = 0
+        this.checkAndRotate(filePath)
+      }
 
       // Format log entry
       let logLine: string
@@ -265,32 +330,75 @@ export class Logger {
         logLine += '\n'
       }
 
-      // Append to file
-      writeFileSync(filePath, logLine, { flag: 'a', encoding: 'utf-8' })
+      // Write to stream (buffered, non-blocking)
+      this.fileStream.write(logLine)
     } catch (error) {
-      // Fallback to console if file writing fails
-      console.error('Failed to write to log file:', error)
+      const err = error as NodeJS.ErrnoException
+
+      if (err.code === 'ENOSPC') {
+        // Disk full - disable file logging to prevent repeated failures
+        console.error('Disk full - file logging disabled')
+        this.options.file = undefined
+      } else if (err.code === 'EACCES' || err.code === 'EPERM') {
+        // Permission denied - disable file logging
+        console.error(`Permission denied for log file: ${this.options.file}`)
+        this.options.file = undefined
+      } else {
+        // Other errors - log once and continue
+        console.error('Failed to write to log file:', err.message || error)
+      }
+
+      // Fallback to console for this entry
       this.writeToConsole(entry)
     }
   }
 
   /**
+   * Check file size and rotate if necessary.
+   * Called periodically instead of on every write.
+   */
+  private checkAndRotate(filePath: string): void {
+    if (!existsSync(filePath)) return
+
+    const config = getLoggerConfig()
+    const maxSize = this.parseSize(config.logging.maxSize)
+
+    try {
+      const stats = statSync(filePath)
+
+      if (stats.size >= maxSize) {
+        // Close current stream before rotation
+        if (this.fileStream) {
+          this.fileStream.end()
+          this.fileStream = null
+        }
+
+        this.rotateLogFile(filePath)
+
+        // Stream will be recreated on next write
+      }
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException
+      if (err.code !== 'ENOENT') {
+        // Only log non-file-not-found errors (ENOENT is expected during rotation)
+        console.warn(`Log rotation check failed [${err.code}]: ${err.message}`)
+      }
+    }
+  }
+
+  /**
    * Rotate log file if it exceeds size limit
+   *
+   * Uses imported functions instead of dynamic require('node:fs').
+   * This method is called only when rotation is needed, not on every write.
    */
   private rotateLogFile(filePath: string): void {
     if (!existsSync(filePath)) return
 
     const config = getLoggerConfig()
-    const maxSize = this.parseSize(config.logging.maxSize)
     const maxFiles = config.logging.maxFiles
 
     try {
-      const stats = statSync(filePath)
-
-      if (stats.size < maxSize) {
-        return
-      }
-
       // Rotate files
       for (let i = maxFiles - 1; i > 0; i--) {
         const oldFile = `${filePath}.${i}`
@@ -299,18 +407,26 @@ export class Logger {
         if (existsSync(oldFile)) {
           if (i === maxFiles - 1) {
             // Delete oldest file
-            require('node:fs').unlinkSync(oldFile)
+            unlinkSync(oldFile)
           } else {
             // Rename file
-            require('node:fs').renameSync(oldFile, newFile)
+            renameSync(oldFile, newFile)
           }
         }
       }
 
       // Move current file to .1
-      require('node:fs').renameSync(filePath, `${filePath}.1`)
+      renameSync(filePath, `${filePath}.1`)
     } catch (error) {
-      console.warn('Failed to rotate log file:', error)
+      const err = error as NodeJS.ErrnoException
+      const errorContext = err.code ? `[${err.code}]` : ''
+      console.warn(`Failed to rotate log file ${errorContext}: ${err.message}`)
+
+      // If rotation fails due to permissions, disable file logging
+      if (err.code === 'EACCES' || err.code === 'EPERM') {
+        this.options.file = undefined
+        console.warn('File logging disabled due to rotation permission error')
+      }
     }
   }
 
@@ -378,10 +494,141 @@ export class Logger {
   }
 
   /**
+   * Close the file stream for this logger
+   */
+  close(): void {
+    if (this.fileStream) {
+      this.fileStream.end()
+      this.fileStream = null
+      this.currentFilePath = null
+    }
+  }
+
+  /**
+   * Flush pending writes to the file stream
+   *
+   * Returns a promise that resolves when all pending writes are flushed.
+   */
+  flush(): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.fileStream && !this.fileStream.writableEnded) {
+        this.fileStream.once('drain', () => resolve())
+        // If already drained, resolve immediately
+        if (!this.fileStream.writableNeedDrain) {
+          resolve()
+        }
+      } else {
+        resolve()
+      }
+    })
+  }
+
+  /**
    * Clear all logger instances (useful for testing)
+   *
+   * Also closes all file streams.
    */
   static clearInstances(): void {
+    for (const instance of Logger.instances.values()) {
+      instance.close()
+    }
     Logger.instances.clear()
+  }
+
+  /**
+   * Close all logger file streams
+   *
+   * Call this before process exit to ensure all logs are written.
+   */
+  static closeAll(): void {
+    for (const instance of Logger.instances.values()) {
+      instance.close()
+    }
+  }
+
+  /**
+   * Flush all pending writes across all loggers
+   *
+   * Returns a promise that resolves when all pending writes are flushed.
+   */
+  static flushAll(): Promise<void[]> {
+    const flushPromises: Promise<void>[] = []
+    for (const instance of Logger.instances.values()) {
+      flushPromises.push(instance.flush())
+    }
+    return Promise.all(flushPromises)
+  }
+
+  /**
+   * Set log level for all existing logger instances
+   * Useful when --verbose flag is passed to CLI
+   */
+  static setGlobalLevel(level: LogLevel): void {
+    for (const instance of Logger.instances.values()) {
+      instance.setLevel(level)
+    }
+    // Also update the default config for new loggers
+    DEFAULT_LOGGING_CONFIG.logging.level = level
+  }
+
+  /**
+   * Configure global logger defaults at runtime
+   *
+   * Provides runtime configuration without circular dependencies.
+   * This allows updating the default configuration that will be used
+   * for all new logger instances. Existing instances are NOT affected
+   * (use setGlobalLevel() to update existing instances' log level).
+   *
+   * @example
+   * ```typescript
+   * // Configure from CLI options
+   * Logger.configure({
+   *   level: 'debug',
+   *   silent: false,
+   *   color: true,
+   *   file: './logs/app.log',
+   * })
+   * ```
+   */
+  static configure(options: {
+    level?: LogLevel
+    silent?: boolean
+    color?: boolean
+    file?: string
+    maxSize?: string
+    maxFiles?: number
+  }): void {
+    if (options.level !== undefined) {
+      DEFAULT_LOGGING_CONFIG.logging.level = options.level
+    }
+    if (options.silent !== undefined) {
+      DEFAULT_LOGGING_CONFIG.output.silent = options.silent
+    }
+    if (options.color !== undefined) {
+      DEFAULT_LOGGING_CONFIG.output.color = options.color
+    }
+    if (options.file !== undefined) {
+      DEFAULT_LOGGING_CONFIG.logging.file = options.file
+    }
+    if (options.maxSize !== undefined) {
+      DEFAULT_LOGGING_CONFIG.logging.maxSize = options.maxSize
+    }
+    if (options.maxFiles !== undefined) {
+      DEFAULT_LOGGING_CONFIG.logging.maxFiles = options.maxFiles
+    }
+  }
+
+  /**
+   * Reset logger configuration to defaults
+   * Useful for testing to ensure clean state
+   */
+  static resetConfig(): void {
+    DEFAULT_LOGGING_CONFIG.logging.level = 'info'
+    DEFAULT_LOGGING_CONFIG.logging.file = undefined
+    DEFAULT_LOGGING_CONFIG.logging.maxSize = '10MB'
+    DEFAULT_LOGGING_CONFIG.logging.maxFiles = 5
+    DEFAULT_LOGGING_CONFIG.output.color = true
+    DEFAULT_LOGGING_CONFIG.output.silent = false
   }
 }
 

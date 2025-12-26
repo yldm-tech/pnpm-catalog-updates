@@ -5,7 +5,7 @@
  * for different package scopes. Supports both npm and pnpm configuration formats.
  */
 
-import { existsSync, readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { logger } from '@pcu/utils'
@@ -15,22 +15,129 @@ export interface NpmrcConfig {
   registry: string
   // Scoped registries (e.g., @mycompany -> https://npm.mycompany.com)
   scopedRegistries: Map<string, string>
-  // Auth tokens for registries
+  // Auth tokens for registries (SECURITY: Do not log this directly)
   authTokens: Map<string, string>
   // Other npm config values
   config: Map<string, string>
+}
+
+/**
+ * Safe representation of NpmrcConfig for logging
+ * Redacts sensitive authentication tokens to prevent credential leakage
+ */
+export interface SafeNpmrcConfig {
+  registry: string
+  scopedRegistries: Record<string, string>
+  authTokensCount: number
+  hasAuthTokens: boolean
+  configKeys: string[]
+}
+
+/**
+ * Convert NpmrcConfig to a safe loggable representation
+ * This function redacts auth tokens while preserving debugging utility
+ */
+export function toSafeConfig(config: NpmrcConfig): SafeNpmrcConfig {
+  return {
+    registry: config.registry,
+    scopedRegistries: Object.fromEntries(config.scopedRegistries),
+    authTokensCount: config.authTokens.size,
+    hasAuthTokens: config.authTokens.size > 0,
+    configKeys: Array.from(config.config.keys()),
+  }
+}
+
+/**
+ * Check if a config has auth token for a specific registry without exposing the token
+ */
+export function hasAuthTokenForRegistry(config: NpmrcConfig, registryHost: string): boolean {
+  return config.authTokens.has(registryHost)
+}
+
+/**
+ * SEC-007: Validation result for npm auth tokens
+ */
+export interface TokenValidationResult {
+  isValid: boolean
+  format: 'npm_token' | 'legacy_uuid' | 'unknown'
+  warnings: string[]
+}
+
+/**
+ * SEC-007: Validate npm auth token format
+ *
+ * Supports:
+ * - New npm tokens: `npm_` prefix followed by base64-like characters
+ * - Legacy tokens: UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+ *
+ * @param token - The auth token to validate
+ * @returns Validation result with format detection and warnings
+ */
+export function validateAuthToken(token: string): TokenValidationResult {
+  const warnings: string[] = []
+
+  // Check for empty or whitespace-only tokens
+  if (!token || token.trim().length === 0) {
+    return { isValid: false, format: 'unknown', warnings: ['Token is empty or whitespace-only'] }
+  }
+
+  const trimmedToken = token.trim()
+
+  // Check for obvious placeholder tokens
+  const placeholderPatterns = [
+    /^your[-_]?token/i,
+    /^todo/i,
+    /^replace[-_]?me/i,
+    /^xxx+$/i,
+    /^placeholder/i,
+    /^insert[-_]?token/i,
+  ]
+
+  for (const pattern of placeholderPatterns) {
+    if (pattern.test(trimmedToken)) {
+      warnings.push('Token appears to be a placeholder value')
+      return { isValid: false, format: 'unknown', warnings }
+    }
+  }
+
+  // New npm token format: npm_ prefix
+  // Format: npm_[A-Za-z0-9]{36,} (at least 36 chars after prefix)
+  if (trimmedToken.startsWith('npm_')) {
+    const tokenBody = trimmedToken.slice(4)
+    if (/^[A-Za-z0-9]{36,}$/.test(tokenBody)) {
+      return { isValid: true, format: 'npm_token', warnings: [] }
+    }
+    warnings.push('Token has npm_ prefix but invalid format')
+    return { isValid: false, format: 'npm_token', warnings }
+  }
+
+  // Legacy UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (uuidPattern.test(trimmedToken)) {
+    return { isValid: true, format: 'legacy_uuid', warnings: [] }
+  }
+
+  // Check for minimum length (tokens should be reasonably long)
+  if (trimmedToken.length < 20) {
+    warnings.push('Token is suspiciously short (less than 20 characters)')
+    return { isValid: false, format: 'unknown', warnings }
+  }
+
+  // Accept other formats but mark as unknown (for private registry tokens)
+  // This allows custom enterprise registry tokens to work
+  return { isValid: true, format: 'unknown', warnings: [] }
 }
 
 export class NpmrcParser {
   private static readonly DEFAULT_REGISTRY = 'https://registry.npmjs.org/'
 
   /**
-   * Parse .npmrc/.pnpmrc configuration from multiple sources
+   * Parse .npmrc/.pnpmrc configuration from multiple sources (async version)
    */
-  static parse(
+  static async parse(
     workingDirectory: string = process.cwd(),
     includeGlobal: boolean = true
-  ): NpmrcConfig {
+  ): Promise<NpmrcConfig> {
     const config: NpmrcConfig = {
       registry: NpmrcParser.DEFAULT_REGISTRY,
       scopedRegistries: new Map(),
@@ -51,10 +158,10 @@ export class NpmrcParser {
     configPaths.push(join(workingDirectory, '.npmrc')) // Project npmrc
     configPaths.push(join(workingDirectory, '.pnpmrc')) // Project pnpmrc (highest priority)
 
+    // Parse config files sequentially to ensure correct priority order
+    // (later files override earlier ones)
     for (const configPath of configPaths) {
-      if (existsSync(configPath)) {
-        NpmrcParser.parseFile(configPath, config)
-      }
+      await NpmrcParser.parseFile(configPath, config)
     }
 
     // Also check for environment variables (skip in tests if includeGlobal is false)
@@ -64,54 +171,75 @@ export class NpmrcParser {
   }
 
   /**
-   * Parse a single .npmrc file
+   * Parse a single .npmrc file (async version)
    */
-  private static parseFile(filepath: string, config: NpmrcConfig): void {
+  private static async parseFile(filepath: string, config: NpmrcConfig): Promise<void> {
     try {
-      const content = readFileSync(filepath, 'utf-8')
-      const lines = content.split('\n')
+      const content = await readFile(filepath, 'utf-8')
+      NpmrcParser.parseContent(content, config)
+    } catch (error) {
+      // File doesn't exist or is unreadable - silently ignore
+      // This is expected behavior for optional config files
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        logger.debug(`Failed to parse npmrc file ${filepath}`, { error })
+      }
+    }
+  }
 
-      for (const line of lines) {
-        const trimmedLine = line.trim()
+  /**
+   * Parse npmrc content string into config object
+   */
+  private static parseContent(content: string, config: NpmrcConfig): void {
+    const lines = content.split('\n')
 
-        // Skip comments and empty lines
-        if (!trimmedLine || trimmedLine.startsWith('#') || trimmedLine.startsWith(';')) {
-          continue
-        }
+    for (const line of lines) {
+      const trimmedLine = line.trim()
 
-        // Parse key=value pairs
-        const separatorIndex = trimmedLine.indexOf('=')
-        if (separatorIndex === -1) continue
+      // Skip comments and empty lines
+      if (!trimmedLine || trimmedLine.startsWith('#') || trimmedLine.startsWith(';')) {
+        continue
+      }
 
-        const key = trimmedLine.substring(0, separatorIndex).trim()
-        const value = trimmedLine.substring(separatorIndex + 1).trim()
+      // Parse key=value pairs
+      const separatorIndex = trimmedLine.indexOf('=')
+      if (separatorIndex === -1) continue
 
-        // Handle scoped registries (e.g., @mycompany:registry=https://npm.mycompany.com/)
-        if (key.includes(':registry')) {
-          const scope = key.replace(':registry', '')
-          config.scopedRegistries.set(scope, NpmrcParser.normalizeRegistryUrl(value))
-        }
-        // Handle default registry
-        else if (key === 'registry') {
-          config.registry = NpmrcParser.normalizeRegistryUrl(value)
-        }
-        // Handle auth tokens (e.g., //registry.npmjs.org/:_authToken=...)
-        else if (key.includes(':_authToken') || key.includes('_authToken')) {
-          // Extract registry URL from the key
-          const match = key.match(/\/\/(.*?)\/:/)
-          if (match?.[1]) {
-            const registryHost = match[1]
-            config.authTokens.set(registryHost, value)
+      const key = trimmedLine.substring(0, separatorIndex).trim()
+      const value = trimmedLine.substring(separatorIndex + 1).trim()
+
+      // Handle scoped registries (e.g., @mycompany:registry=https://npm.mycompany.com/)
+      if (key.includes(':registry')) {
+        const scope = key.replace(':registry', '')
+        config.scopedRegistries.set(scope, NpmrcParser.normalizeRegistryUrl(value))
+      }
+      // Handle default registry
+      else if (key === 'registry') {
+        config.registry = NpmrcParser.normalizeRegistryUrl(value)
+      }
+      // Handle auth tokens (e.g., //registry.npmjs.org/:_authToken=...)
+      else if (key.includes(':_authToken') || key.includes('_authToken')) {
+        // Extract registry URL from the key
+        const match = key.match(/\/\/(.*?)\/:/)
+        if (match?.[1]) {
+          const registryHost = match[1]
+
+          // SEC-007: Validate token format before storing
+          const validation = validateAuthToken(value)
+          if (!validation.isValid) {
+            logger.warn(`Invalid auth token for ${registryHost}`, {
+              format: validation.format,
+              warnings: validation.warnings,
+            })
           }
-        }
-        // Store other config values
-        else {
-          config.config.set(key, value)
+
+          // Store token regardless of validation (to avoid breaking existing workflows)
+          config.authTokens.set(registryHost, value)
         }
       }
-    } catch (error) {
-      // Silently ignore errors reading npmrc files
-      logger.debug(`Failed to parse npmrc file ${filepath}`, { error })
+      // Store other config values
+      else {
+        config.config.set(key, value)
+      }
     }
   }
 

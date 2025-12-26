@@ -63,8 +63,46 @@ export class WorkspacePath {
 
   /**
    * Join with another path segment
+   * SEC-006: Validates that the result stays within the workspace to prevent path traversal
    */
   public join(...segments: string[]): WorkspacePath {
+    const joined = path.resolve(this.value, ...segments)
+
+    // SEC-006: Prevent path traversal attacks
+    // Ensure the joined path is still within or equal to the base workspace path
+    if (!joined.startsWith(this.value) && joined !== this.value) {
+      throw new WorkspaceValidationError('WorkspacePath', [
+        `Path traversal detected: joining [${segments.join(', ')}] would escape workspace boundary`,
+      ])
+    }
+
+    return new WorkspacePath(joined)
+  }
+
+  /**
+   * Join with another path segment with basic safety checks
+   * SEC-007: Validates that segments don't contain path traversal patterns
+   *
+   * @deprecated Prefer using join() for user-controlled input.
+   * This method is for internal use with trusted, hardcoded paths only.
+   * @internal
+   */
+  public unsafeJoin(...segments: string[]): WorkspacePath {
+    // SEC-007: Basic validation to prevent obvious path traversal attempts
+    for (const segment of segments) {
+      // Check for path traversal patterns
+      if (segment.includes('..') || segment.includes('\0')) {
+        throw new WorkspaceValidationError('WorkspacePath', [
+          `Unsafe path segment detected: segment contains forbidden pattern`,
+        ])
+      }
+      // Check for absolute paths on Unix or Windows
+      if (path.isAbsolute(segment)) {
+        throw new WorkspaceValidationError('WorkspacePath', [
+          `Unsafe path segment detected: absolute paths not allowed`,
+        ])
+      }
+    }
     const joined = path.join(this.value, ...segments)
     return new WorkspacePath(joined)
   }

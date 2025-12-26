@@ -11,7 +11,9 @@ import { CommandExitError, logger, t } from '@pcu/utils'
 import * as fs from 'fs-extra'
 import type { OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { ProgressBar } from '../formatters/progressBar.js'
-import { StyledText, ThemeManager } from '../themes/colorTheme.js'
+import { StyledText } from '../themes/colorTheme.js'
+import { initializeTheme } from '../utils/commandHelpers.js'
+import { errorsOnly, validateSecurityOptions } from '../validators/index.js'
 
 export interface SecurityCommandOptions {
   workspace?: string
@@ -55,6 +57,10 @@ export interface Vulnerability {
   paths: string[]
   cwe?: string[]
   cve?: string[]
+  /** Detailed description/overview of the vulnerability */
+  overview?: string
+  /** Currently installed version of the package */
+  installedVersion?: string
 }
 
 export interface SecurityRecommendation {
@@ -67,9 +73,9 @@ export interface SecurityRecommendation {
 }
 
 /**
- * npm audit response vulnerability entry
+ * pnpm/npm audit response vulnerability entry
  */
-interface NpmAuditVulnerability {
+interface AuditVulnerability {
   name: string
   severity: 'low' | 'moderate' | 'high' | 'critical'
   title?: string
@@ -82,10 +88,10 @@ interface NpmAuditVulnerability {
 }
 
 /**
- * npm audit response structure
+ * pnpm/npm audit response structure
  */
-interface NpmAuditData {
-  vulnerabilities?: Record<string, NpmAuditVulnerability>
+interface AuditData {
+  vulnerabilities?: Record<string, AuditVulnerability>
 }
 
 /**
@@ -124,8 +130,8 @@ export class SecurityCommand {
     let progressBar: ProgressBar | undefined
 
     try {
-      // Initialize theme
-      ThemeManager.setTheme('default')
+      // Initialize theme using shared helper
+      initializeTheme('default')
 
       // Show loading with progress bar
       progressBar = new ProgressBar({
@@ -202,13 +208,13 @@ export class SecurityCommand {
     // Check if package.json exists
     const packageJsonPath = path.join(workspacePath, 'package.json')
     if (!(await fs.pathExists(packageJsonPath))) {
-      throw new Error(`No package.json found in ${workspacePath}`)
+      throw new Error(t('command.security.noPackageJson', { path: workspacePath }))
     }
 
-    // Run npm audit
+    // Run pnpm audit
     if (options.audit !== false) {
-      const npmVulns = await this.runNpmAudit(workspacePath, options)
-      vulnerabilities.push(...npmVulns)
+      const auditVulns = await this.runPnpmAudit(workspacePath, options)
+      vulnerabilities.push(...auditVulns)
     }
 
     // Run snyk scan if available
@@ -233,52 +239,50 @@ export class SecurityCommand {
       recommendations: recommendations,
       metadata: {
         scanDate: new Date().toISOString(),
-        scanTools: ['npm-audit', ...(options.snyk ? ['snyk'] : [])],
+        scanTools: ['pnpm-audit', ...(options.snyk ? ['snyk'] : [])],
         workspacePath: workspacePath,
       },
     }
   }
 
   /**
-   * Run npm audit scan
+   * Run pnpm audit scan
    */
-  private async runNpmAudit(
+  private async runPnpmAudit(
     workspacePath: string,
     options: SecurityCommandOptions
   ): Promise<Vulnerability[]> {
     const auditArgs = ['audit', '--json']
 
     if (!options.includeDev) {
-      auditArgs.push('--omit=dev')
+      auditArgs.push('--prod')
     }
 
-    const result = spawnSync('npm', auditArgs, {
+    const result = spawnSync('pnpm', auditArgs, {
       cwd: workspacePath,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
     })
 
     if (result.error) {
-      throw new Error(`npm audit failed: ${result.error.message}`)
+      throw new Error(t('command.security.auditFailed', { message: result.error.message }))
     }
 
-    if (result.status === 1) {
-      // npm audit returns 1 when vulnerabilities are found
+    // pnpm audit returns non-zero when vulnerabilities are found
+    if (result.status === 0 || result.status === 1) {
       try {
         const auditData = JSON.parse(result.stdout)
-        return this.parseNpmAuditResults(auditData)
+        return this.parseAuditResults(auditData)
       } catch (parseError) {
-        throw new Error(`Failed to parse npm audit output: ${parseError}`)
-      }
-    } else if (result.status === 0) {
-      try {
-        const auditData = JSON.parse(result.stdout)
-        return this.parseNpmAuditResults(auditData)
-      } catch (parseError) {
-        throw new Error(`Failed to parse npm audit output: ${parseError}`)
+        throw new Error(t('command.security.auditParseError', { error: String(parseError) }))
       }
     } else {
-      throw new Error(`npm audit failed with status ${result.status}: ${result.stderr}`)
+      throw new Error(
+        t('command.security.auditExitError', {
+          status: result.status ?? 'unknown',
+          error: result.stderr,
+        })
+      )
     }
   }
 
@@ -313,7 +317,12 @@ export class SecurityCommand {
       }
 
       if (result.status !== 0 && result.status !== 1) {
-        throw new Error(`Snyk scan failed with status ${result.status}: ${result.stderr}`)
+        throw new Error(
+          t('command.security.snykScanExitError', {
+            status: result.status ?? 'unknown',
+            error: result.stderr,
+          })
+        )
       }
 
       const snykData = JSON.parse(result.stdout)
@@ -326,14 +335,14 @@ export class SecurityCommand {
         return []
       }
       logger.error('Snyk scan failed', err, { workspacePath })
-      throw new Error(`Snyk scan failed: ${err.message}`)
+      throw new Error(t('command.security.snykScanFailed', { message: err.message }))
     }
   }
 
   /**
-   * Parse npm audit results
+   * Parse pnpm/npm audit results
    */
-  private parseNpmAuditResults(auditData: NpmAuditData): Vulnerability[] {
+  private parseAuditResults(auditData: AuditData): Vulnerability[] {
     const vulnerabilities: Vulnerability[] = []
 
     if (!auditData.vulnerabilities) {
@@ -533,13 +542,13 @@ export class SecurityCommand {
     }
 
     try {
-      // Run npm audit fix
-      const fixArgs = ['audit', 'fix']
+      // Run pnpm audit --fix
+      const fixArgs = ['audit', '--fix']
       if (!options.includeDev) {
-        fixArgs.push('--omit=dev')
+        fixArgs.push('--prod')
       }
 
-      const result = spawnSync('npm', fixArgs, {
+      const result = spawnSync('pnpm', fixArgs, {
         cwd: workspacePath,
         encoding: 'utf8',
         stdio: 'inherit',
@@ -550,7 +559,9 @@ export class SecurityCommand {
       }
 
       if (result.status !== 0) {
-        throw new Error(`npm audit fix failed with status ${result.status}`)
+        throw new Error(
+          t('command.security.auditFixFailed', { status: result.status ?? 'unknown' })
+        )
       }
 
       console.log(StyledText.iconSuccess(t('command.security.fixesApplied')))
@@ -578,21 +589,10 @@ export class SecurityCommand {
 
   /**
    * Validate command options
+   * QUAL-002: Uses unified validator from validators/
    */
   static validateOptions(options: SecurityCommandOptions): string[] {
-    const errors: string[] = []
-
-    // Validate format
-    if (options.format && !['table', 'json', 'yaml', 'minimal'].includes(options.format)) {
-      errors.push(t('validation.invalidFormat'))
-    }
-
-    // Validate severity
-    if (options.severity && !['low', 'moderate', 'high', 'critical'].includes(options.severity)) {
-      errors.push(t('validation.invalidSeverity'))
-    }
-
-    return errors
+    return errorsOnly(validateSecurityOptions)(options)
   }
 
   /**
@@ -608,8 +608,8 @@ Usage:
 Options:
   --workspace <path>     Workspace directory (default: current directory)
   --format <type>        Output format: table, json, yaml, minimal (default: table)
-  --audit                Perform npm audit scan (default: true)
-  --fix-vulns            Automatically fix vulnerabilities
+  --audit                Perform pnpm audit scan (default: true)
+  --fix-vulns            Automatically fix vulnerabilities using pnpm audit --fix
   --severity <level>     Filter by severity: low, moderate, high, critical
   --include-dev          Include dev dependencies in scan
   --snyk                 Include Snyk scan (requires snyk CLI)
@@ -617,7 +617,7 @@ Options:
   --no-color             Disable colored output
 
 Examples:
-  pcu security                           # Basic security scan
+  pcu security                           # Basic security scan using pnpm audit
   pcu security --fix-vulns              # Scan and fix vulnerabilities
   pcu security --severity high          # Show only high severity issues
   pcu security --snyk                   # Include Snyk scan

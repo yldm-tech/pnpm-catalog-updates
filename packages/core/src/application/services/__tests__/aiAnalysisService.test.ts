@@ -202,4 +202,120 @@ describe('AIAnalysisService', () => {
       expect(result.merged?.recommendations.length).toBeGreaterThanOrEqual(2)
     })
   })
+
+  describe('analyzeWithChunking', () => {
+    // Create a large package set for chunking tests
+    const createLargePackageSet = (count: number): PackageUpdateInfo[] => {
+      return Array.from({ length: count }, (_, i) => ({
+        name: `package-${i}`,
+        currentVersion: '1.0.0',
+        targetVersion: '1.0.1',
+        updateType: 'patch' as const,
+      }))
+    }
+
+    it('should skip chunking when package count is below threshold', async () => {
+      const smallPackages = createLargePackageSet(20)
+
+      const result = await service.analyzeWithChunking(smallPackages, workspaceInfo, {
+        chunking: { threshold: 50, chunkSize: 10 },
+      })
+
+      expect(result.provider).toBe('rule-engine')
+      expect(result.recommendations).toHaveLength(20)
+    })
+
+    it('should use chunking when package count exceeds threshold', async () => {
+      const largePackages = createLargePackageSet(60)
+
+      const result = await service.analyzeWithChunking(largePackages, workspaceInfo, {
+        chunking: { threshold: 50, chunkSize: 20 },
+      })
+
+      expect(result.recommendations).toHaveLength(60)
+      expect(result.summary).toContain('Chunked analysis completed')
+      expect(result.summary).toContain('3 chunks')
+    })
+
+    it('should report progress during chunked analysis', async () => {
+      const largePackages = createLargePackageSet(60)
+      const progressReports: Array<{
+        currentChunk: number
+        totalChunks: number
+        percentComplete: number
+      }> = []
+
+      await service.analyzeWithChunking(largePackages, workspaceInfo, {
+        chunking: {
+          threshold: 50,
+          chunkSize: 20,
+          onProgress: (progress) => {
+            progressReports.push({
+              currentChunk: progress.currentChunk,
+              totalChunks: progress.totalChunks,
+              percentComplete: progress.percentComplete,
+            })
+          },
+        },
+      })
+
+      // Should have 4 progress reports (3 chunks + final 100%)
+      expect(progressReports.length).toBeGreaterThanOrEqual(3)
+      expect(progressReports[progressReports.length - 1]?.percentComplete).toBe(100)
+    })
+
+    it('should handle chunking disabled option', async () => {
+      const largePackages = createLargePackageSet(60)
+
+      const result = await service.analyzeWithChunking(largePackages, workspaceInfo, {
+        chunking: { enabled: false },
+      })
+
+      // Should process all packages without chunking
+      expect(result.recommendations).toHaveLength(60)
+      expect(result.summary).not.toContain('Chunked analysis')
+    })
+
+    it('should use custom chunk size', async () => {
+      const largePackages = createLargePackageSet(100)
+      const progressReports: Array<{ totalChunks: number }> = []
+
+      await service.analyzeWithChunking(largePackages, workspaceInfo, {
+        chunking: {
+          threshold: 50,
+          chunkSize: 25, // 100 / 25 = 4 chunks
+          onProgress: (progress) => {
+            progressReports.push({ totalChunks: progress.totalChunks })
+          },
+        },
+      })
+
+      expect(progressReports[0]?.totalChunks).toBe(4)
+    })
+
+    it('should aggregate confidence scores from chunks', async () => {
+      const largePackages = createLargePackageSet(60)
+
+      const result = await service.analyzeWithChunking(largePackages, workspaceInfo, {
+        chunking: { threshold: 50, chunkSize: 20 },
+      })
+
+      // Confidence should be averaged across chunks
+      expect(result.confidence).toBeGreaterThan(0)
+    })
+
+    it('should deduplicate warnings from multiple chunks', async () => {
+      const largePackages = createLargePackageSet(60)
+
+      const result = await service.analyzeWithChunking(largePackages, workspaceInfo, {
+        chunking: { threshold: 50, chunkSize: 20 },
+      })
+
+      // Warnings should be deduplicated
+      if (result.warnings && result.warnings.length > 0) {
+        const uniqueWarnings = [...new Set(result.warnings)]
+        expect(result.warnings.length).toBe(uniqueWarnings.length)
+      }
+    })
+  })
 })

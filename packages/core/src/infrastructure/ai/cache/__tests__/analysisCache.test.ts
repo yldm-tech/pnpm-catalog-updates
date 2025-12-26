@@ -19,6 +19,13 @@ const mocks = vi.hoisted(() => {
     writeFileSync: vi.fn(),
     unlinkSync: vi.fn(),
     rmSync: vi.fn(),
+    // Async fs mocks for non-blocking initialization and PERF-002 async disk operations
+    fsAccess: vi.fn().mockRejectedValue(new Error('ENOENT')),
+    fsReadFile: vi.fn().mockResolvedValue('{}'),
+    fsMkdir: vi.fn().mockResolvedValue(undefined),
+    fsWriteFile: vi.fn().mockResolvedValue(undefined),
+    fsUnlink: vi.fn().mockResolvedValue(undefined),
+    fsRm: vi.fn().mockResolvedValue(undefined),
     homedir: vi.fn().mockReturnValue('/home/user'),
     createHash: vi.fn().mockReturnValue(mockHash),
     mockHash,
@@ -33,6 +40,15 @@ vi.mock('node:fs', () => ({
   writeFileSync: mocks.writeFileSync,
   unlinkSync: mocks.unlinkSync,
   rmSync: mocks.rmSync,
+  // Async fs promises (PERF-002: async disk operations)
+  promises: {
+    access: mocks.fsAccess,
+    readFile: mocks.fsReadFile,
+    mkdir: mocks.fsMkdir,
+    writeFile: mocks.fsWriteFile,
+    unlink: mocks.fsUnlink,
+    rm: mocks.fsRm,
+  },
 }))
 
 // Mock node:os
@@ -133,13 +149,15 @@ describe('AnalysisCache', () => {
       expect(cache).toBeDefined()
     })
 
-    it('should load from disk when persistToDisk is true', () => {
-      mocks.existsSync.mockReturnValue(true)
-      mocks.readFileSync.mockReturnValue(JSON.stringify({ keys: [] }))
+    it('should load from disk when persistToDisk is true', async () => {
+      // Now uses async initialization
+      mocks.fsAccess.mockResolvedValue(undefined)
+      mocks.fsReadFile.mockResolvedValue(JSON.stringify({ keys: [] }))
 
-      new AnalysisCache({ persistToDisk: true })
+      const cache = new AnalysisCache({ persistToDisk: true })
+      await cache.initialize()
 
-      expect(mocks.existsSync).toHaveBeenCalled()
+      expect(mocks.fsAccess).toHaveBeenCalled()
     })
   })
 
@@ -256,7 +274,7 @@ describe('AnalysisCache', () => {
       expect(cache.getStats().totalEntries).toBe(2)
     })
 
-    it('should persist to disk when enabled', () => {
+    it('should persist to disk when enabled', async () => {
       mocks.existsSync.mockReturnValue(false)
 
       const cacheWithDisk = new AnalysisCache({ persistToDisk: true })
@@ -265,7 +283,10 @@ describe('AnalysisCache', () => {
 
       cacheWithDisk.set(context, 'test-provider', analysisResult)
 
-      expect(mocks.writeFileSync).toHaveBeenCalled()
+      // PERF-002: Disk operations are now async fire-and-forget
+      await vi.waitFor(() => {
+        expect(mocks.fsWriteFile).toHaveBeenCalled()
+      })
     })
 
     it('should evict oldest entry when max entries reached', () => {
@@ -479,29 +500,49 @@ describe('AnalysisCache', () => {
   })
 
   describe('disk persistence', () => {
-    it('should load entries from disk on initialization', () => {
+    it('should load entries from disk on initialization', async () => {
       vi.clearAllMocks()
-      mocks.existsSync.mockReturnValue(true)
-      mocks.readFileSync.mockImplementation((path: string) => {
+      // Now uses async initialization
+      mocks.fsAccess.mockResolvedValue(undefined)
+      mocks.fsReadFile.mockImplementation((path: string) => {
         if (path.includes('index.json')) {
-          return JSON.stringify({ keys: ['key1'] })
+          return Promise.resolve(JSON.stringify({ keys: ['key1'] }))
         }
-        return JSON.stringify({
-          key: 'key1',
-          result: createMockResult(),
-          timestamp: 1000000,
-          ttl: 3600000,
-          contextHash: 'hash123',
+        return Promise.resolve(
+          JSON.stringify({
+            key: 'key1',
+            result: createMockResult(),
+            timestamp: 1000000,
+            ttl: 3600000,
+            contextHash: 'hash123',
+          })
+        )
+      })
+
+      const cache = new AnalysisCache({ persistToDisk: true })
+      await cache.initialize()
+
+      expect(mocks.fsAccess).toHaveBeenCalled()
+      expect(mocks.fsReadFile).toHaveBeenCalled()
+    })
+
+    it('should create cache directory if not exists', async () => {
+      mocks.existsSync.mockReturnValue(false)
+
+      const cacheWithDisk = new AnalysisCache({ persistToDisk: true })
+      const context = createMockContext()
+
+      cacheWithDisk.set(context, 'provider', createMockResult())
+
+      // PERF-002: Disk operations are now async fire-and-forget
+      await vi.waitFor(() => {
+        expect(mocks.fsMkdir).toHaveBeenCalledWith(expect.stringContaining('.pcu'), {
+          recursive: true,
         })
       })
-
-      new AnalysisCache({ persistToDisk: true })
-
-      expect(mocks.existsSync).toHaveBeenCalled()
-      expect(mocks.readFileSync).toHaveBeenCalled()
     })
 
-    it('should create cache directory if not exists', () => {
+    it('should update disk index when saving', async () => {
       mocks.existsSync.mockReturnValue(false)
 
       const cacheWithDisk = new AnalysisCache({ persistToDisk: true })
@@ -509,24 +550,14 @@ describe('AnalysisCache', () => {
 
       cacheWithDisk.set(context, 'provider', createMockResult())
 
-      expect(mocks.mkdirSync).toHaveBeenCalledWith(expect.stringContaining('.pcu'), {
-        recursive: true,
+      // PERF-002: Disk operations are now async fire-and-forget
+      // Should write both entry and index
+      await vi.waitFor(() => {
+        expect(mocks.fsWriteFile).toHaveBeenCalledTimes(2)
       })
     })
 
-    it('should update disk index when saving', () => {
-      mocks.existsSync.mockReturnValue(false)
-
-      const cacheWithDisk = new AnalysisCache({ persistToDisk: true })
-      const context = createMockContext()
-
-      cacheWithDisk.set(context, 'provider', createMockResult())
-
-      // Should write both entry and index
-      expect(mocks.writeFileSync).toHaveBeenCalledTimes(2)
-    })
-
-    it('should delete from disk when invalidating', () => {
+    it('should delete from disk when invalidating', async () => {
       mocks.existsSync.mockReturnValue(true)
 
       const cacheWithDisk = new AnalysisCache({ persistToDisk: true })
@@ -540,7 +571,10 @@ describe('AnalysisCache', () => {
       vi.clearAllMocks()
       cacheWithDisk.invalidateForPackages(['lodash'])
 
-      expect(mocks.unlinkSync).toHaveBeenCalled()
+      // PERF-002: Disk operations are now async fire-and-forget
+      await vi.waitFor(() => {
+        expect(mocks.fsUnlink).toHaveBeenCalled()
+      })
     })
   })
 })

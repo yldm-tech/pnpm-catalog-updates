@@ -3,13 +3,23 @@
  *
  * Loads and merges user configuration with default configuration.
  * Supports multiple configuration file formats and locations.
- * Supports JSON, JavaScript (.js), and TypeScript (.ts) config files.
+ *
+ * SECURITY NOTE:
+ * By default, only JSON config files are loaded for security reasons.
+ * Dynamic config files (JS/TS) can execute arbitrary code during import.
+ * To enable JS/TS config loading, set the environment variable:
+ *   PCU_ALLOW_DYNAMIC_CONFIG=true
+ *
+ * DEPENDENCY INJECTION:
+ * For testability, services should accept IConfigLoader interface in constructor.
+ * Use the exported `configLoader` singleton or provide a mock implementation.
  */
 
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { ConfigurationError } from '../error-handling/index.js'
+import { logger } from '../logger/logger.js'
 import {
   CONFIG_FILE_NAMES,
   DEFAULT_PACKAGE_FILTER_CONFIG,
@@ -17,73 +27,263 @@ import {
   type PackageFilterConfig,
 } from './packageFilterConfig.js'
 
-export class ConfigLoader {
-  private static cache = new Map<string, PackageFilterConfig>()
+/**
+ * Configuration loader interface for dependency injection.
+ * Allows services to accept a config loader that can be mocked in tests.
+ */
+export interface IConfigLoader {
+  /**
+   * Load configuration from the specified directory (async)
+   */
+  loadConfig(workspacePath?: string): Promise<PackageFilterConfig>
+
+  /**
+   * Load configuration synchronously (JSON only)
+   */
+  loadConfigSync(workspacePath?: string): PackageFilterConfig
+
+  /**
+   * Clear configuration cache
+   */
+  clearCache(): void
+
+  /**
+   * Get effective configuration for a specific package
+   */
+  getPackageConfig(
+    packageName: string,
+    config: PackageFilterConfig
+  ): {
+    shouldUpdate: boolean
+    target: string
+    requireConfirmation: boolean
+    autoUpdate: boolean
+    groupUpdate: boolean
+  }
+}
+
+/**
+ * Environment variable to explicitly allow dynamic (JS/TS) config loading.
+ * This is a security measure to prevent arbitrary code execution from config files.
+ */
+const ALLOW_DYNAMIC_CONFIG_ENV = 'PCU_ALLOW_DYNAMIC_CONFIG'
+
+/**
+ * SEC-001: Cache environment variable at module load time to prevent runtime bypass.
+ * This ensures the security decision is made once at startup and cannot be
+ * modified by malicious code at runtime through process.env manipulation.
+ *
+ * The value is frozen at module initialization time.
+ */
+const DYNAMIC_CONFIG_ALLOWED_AT_STARTUP: boolean = (() => {
+  const envValue = process.env[ALLOW_DYNAMIC_CONFIG_ENV]
+  if (!envValue) {
+    return false
+  }
+  // SEC-001: Case-insensitive comparison for common truthy values
+  const normalizedValue = envValue.toLowerCase().trim()
+  const isAllowed =
+    normalizedValue === 'true' || normalizedValue === '1' || normalizedValue === 'yes'
+
+  // SEC-001: Audit log when dynamic config is enabled
+  if (isAllowed) {
+    // Use console.warn for security-related startup messages to ensure visibility
+    // even if logger hasn't been fully initialized yet
+    console.warn(
+      `[PCU Security] Dynamic config loading enabled via ${ALLOW_DYNAMIC_CONFIG_ENV}=${envValue}. ` +
+        `JS/TS config files can execute arbitrary code.`
+    )
+  }
+
+  return isAllowed
+})()
+
+/**
+ * Check if dynamic config loading is explicitly allowed.
+ *
+ * SEC-001: This function returns a cached value that was determined at module
+ * load time. This prevents runtime manipulation of process.env from bypassing
+ * the security check.
+ */
+function isDynamicConfigAllowed(): boolean {
+  return DYNAMIC_CONFIG_ALLOWED_AT_STARTUP
+}
+
+/**
+ * Check if a config file is a dynamic (JS/TS) config
+ */
+function isDynamicConfig(fileName: string): boolean {
+  return fileName.endsWith('.js') || fileName.endsWith('.ts')
+}
+
+/**
+ * Configuration loader implementation.
+ *
+ * Usage:
+ * - For dependency injection (recommended): Use the exported `configLoader` singleton
+ * - For backward compatibility: Use static methods like `ConfigLoader.loadConfig()`
+ *
+ * Example with DI:
+ * ```ts
+ * class MyService {
+ *   constructor(private readonly config: IConfigLoader = configLoader) {}
+ *   async doSomething() {
+ *     const cfg = await this.config.loadConfig();
+ *   }
+ * }
+ * ```
+ */
+export class ConfigLoader implements IConfigLoader {
+  private cache = new Map<string, PackageFilterConfig>()
+
+  // Static cache for backward compatibility with static methods
+  private static staticInstance: ConfigLoader | null = null
+
+  private static getInstance(): ConfigLoader {
+    if (!ConfigLoader.staticInstance) {
+      ConfigLoader.staticInstance = new ConfigLoader()
+    }
+    return ConfigLoader.staticInstance
+  }
+
+  // ============================================================
+  // Public instance methods with static backward-compatibility versions
+  // ============================================================
 
   /**
    * Load configuration from the specified directory (async)
    * Supports JSON, JavaScript (.js), and TypeScript (.ts) config files.
    */
-  static async loadConfig(workspacePath: string = process.cwd()): Promise<PackageFilterConfig> {
+  async loadConfig(workspacePath: string = process.cwd()): Promise<PackageFilterConfig> {
     const cacheKey = workspacePath
-    if (ConfigLoader.cache.has(cacheKey)) {
-      return ConfigLoader.cache.get(cacheKey)!
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey)!
     }
 
-    const userConfig = await ConfigLoader.findAndLoadUserConfig(workspacePath)
+    const userConfig = await this.findAndLoadUserConfig(workspacePath)
     const mergedConfig = ConfigLoader.mergeConfigs(DEFAULT_PACKAGE_FILTER_CONFIG, userConfig || {})
 
-    ConfigLoader.cache.set(cacheKey, mergedConfig)
+    this.cache.set(cacheKey, mergedConfig)
     return mergedConfig
+  }
+
+  /**
+   * Load configuration from the specified directory (async)
+   * @deprecated Use configLoader.loadConfig() for better testability
+   */
+  static async loadConfig(workspacePath: string = process.cwd()): Promise<PackageFilterConfig> {
+    return ConfigLoader.getInstance().loadConfig(workspacePath)
   }
 
   /**
    * Load configuration synchronously (JSON only)
    * For backward compatibility with code that can't use async.
    */
-  static loadConfigSync(workspacePath: string = process.cwd()): PackageFilterConfig {
+  loadConfigSync(workspacePath: string = process.cwd()): PackageFilterConfig {
     const cacheKey = workspacePath
-    if (ConfigLoader.cache.has(cacheKey)) {
-      return ConfigLoader.cache.get(cacheKey)!
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey)!
     }
 
-    const userConfig = ConfigLoader.findAndLoadUserConfigSync(workspacePath)
+    const userConfig = this.findAndLoadUserConfigSync(workspacePath)
     const mergedConfig = ConfigLoader.mergeConfigs(DEFAULT_PACKAGE_FILTER_CONFIG, userConfig || {})
 
-    ConfigLoader.cache.set(cacheKey, mergedConfig)
+    this.cache.set(cacheKey, mergedConfig)
     return mergedConfig
+  }
+
+  /**
+   * Load configuration synchronously (JSON only)
+   * @deprecated Use configLoader.loadConfigSync() for better testability
+   */
+  static loadConfigSync(workspacePath: string = process.cwd()): PackageFilterConfig {
+    return ConfigLoader.getInstance().loadConfigSync(workspacePath)
   }
 
   /**
    * Clear configuration cache
    */
-  static clearCache(): void {
-    ConfigLoader.cache.clear()
+  clearCache(): void {
+    this.cache.clear()
   }
 
   /**
-   * Find and load user configuration file (async)
+   * Clear configuration cache
+   * @deprecated Use configLoader.clearCache() for better testability
    */
-  private static async findAndLoadUserConfig(
-    workspacePath: string
-  ): Promise<PackageFilterConfig | null> {
+  static clearCache(): void {
+    ConfigLoader.getInstance().clearCache()
+    ConfigLoader.staticInstance = null
+  }
+
+  /**
+   * Get effective configuration for a specific package (instance method)
+   */
+  getPackageConfig(
+    packageName: string,
+    config: PackageFilterConfig
+  ): {
+    shouldUpdate: boolean
+    target: string
+    requireConfirmation: boolean
+    autoUpdate: boolean
+    groupUpdate: boolean
+  } {
+    return ConfigLoader.getPackageConfig(packageName, config)
+  }
+
+  // ============================================================
+  // Private instance methods
+  // ============================================================
+
+  /**
+   * Find and load user configuration file (async)
+   *
+   * SECURITY: Dynamic configs (JS/TS) are only loaded if PCU_ALLOW_DYNAMIC_CONFIG=true
+   */
+  private async findAndLoadUserConfig(workspacePath: string): Promise<PackageFilterConfig | null> {
+    const dynamicAllowed = isDynamicConfigAllowed()
+    let skippedDynamicConfig: string | null = null
+
     for (const fileName of CONFIG_FILE_NAMES) {
       const configPath = join(workspacePath, fileName)
       if (existsSync(configPath)) {
+        // Security check: skip dynamic configs unless explicitly allowed
+        if (isDynamicConfig(fileName)) {
+          if (!dynamicAllowed) {
+            skippedDynamicConfig = configPath
+            continue
+          }
+        }
+
         try {
           return await ConfigLoader.loadConfigFile(configPath)
         } catch (error) {
-          console.warn(`Warning: Failed to load config file ${configPath}:`, error)
+          logger.warn(
+            `Failed to load config file ${configPath}`,
+            error instanceof Error ? error : undefined
+          )
         }
       }
     }
+
+    // Warn user if a dynamic config was skipped
+    if (skippedDynamicConfig) {
+      logger.warn(
+        `Security Warning: Skipped dynamic config file: ${skippedDynamicConfig}. ` +
+          `Dynamic configs (JS/TS) can execute arbitrary code during import. ` +
+          `To enable, set environment variable: ${ALLOW_DYNAMIC_CONFIG_ENV}=true. ` +
+          `Or use a JSON config file instead (.pcurc.json)`
+      )
+    }
+
     return null
   }
 
   /**
    * Find and load user configuration file (sync, JSON only)
    */
-  private static findAndLoadUserConfigSync(workspacePath: string): PackageFilterConfig | null {
+  private findAndLoadUserConfigSync(workspacePath: string): PackageFilterConfig | null {
     for (const fileName of CONFIG_FILE_NAMES) {
       // Skip JS/TS files in sync mode
       if (fileName.endsWith('.js') || fileName.endsWith('.ts')) {
@@ -94,16 +294,25 @@ export class ConfigLoader {
         try {
           return ConfigLoader.loadConfigFileSync(configPath)
         } catch (error) {
-          console.warn(`Warning: Failed to load config file ${configPath}:`, error)
+          logger.warn(
+            `Failed to load config file ${configPath}`,
+            error instanceof Error ? error : undefined
+          )
         }
       }
     }
     return null
   }
 
+  // ============================================================
+  // Private static helper methods (pure functions, no state)
+  // ============================================================
+
   /**
    * Load configuration from a specific file (async)
    * Supports JSON, JavaScript (.js), and TypeScript (.ts) files.
+   *
+   * SECURITY: Dynamic configs require PCU_ALLOW_DYNAMIC_CONFIG=true
    */
   private static async loadConfigFile(configPath: string): Promise<PackageFilterConfig> {
     if (configPath.endsWith('.json')) {
@@ -112,6 +321,14 @@ export class ConfigLoader {
     }
 
     if (configPath.endsWith('.js') || configPath.endsWith('.ts')) {
+      // Double-check security constraint
+      if (!isDynamicConfigAllowed()) {
+        throw new ConfigurationError(
+          configPath,
+          `Dynamic config files (JS/TS) are disabled for security. ` +
+            `Set ${ALLOW_DYNAMIC_CONFIG_ENV}=true to enable, or use a JSON config file.`
+        )
+      }
       return ConfigLoader.loadDynamicConfig(configPath)
     }
 
@@ -328,10 +545,22 @@ export class ConfigLoader {
 
   /**
    * Simple glob pattern matching
+   *
+   * Supports:
+   * - `*` matches any sequence of characters (except path separators)
+   * - `?` matches any single character
+   *
+   * Examples:
+   * - `@types/*` matches `@types/node`, `@types/react`
+   * - `eslint*` matches `eslint`, `eslint-plugin-react`
    */
   private static matchesPattern(packageName: string, pattern: string): boolean {
-    const regexPattern = pattern.replace(/\*/g, '.*').replace(/\?/g, '.')
-    const regex = new RegExp(`^${regexPattern}$`, 'i')
+    // Escape regex metacharacters first, preserving * and ? for glob conversion
+    const escapedPattern = pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape regex special chars
+      .replace(/\*/g, '.*') // Convert glob * to regex .*
+      .replace(/\?/g, '.') // Convert glob ? to regex .
+    const regex = new RegExp(`^${escapedPattern}$`, 'i')
     return regex.test(packageName)
   }
 
@@ -346,3 +575,16 @@ export class ConfigLoader {
     )
   }
 }
+
+/**
+ * Default ConfigLoader singleton instance.
+ * Use this for dependency injection in services.
+ *
+ * Example:
+ * ```ts
+ * class MyService {
+ *   constructor(private readonly config: IConfigLoader = configLoader) {}
+ * }
+ * ```
+ */
+export const configLoader: IConfigLoader = new ConfigLoader()

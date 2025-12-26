@@ -2,17 +2,27 @@
  * Update Command Tests
  */
 
-import type { CatalogUpdateService, UpdatePlan, UpdateResult } from '@pcu/core'
+import type {
+  CatalogUpdateService,
+  IPackageManagerService,
+  UpdatePlan,
+  UpdateResult,
+  WorkspaceService,
+} from '@pcu/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMockCliOutput, resetCliOutput, setCliOutput } from '../../utils/cliOutput.js'
 
 // Use vi.hoisted to ensure mocks are available during vi.mock hoisting
 const mocks = vi.hoisted(() => ({
   loadConfig: vi.fn(),
   selectPackages: vi.fn(),
-  analyzeUpdates: vi.fn(),
+  analyzeWithChunking: vi.fn(),
   getWorkspaceInfo: vi.fn(),
   formatUpdatePlan: vi.fn().mockReturnValue('Formatted plan'),
   formatUpdateResult: vi.fn().mockReturnValue('Formatted result'),
+  // Package manager service mocks
+  packageManagerInstall: vi.fn(),
+  packageManagerGetName: vi.fn().mockReturnValue('pnpm'),
 }))
 
 // Mock @pcu/utils
@@ -22,6 +32,9 @@ vi.mock('@pcu/utils', () => ({
     warn: vi.fn(),
     info: vi.fn(),
     debug: vi.fn(),
+  },
+  Logger: {
+    setGlobalLevel: vi.fn(),
   },
   ConfigLoader: {
     loadConfig: mocks.loadConfig,
@@ -142,7 +155,7 @@ vi.mock('@pcu/core', async (importOriginal) => {
   const actual = await importOriginal()
 
   const AIAnalysisServiceMock = vi.fn(function (this: Record<string, unknown>) {
-    this.analyzeUpdates = mocks.analyzeUpdates
+    this.analyzeWithChunking = mocks.analyzeWithChunking
   })
 
   const WorkspaceServiceMock = vi.fn(function (this: Record<string, unknown>) {
@@ -167,9 +180,10 @@ const { UpdateCommand } = await import('../updateCommand.js')
 describe('UpdateCommand', () => {
   let command: InstanceType<typeof UpdateCommand>
   let mockCatalogUpdateService: CatalogUpdateService
-  let consoleSpy: ReturnType<typeof vi.spyOn>
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+  let mockWorkspaceService: WorkspaceService
+  let mockPackageManagerService: IPackageManagerService
+  // Use cliOutput mock instead of console spies for better testability
+  let cliMock: ReturnType<typeof createMockCliOutput>
 
   const mockUpdatePlan: UpdatePlan = {
     totalUpdates: 2,
@@ -221,7 +235,7 @@ describe('UpdateCommand', () => {
 
     // Set up default mock return values
     mocks.selectPackages.mockResolvedValue(['lodash', 'typescript'])
-    mocks.analyzeUpdates.mockResolvedValue({
+    mocks.analyzeWithChunking.mockResolvedValue({
       provider: 'rule-engine',
       confidence: 0.85,
       summary: 'Test analysis summary',
@@ -235,9 +249,9 @@ describe('UpdateCommand', () => {
       catalogCount: 2,
     })
 
-    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // Use cliOutput mock instead of console spies
+    cliMock = createMockCliOutput()
+    setCliOutput(cliMock.mock)
 
     // Create mock catalog update service
     mockCatalogUpdateService = {
@@ -248,13 +262,42 @@ describe('UpdateCommand', () => {
       analyzeImpact: vi.fn(),
     } as unknown as CatalogUpdateService
 
-    command = new UpdateCommand(mockCatalogUpdateService)
+    // Create mock workspace service
+    mockWorkspaceService = {
+      getWorkspaceInfo: mocks.getWorkspaceInfo,
+      discoverWorkspace: vi.fn(),
+      validateWorkspace: vi.fn(),
+      getCatalogs: vi.fn(),
+      getPackages: vi.fn(),
+      usesCatalogs: vi.fn(),
+      getPackagesUsingCatalog: vi.fn(),
+      getWorkspaceStats: vi.fn(),
+      findWorkspaces: vi.fn(),
+      checkHealth: vi.fn(),
+    } as unknown as WorkspaceService
+
+    // Create mock package manager service
+    mocks.packageManagerInstall.mockResolvedValue({
+      success: true,
+      code: 0,
+      stdout: '',
+      stderr: '',
+    })
+    mockPackageManagerService = {
+      install: mocks.packageManagerInstall,
+      getName: mocks.packageManagerGetName,
+    } as unknown as IPackageManagerService
+
+    command = new UpdateCommand(
+      mockCatalogUpdateService,
+      mockWorkspaceService,
+      mockPackageManagerService
+    )
   })
 
   afterEach(() => {
-    consoleSpy.mockRestore()
-    consoleErrorSpy.mockRestore()
-    consoleWarnSpy.mockRestore()
+    // Reset cliOutput to default implementation
+    resetCliOutput()
     vi.resetAllMocks()
   })
 
@@ -264,7 +307,7 @@ describe('UpdateCommand', () => {
 
       expect(mockCatalogUpdateService.planUpdates).toHaveBeenCalled()
       expect(mockCatalogUpdateService.executeUpdates).toHaveBeenCalled()
-      expect(consoleSpy).toHaveBeenCalled()
+      expect(cliMock.prints.length).toBeGreaterThan(0)
     })
 
     it('should use specified workspace path', async () => {
@@ -316,7 +359,7 @@ describe('UpdateCommand', () => {
 
       await command.execute({})
 
-      expect(consoleSpy).toHaveBeenCalled()
+      expect(cliMock.prints.length).toBeGreaterThan(0)
       expect(mockCatalogUpdateService.executeUpdates).not.toHaveBeenCalled()
     })
 
@@ -340,16 +383,16 @@ describe('UpdateCommand', () => {
     it('should perform AI analysis when ai option is enabled', async () => {
       await command.execute({ ai: true })
 
-      expect(mocks.analyzeUpdates).toHaveBeenCalled()
-      expect(consoleSpy).toHaveBeenCalled()
+      expect(mocks.analyzeWithChunking).toHaveBeenCalled()
+      expect(cliMock.prints.length).toBeGreaterThan(0)
     })
 
     it('should continue without AI when analysis fails', async () => {
-      mocks.analyzeUpdates.mockRejectedValue(new Error('AI analysis failed'))
+      mocks.analyzeWithChunking.mockRejectedValue(new Error('AI analysis failed'))
 
       await command.execute({ ai: true })
 
-      expect(consoleWarnSpy).toHaveBeenCalled()
+      expect(cliMock.warns.length).toBeGreaterThan(0)
       expect(mockCatalogUpdateService.executeUpdates).toHaveBeenCalled()
     })
 
@@ -357,7 +400,7 @@ describe('UpdateCommand', () => {
       mockCatalogUpdateService.planUpdates = vi.fn().mockRejectedValue(new Error('Plan failed'))
 
       await expect(command.execute({})).rejects.toThrow('Plan failed')
-      expect(consoleErrorSpy).toHaveBeenCalled()
+      expect(cliMock.errors.length).toBeGreaterThan(0)
     })
 
     it('should apply include patterns', async () => {
@@ -406,7 +449,7 @@ describe('UpdateCommand', () => {
         format: 'invalid' as never,
       })
 
-      expect(errors).toContain('Invalid format. Must be one of: table, json, yaml, minimal')
+      expect(errors).toContain('validation.invalidFormat')
     })
 
     it('should return error for invalid target', () => {
@@ -414,9 +457,7 @@ describe('UpdateCommand', () => {
         target: 'invalid' as never,
       })
 
-      expect(errors).toContain(
-        'Invalid target. Must be one of: latest, greatest, minor, patch, newest'
-      )
+      expect(errors).toContain('validation.invalidTarget')
     })
 
     it('should return error when interactive and dry-run are both set', () => {
@@ -425,7 +466,7 @@ describe('UpdateCommand', () => {
         dryRun: true,
       })
 
-      expect(errors).toContain('Cannot use --interactive with --dry-run')
+      expect(errors).toContain('validation.interactiveWithDryRun')
     })
   })
 
@@ -444,6 +485,217 @@ describe('UpdateCommand', () => {
       expect(helpText).toContain('--include')
       expect(helpText).toContain('--exclude')
       expect(helpText).toContain('--create-backup')
+    })
+  })
+
+  // TEST-001: Boundary condition and error path tests
+  describe('boundary conditions and error handling', () => {
+    it('should handle network timeout during plan', async () => {
+      const timeoutError = new Error('ETIMEDOUT: Connection timed out')
+      timeoutError.name = 'TimeoutError'
+      mockCatalogUpdateService.planUpdates = vi.fn().mockRejectedValue(timeoutError)
+
+      await expect(command.execute({})).rejects.toThrow('ETIMEDOUT')
+      expect(cliMock.errors.length).toBeGreaterThan(0)
+    })
+
+    it('should handle network connection refused', async () => {
+      const connectionError = new Error('ECONNREFUSED: Connection refused')
+      mockCatalogUpdateService.planUpdates = vi.fn().mockRejectedValue(connectionError)
+
+      await expect(command.execute({})).rejects.toThrow('ECONNREFUSED')
+      expect(cliMock.errors.length).toBeGreaterThan(0)
+    })
+
+    it('should handle empty workspace path gracefully', async () => {
+      await command.execute({ workspace: '' })
+
+      expect(mockCatalogUpdateService.planUpdates).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspacePath: '',
+        })
+      )
+    })
+
+    it('should handle undefined options without crashing', async () => {
+      await command.execute(undefined as unknown as Record<string, unknown>)
+
+      expect(mockCatalogUpdateService.planUpdates).toHaveBeenCalled()
+    })
+
+    it('should handle user cancellation (Ctrl+C) gracefully', async () => {
+      const cancelError = new Error('User cancelled')
+      cancelError.name = 'ExitPromptError'
+      mockCatalogUpdateService.planUpdates = vi.fn().mockRejectedValue(cancelError)
+
+      // Should not throw for user cancellation
+      await expect(command.execute({})).resolves.not.toThrow()
+      expect(cliMock.prints.some((p) => p.includes('cancelled') || p.includes('warning'))).toBe(
+        true
+      )
+    })
+
+    it('should handle force closed prompt gracefully', async () => {
+      const forceCloseError = new Error('Prompt was force closed')
+      mockCatalogUpdateService.planUpdates = vi.fn().mockRejectedValue(forceCloseError)
+
+      await expect(command.execute({})).resolves.not.toThrow()
+    })
+
+    it('should handle very large update plan', async () => {
+      const largeUpdates = Array.from({ length: 500 }, (_, i) => ({
+        packageName: `package-${i}`,
+        catalogName: 'default',
+        currentVersion: '1.0.0',
+        newVersion: '2.0.0',
+        updateType: 'major' as const,
+      }))
+
+      mockCatalogUpdateService.planUpdates = vi.fn().mockResolvedValue({
+        totalUpdates: 500,
+        updates: largeUpdates,
+        hasSecurityUpdates: false,
+        hasMajorUpdates: true,
+        hasMinorUpdates: false,
+        hasPatchUpdates: false,
+      })
+
+      await command.execute({})
+
+      expect(mockCatalogUpdateService.executeUpdates).toHaveBeenCalled()
+    })
+
+    it('should handle special characters in package names', async () => {
+      mockCatalogUpdateService.planUpdates = vi.fn().mockResolvedValue({
+        totalUpdates: 1,
+        updates: [
+          {
+            packageName: '@scope/package-name.test',
+            catalogName: 'default',
+            currentVersion: '1.0.0',
+            newVersion: '2.0.0',
+            updateType: 'major',
+          },
+        ],
+        hasSecurityUpdates: false,
+        hasMajorUpdates: true,
+        hasMinorUpdates: false,
+        hasPatchUpdates: false,
+      })
+
+      await command.execute({})
+
+      expect(mockCatalogUpdateService.executeUpdates).toHaveBeenCalled()
+    })
+
+    it('should handle concurrent execution attempts', async () => {
+      // Simulate slow execution
+      mockCatalogUpdateService.planUpdates = vi
+        .fn()
+        .mockImplementation(
+          () => new Promise((resolve) => setTimeout(() => resolve(mockUpdatePlan), 100))
+        )
+
+      // Start two concurrent executions
+      const execution1 = command.execute({})
+      const execution2 = command.execute({})
+
+      // Both should complete without errors
+      await expect(Promise.all([execution1, execution2])).resolves.not.toThrow()
+    })
+
+    it('should handle partial update failure in result', async () => {
+      mockCatalogUpdateService.executeUpdates = vi.fn().mockResolvedValue({
+        success: false,
+        appliedUpdates: [mockUpdatePlan.updates[0]],
+        failedUpdates: [mockUpdatePlan.updates[1]],
+        backupPath: null,
+        errors: ['Failed to update typescript'],
+      })
+
+      await command.execute({})
+
+      expect(cliMock.prints.length).toBeGreaterThan(0)
+    })
+
+    it('should handle invalid semver versions gracefully', async () => {
+      mockCatalogUpdateService.planUpdates = vi.fn().mockResolvedValue({
+        totalUpdates: 1,
+        updates: [
+          {
+            packageName: 'test-pkg',
+            catalogName: 'default',
+            currentVersion: 'invalid',
+            newVersion: 'also-invalid',
+            updateType: 'unknown',
+          },
+        ],
+        hasSecurityUpdates: false,
+        hasMajorUpdates: false,
+        hasMinorUpdates: false,
+        hasPatchUpdates: false,
+      })
+
+      await command.execute({})
+
+      expect(mockCatalogUpdateService.executeUpdates).toHaveBeenCalled()
+    })
+  })
+
+  describe('package manager integration', () => {
+    it('should call package manager install after successful update', async () => {
+      await command.execute({ install: true })
+
+      expect(mocks.packageManagerInstall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cwd: expect.any(String),
+        })
+      )
+    })
+
+    it('should skip install when install option is false', async () => {
+      await command.execute({ install: false })
+
+      expect(mocks.packageManagerInstall).not.toHaveBeenCalled()
+    })
+
+    it('should continue successfully when package manager install fails', async () => {
+      mocks.packageManagerInstall.mockResolvedValue({
+        success: false,
+        code: 1,
+        stdout: '',
+        stderr: 'ERESOLVE unable to resolve dependency tree',
+      })
+
+      // Should not throw even if install fails
+      await expect(command.execute({})).resolves.not.toThrow()
+      expect(cliMock.prints.length).toBeGreaterThan(0)
+    })
+
+    it('should handle install timeout gracefully', async () => {
+      mocks.packageManagerInstall.mockResolvedValue({
+        success: false,
+        code: null,
+        stdout: '',
+        stderr: '',
+        error: new Error('Command timed out after 300000ms'),
+      })
+
+      // Should not throw even if install times out
+      await expect(command.execute({})).resolves.not.toThrow()
+    })
+
+    it('should get package manager name for logging', async () => {
+      mocks.packageManagerInstall.mockResolvedValue({
+        success: false,
+        code: 1,
+        stdout: '',
+        stderr: 'Error',
+      })
+
+      await command.execute({})
+
+      expect(mocks.packageManagerGetName).toHaveBeenCalled()
     })
   })
 })

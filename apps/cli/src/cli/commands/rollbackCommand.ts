@@ -126,6 +126,7 @@ export class RollbackCommand {
 
     console.log(chalk.blue(`\n🔄 ${t('command.rollback.restoringLatest')}`))
     console.log(chalk.gray(`   ${t('command.rollback.from')}: ${latestBackup.formattedTime}`))
+    console.log(chalk.green(`   ✓ ${t('command.rollback.autoBackupNote')}`))
 
     const { confirmed } = await inquirer.prompt<{ confirmed: boolean }>({
       type: 'confirm',
@@ -139,8 +140,15 @@ export class RollbackCommand {
       return
     }
 
-    await this.backupService.restoreFromBackup(workspaceConfigPath, latestBackup.path)
+    const preRestoreBackupPath = await this.backupService.restoreFromBackup(
+      workspaceConfigPath,
+      latestBackup.path
+    )
     console.log(StyledText.iconSuccess(t('command.rollback.success')))
+    console.log(
+      chalk.gray(t('command.rollback.preRestoreBackupCreated', { path: preRestoreBackupPath }))
+    )
+    console.log(chalk.gray(t('command.rollback.safetyNote')))
     console.log(chalk.gray(t('command.rollback.runPnpmInstall')))
   }
 
@@ -174,6 +182,7 @@ export class RollbackCommand {
     console.log(
       chalk.gray(`   ${t('command.rollback.willRestore', { time: selectedBackup.formattedTime })}`)
     )
+    console.log(chalk.green(`   ✓ ${t('command.rollback.autoBackupNote')}`))
 
     const { confirmed } = await inquirer.prompt<{ confirmed: boolean }>({
       type: 'confirm',
@@ -187,8 +196,15 @@ export class RollbackCommand {
       return
     }
 
-    await this.backupService.restoreFromBackup(workspaceConfigPath, selectedBackup.path)
+    const preRestoreBackupPath = await this.backupService.restoreFromBackup(
+      workspaceConfigPath,
+      selectedBackup.path
+    )
     console.log(StyledText.iconSuccess(t('command.rollback.success')))
+    console.log(
+      chalk.gray(t('command.rollback.preRestoreBackupCreated', { path: preRestoreBackupPath }))
+    )
+    console.log(chalk.gray(t('command.rollback.safetyNote')))
     console.log(chalk.gray(t('command.rollback.runPnpmInstall')))
   }
 

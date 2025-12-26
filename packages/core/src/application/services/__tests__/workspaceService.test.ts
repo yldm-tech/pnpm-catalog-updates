@@ -104,6 +104,7 @@ describe('WorkspaceService', () => {
     // Create mock workspace repository
     mockWorkspaceRepository = {
       findByPath: vi.fn().mockResolvedValue(mockWorkspace),
+      getByPath: vi.fn().mockResolvedValue(mockWorkspace),
       findById: vi.fn().mockResolvedValue(mockWorkspace),
       save: vi.fn().mockResolvedValue(undefined),
       loadConfiguration: vi.fn().mockResolvedValue({}),
@@ -138,14 +139,14 @@ describe('WorkspaceService', () => {
     it('should throw error when no workspace found', async () => {
       mockWorkspaceRepository.discoverWorkspace = vi.fn().mockResolvedValue(null)
 
-      await expect(service.discoverWorkspace()).rejects.toThrow('Workspace not found')
+      await expect(service.discoverWorkspace()).rejects.toThrow('No pnpm workspace found')
     })
 
     it('should throw error with path info when specified path has no workspace', async () => {
       mockWorkspaceRepository.discoverWorkspace = vi.fn().mockResolvedValue(null)
 
       await expect(service.discoverWorkspace('/custom/path')).rejects.toThrow(
-        'Workspace not found at "/custom/path"'
+        'No pnpm workspace found at "/custom/path"'
       )
     })
   })

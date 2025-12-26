@@ -5,6 +5,33 @@
  * and categorization across the application layers.
  */
 
+import * as os from 'node:os'
+import * as path from 'node:path'
+
+// ============================================================================
+// Path Sanitization Utilities
+// ============================================================================
+
+/**
+ * Sanitize file paths to prevent information disclosure in error messages.
+ * Replaces home directory with ~ and limits path depth for security.
+ */
+export function sanitizePath(filePath: string): string {
+  if (!filePath) return filePath
+
+  // Replace home directory with ~
+  const homeDir = os.homedir()
+  let sanitized = filePath.startsWith(homeDir) ? filePath.replace(homeDir, '~') : filePath
+
+  // If path is still absolute and long, show only last 3 segments
+  if (path.isAbsolute(sanitized) && sanitized.split(path.sep).length > 4) {
+    const segments = sanitized.split(path.sep)
+    sanitized = `...${path.sep}${segments.slice(-3).join(path.sep)}`
+  }
+
+  return sanitized
+}
+
 /**
  * Error codes for categorization and i18n support
  */
@@ -28,6 +55,7 @@ export enum ErrorCode {
   REGISTRY_ERROR = 'ERR_REGISTRY_ERROR',
   NETWORK_ERROR = 'ERR_NETWORK_ERROR',
   FILE_SYSTEM_ERROR = 'ERR_FILE_SYSTEM_ERROR',
+  FILE_SIZE_EXCEEDED = 'ERR_FILE_SIZE_EXCEEDED',
   CACHE_ERROR = 'ERR_CACHE_ERROR',
   EXTERNAL_SERVICE_ERROR = 'ERR_EXTERNAL_SERVICE_ERROR',
 
@@ -87,8 +115,13 @@ export abstract class DomainError extends BaseError {}
  * Thrown when a workspace cannot be found at the specified path
  */
 export class WorkspaceNotFoundError extends DomainError {
-  constructor(path: string, cause?: Error) {
-    super(`No pnpm workspace found at "${path}"`, ErrorCode.WORKSPACE_NOT_FOUND, { path }, cause)
+  constructor(filePath: string, cause?: Error) {
+    super(
+      `No pnpm workspace found at "${sanitizePath(filePath)}"`,
+      ErrorCode.WORKSPACE_NOT_FOUND,
+      { path: filePath },
+      cause
+    )
   }
 }
 
@@ -146,11 +179,11 @@ export class InvalidVersionRangeError extends DomainError {
  * Thrown when workspace validation fails
  */
 export class WorkspaceValidationError extends DomainError {
-  constructor(path: string, issues: string[], cause?: Error) {
+  constructor(filePath: string, issues: string[], cause?: Error) {
     super(
-      `Workspace validation failed at "${path}": ${issues.join('; ')}`,
+      `Workspace validation failed at "${sanitizePath(filePath)}": ${issues.join('; ')}`,
       ErrorCode.WORKSPACE_VALIDATION_FAILED,
-      { path, issues },
+      { path: filePath, issues },
       cause
     )
   }
@@ -277,11 +310,27 @@ export class NetworkError extends InfrastructureError {
  * Thrown when file system operations fail
  */
 export class FileSystemError extends InfrastructureError {
-  constructor(path: string, operation: string, reason: string, cause?: Error) {
+  constructor(filePath: string, operation: string, reason: string, cause?: Error) {
     super(
-      `File system ${operation} failed for "${path}": ${reason}`,
+      `File system ${operation} failed for "${sanitizePath(filePath)}": ${reason}`,
       ErrorCode.FILE_SYSTEM_ERROR,
-      { path, operation, reason },
+      { path: filePath, operation, reason },
+      cause
+    )
+  }
+}
+
+/**
+ * SEC-008: Thrown when a file exceeds the maximum allowed size
+ */
+export class FileSizeExceededError extends InfrastructureError {
+  constructor(filePath: string, actualSize: number, maxSize: number, cause?: Error) {
+    const actualSizeMB = (actualSize / 1024 / 1024).toFixed(2)
+    const maxSizeMB = (maxSize / 1024 / 1024).toFixed(2)
+    super(
+      `File "${sanitizePath(filePath)}" exceeds maximum allowed size (${actualSizeMB}MB > ${maxSizeMB}MB)`,
+      ErrorCode.FILE_SIZE_EXCEEDED,
+      { path: filePath, actualSize, maxSize },
       cause
     )
   }

@@ -47,9 +47,19 @@ export interface GlobalCliOptions {
   config?: string
 }
 
+export type OutputFormatType =
+  | 'table'
+  | 'json'
+  | 'yaml'
+  | 'minimal'
+  | 'github'
+  | 'gitlab'
+  | 'junit'
+  | 'sarif'
+
 export interface CheckCliOptions extends GlobalCliOptions {
   catalog?: string
-  format?: 'table' | 'json' | 'yaml' | 'minimal'
+  format?: OutputFormatType
   target?: 'latest' | 'greatest' | 'minor' | 'patch' | 'newest'
   prerelease?: boolean
   include?: string[]
@@ -64,7 +74,7 @@ export interface UpdateCliOptions extends CheckCliOptions {
 }
 
 export interface AnalyzeCliOptions extends GlobalCliOptions {
-  format?: 'table' | 'json' | 'yaml' | 'minimal'
+  format?: OutputFormatType
   ai?: boolean
   provider?: 'auto' | 'claude' | 'gemini' | 'codex'
   analysisType?: 'impact' | 'security' | 'compatibility' | 'recommend'
@@ -75,7 +85,7 @@ export interface WorkspaceCliOptions extends GlobalCliOptions {
   validate?: boolean
   stats?: boolean
   info?: boolean
-  format?: 'table' | 'json' | 'yaml' | 'minimal'
+  format?: OutputFormatType
 }
 
 /**
@@ -104,7 +114,7 @@ export const checkOptions = [
   new Option('--catalog <name>', t('option.catalogOnly')).env('PCU_CATALOG'),
 
   new Option('-f, --format <type>', t('option.outputFormat'))
-    .choices(['table', 'json', 'yaml', 'minimal'])
+    .choices(['table', 'json', 'yaml', 'minimal', 'github', 'gitlab', 'junit', 'sarif'])
     .default('table')
     .env('PCU_OUTPUT_FORMAT'),
 
@@ -142,7 +152,7 @@ export const analyzeOptions = [
   ...globalOptions,
 
   new Option('-f, --format <type>', t('option.outputFormat'))
-    .choices(['table', 'json', 'yaml', 'minimal'])
+    .choices(['table', 'json', 'yaml', 'minimal', 'github', 'gitlab', 'junit', 'sarif'])
     .default('table')
     .env('PCU_OUTPUT_FORMAT'),
 
@@ -174,7 +184,7 @@ export const workspaceOptions = [
   new Option('--info', t('option.showInfo')),
 
   new Option('-f, --format <type>', t('option.outputFormat'))
-    .choices(['table', 'json', 'yaml', 'minimal'])
+    .choices(['table', 'json', 'yaml', 'minimal', 'github', 'gitlab', 'junit', 'sarif'])
     .default('table')
     .env('PCU_OUTPUT_FORMAT'),
 ]
@@ -191,7 +201,7 @@ export const optionGroups = {
     title: t('optionGroup.output'),
     options: [
       new Option('-f, --format <type>', t('option.outputFormat'))
-        .choices(['table', 'json', 'yaml', 'minimal'])
+        .choices(['table', 'json', 'yaml', 'minimal', 'github', 'gitlab', 'junit', 'sarif'])
         .default('table'),
       new Option('--no-color', t('option.noColorOutput')),
       new Option('-v, --verbose', t('option.verboseLogging')),

@@ -5,13 +5,37 @@
  * Extracted from CatalogUpdateService to reduce class complexity.
  */
 
+import { logger } from '@pcu/utils'
 import type { NpmRegistryService } from '../../infrastructure/external-services/npmRegistryService.js'
+
+/**
+ * ARCH-003: Constants for update types to avoid magic strings
+ */
+export const UPDATE_TYPES = {
+  PATCH: 'patch',
+  MINOR: 'minor',
+  MAJOR: 'major',
+} as const
+
+/**
+ * ARCH-003: Constants for risk assessment thresholds
+ */
+export const RISK_THRESHOLDS = {
+  /** Number of affected packages that elevates major update risk to 'high' */
+  MAJOR_UPDATE_HIGH_RISK: 5,
+  /** Number of affected packages that elevates minor update risk to 'medium' */
+  MINOR_UPDATE_MEDIUM_RISK: 10,
+} as const
 
 export interface SecurityImpact {
   hasVulnerabilities: boolean
   fixedVulnerabilities: number
   newVulnerabilities: number
   severityChange: 'better' | 'worse' | 'same'
+  /** Indicates if the analysis failed and default values were returned */
+  analysisIncomplete?: boolean
+  /** Error message if analysis failed */
+  errorMessage?: string
 }
 
 export interface PackageImpact {
@@ -61,12 +85,22 @@ export class ImpactAnalysisService {
         newVulnerabilities,
         severityChange,
       }
-    } catch {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      logger.warn(`Security impact analysis failed for ${packageName}`, {
+        packageName,
+        currentVersion,
+        newVersion,
+        error: errorMessage,
+      })
+
       return {
         hasVulnerabilities: false,
         fixedVulnerabilities: 0,
         newVulnerabilities: 0,
         severityChange: 'same',
+        analysisIncomplete: true,
+        errorMessage,
       }
     }
   }
@@ -76,11 +110,11 @@ export class ImpactAnalysisService {
    */
   assessCompatibilityRisk(updateType: string): RiskLevel {
     switch (updateType) {
-      case 'patch':
+      case UPDATE_TYPES.PATCH:
         return 'low'
-      case 'minor':
+      case UPDATE_TYPES.MINOR:
         return 'medium'
-      case 'major':
+      case UPDATE_TYPES.MAJOR:
         return 'high'
       default:
         return 'medium'
@@ -97,7 +131,7 @@ export class ImpactAnalysisService {
   ): RiskLevel {
     // Security fixes reduce risk
     if (securityImpact.fixedVulnerabilities > 0) {
-      return updateType === 'major' ? 'medium' : 'low'
+      return updateType === UPDATE_TYPES.MAJOR ? 'medium' : 'low'
     }
 
     // New vulnerabilities increase risk
@@ -108,10 +142,10 @@ export class ImpactAnalysisService {
     // Base risk on update type and number of affected packages
     const affectedPackageCount = packageImpacts.length
 
-    if (updateType === 'major') {
-      return affectedPackageCount > 5 ? 'high' : 'medium'
-    } else if (updateType === 'minor') {
-      return affectedPackageCount > 10 ? 'medium' : 'low'
+    if (updateType === UPDATE_TYPES.MAJOR) {
+      return affectedPackageCount > RISK_THRESHOLDS.MAJOR_UPDATE_HIGH_RISK ? 'high' : 'medium'
+    } else if (updateType === UPDATE_TYPES.MINOR) {
+      return affectedPackageCount > RISK_THRESHOLDS.MINOR_UPDATE_MEDIUM_RISK ? 'medium' : 'low'
     } else {
       return 'low'
     }
@@ -127,6 +161,12 @@ export class ImpactAnalysisService {
   ): string[] {
     const recommendations: string[] = []
 
+    if (securityImpact.analysisIncomplete) {
+      recommendations.push(
+        'Security analysis incomplete - manual review recommended before updating'
+      )
+    }
+
     if (securityImpact.fixedVulnerabilities > 0) {
       recommendations.push('Security update recommended - fixes known vulnerabilities')
     }
@@ -135,7 +175,7 @@ export class ImpactAnalysisService {
       recommendations.push('New vulnerabilities detected - review carefully before updating')
     }
 
-    if (updateType === 'major') {
+    if (updateType === UPDATE_TYPES.MAJOR) {
       recommendations.push('Review changelog for breaking changes before updating')
       recommendations.push('Test thoroughly in development environment')
     }
@@ -145,7 +185,7 @@ export class ImpactAnalysisService {
       recommendations.push(`${breakingChangePackages.length} package(s) may need code changes`)
     }
 
-    if (packageImpacts.length > 5) {
+    if (packageImpacts.length > RISK_THRESHOLDS.MAJOR_UPDATE_HIGH_RISK) {
       recommendations.push('Many packages affected - consider updating in batches')
     }
 

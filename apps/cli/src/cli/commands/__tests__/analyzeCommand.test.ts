@@ -239,13 +239,13 @@ describe('AnalyzeCommand', () => {
     it('should return error for empty package name', () => {
       const errors = AnalyzeCommand.validateArgs('')
 
-      expect(errors).toContain('Package name is required')
+      expect(errors).toContain('validation.packageNameRequired')
     })
 
     it('should return error for whitespace-only package name', () => {
       const errors = AnalyzeCommand.validateArgs('   ')
 
-      expect(errors).toContain('Package name is required')
+      expect(errors).toContain('validation.packageNameRequired')
     })
 
     it('should return no errors for valid package name', () => {

@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { CommandExitError, logger, type PackageFilterConfig, t } from '@pcu/utils'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
+import { errorsOnly, validateInitOptions } from '../validators/index.js'
 
 export interface InitCommandOptions {
   workspace?: string
@@ -344,16 +345,10 @@ catalogs:
 
   /**
    * Validate command options
+   * QUAL-002: Uses unified validator from validators/
    */
   static validateOptions(options: InitCommandOptions): string[] {
-    const errors: string[] = []
-
-    // Validate workspace path exists if provided
-    if (options.workspace && !existsSync(options.workspace)) {
-      errors.push(t('validation.workspaceDirNotExist', { path: options.workspace }))
-    }
-
-    return errors
+    return errorsOnly(validateInitOptions)(options)
   }
 
   /**

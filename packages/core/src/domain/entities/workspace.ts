@@ -5,7 +5,7 @@
  * This is a core domain entity that encapsulates workspace business logic.
  */
 
-import { CatalogNotFoundError } from '@pcu/utils'
+import { CatalogNotFoundError, ValidationResultClass } from '@pcu/utils'
 import type { CatalogCollection } from '../value-objects/catalogCollection.js'
 import type { PackageCollection } from '../value-objects/packageCollection.js'
 import type { WorkspaceConfig } from '../value-objects/workspaceConfig.js'
@@ -90,7 +90,7 @@ export class Workspace {
    * Validate workspace consistency
    * Ensures all catalog references in packages exist in catalogs
    */
-  public validateConsistency(): ValidationResult {
+  public validateConsistency(): ValidationResultClass {
     const errors: string[] = []
     const warnings: string[] = []
 
@@ -115,16 +115,7 @@ export class Workspace {
       }
     }
 
-    return new ValidationResult(errors.length === 0, errors, warnings)
-  }
-
-  /**
-   * Get outdated catalog dependencies
-   */
-  public async getOutdatedCatalogDependencies(): Promise<OutdatedDependency[]> {
-    // This would typically use a domain service to check versions
-    // For now, return empty array as placeholder
-    return []
+    return new ValidationResultClass(errors.length === 0, errors, warnings)
   }
 
   /**
@@ -145,69 +136,5 @@ export class Workspace {
 
     // Also update the WorkspaceConfig to ensure consistency
     this.config = this.config.updateCatalogDependency(catalogName, packageName, newVersion)
-  }
-}
-
-/**
- * Validation result value object
- */
-export class ValidationResult {
-  constructor(
-    private readonly isValid: boolean,
-    private readonly errors: string[],
-    private readonly warnings: string[]
-  ) {}
-
-  public getIsValid(): boolean {
-    return this.isValid
-  }
-
-  public getErrors(): string[] {
-    return [...this.errors]
-  }
-
-  public getWarnings(): string[] {
-    return [...this.warnings]
-  }
-
-  public hasErrors(): boolean {
-    return this.errors.length > 0
-  }
-
-  public hasWarnings(): boolean {
-    return this.warnings.length > 0
-  }
-}
-
-/**
- * Outdated dependency value object
- */
-export class OutdatedDependency {
-  constructor(
-    private readonly catalogName: string,
-    private readonly packageName: string,
-    private readonly currentVersion: string,
-    private readonly latestVersion: string,
-    private readonly updateType: 'major' | 'minor' | 'patch'
-  ) {}
-
-  public getCatalogName(): string {
-    return this.catalogName
-  }
-
-  public getPackageName(): string {
-    return this.packageName
-  }
-
-  public getCurrentVersion(): string {
-    return this.currentVersion
-  }
-
-  public getLatestVersion(): string {
-    return this.latestVersion
-  }
-
-  public getUpdateType(): 'major' | 'minor' | 'patch' {
-    return this.updateType
   }
 }

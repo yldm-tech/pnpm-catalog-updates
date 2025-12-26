@@ -5,7 +5,7 @@
  * Handles package.json structure and catalog dependency references.
  */
 
-import { CatalogNotFoundError } from '@pcu/utils'
+import { CatalogNotFoundError, isValidPackageName, ValidationResultClass } from '@pcu/utils'
 import type { WorkspacePath } from '../value-objects/workspacePath.js'
 
 export type PackageId = string
@@ -197,31 +197,23 @@ export class Package {
   /**
    * Validate package structure
    */
-  public validate(): PackageValidationResult {
+  public validate(): ValidationResultClass {
     const errors: string[] = []
     const warnings: string[] = []
 
-    // Validate package name
-    if (!this.isValidPackageName(this.name)) {
+    // Validate package name (QUAL-004: using shared utility)
+    if (!isValidPackageName(this.name)) {
       errors.push(`Invalid package name: "${this.name}"`)
     }
 
     // Validate catalog references
     for (const ref of this.catalogReferences) {
-      if (!this.isValidPackageName(ref.getPackageName())) {
+      if (!isValidPackageName(ref.getPackageName())) {
         errors.push(`Invalid dependency name in catalog reference: "${ref.getPackageName()}"`)
       }
     }
 
-    return new PackageValidationResult(errors.length === 0, errors, warnings)
-  }
-
-  /**
-   * Check if package name is valid
-   */
-  private isValidPackageName(packageName: string): boolean {
-    const validPackageNameRegex = /^(@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/
-    return validPackageNameRegex.test(packageName)
+    return new ValidationResultClass(errors.length === 0, errors, warnings)
   }
 
   /**
@@ -351,35 +343,4 @@ export interface PackageJsonData {
   peerDependencies?: Record<string, string>
   optionalDependencies?: Record<string, string>
   [key: string]: unknown
-}
-
-/**
- * Package Validation Result
- */
-export class PackageValidationResult {
-  constructor(
-    private readonly isValid: boolean,
-    private readonly errors: string[],
-    private readonly warnings: string[]
-  ) {}
-
-  public getIsValid(): boolean {
-    return this.isValid
-  }
-
-  public getErrors(): string[] {
-    return [...this.errors]
-  }
-
-  public getWarnings(): string[] {
-    return [...this.warnings]
-  }
-
-  public hasErrors(): boolean {
-    return this.errors.length > 0
-  }
-
-  public hasWarnings(): boolean {
-    return this.warnings.length > 0
-  }
 }

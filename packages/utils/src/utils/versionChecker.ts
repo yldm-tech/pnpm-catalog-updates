@@ -7,6 +7,7 @@
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
 import chalk from 'chalk'
+import { logger } from '../logger/logger.js'
 
 // InteractivePrompts removed - prompting should be handled by CLI layer
 
@@ -55,7 +56,8 @@ export class VersionChecker {
         shouldPrompt: !isLatest && !skipPrompt,
       }
     } catch (error) {
-      console.warn(chalk.yellow('⚠️  Failed to check for updates:'), error)
+      // Use logger instead of console.warn, preserve error for debugging
+      logger.debug('Failed to check for updates', error instanceof Error ? error : undefined)
       return {
         isLatest: true, // Assume latest if check fails
         currentVersion,
@@ -66,7 +68,8 @@ export class VersionChecker {
   }
 
   /**
-   * Display update notification (prompting should be handled by CLI layer)
+   * Display update notification (no auto-update for security reasons)
+   * Users must explicitly run `pcu self-update` to update
    */
   static displayUpdateNotification(versionResult: VersionCheckResult): void {
     if (!versionResult.shouldPrompt) {
@@ -80,30 +83,24 @@ export class VersionChecker {
         `Current version: ${versionResult.currentVersion} → Latest: ${versionResult.latestVersion}`
       )
     )
-    console.log(chalk.gray('Run with --update flag to update to the latest version.'))
+    console.log(chalk.gray('Run `pcu self-update` to update to the latest version.'))
+    console.log(chalk.gray('Or update manually: npm install -g pcu@latest'))
     console.log()
   }
 
   /**
-   * Prompt user and update if they choose to
+   * Display update notification only (no auto-update for security)
+   * Returns false to indicate no update was performed
    */
   static async promptAndUpdate(versionResult: VersionCheckResult): Promise<boolean> {
     if (!versionResult.shouldPrompt) {
       return false
     }
 
-    try {
-      // For now, just display notification and don't prompt
-      // This avoids adding inquirer dependency to utils package
-      VersionChecker.displayUpdateNotification(versionResult)
-
-      // Auto-perform update for now (can be enhanced with prompting later)
-      console.log(chalk.yellow('Auto-updating to latest version...'))
-      return await VersionChecker.performUpdateAction()
-    } catch (error) {
-      console.error(chalk.red('Failed to prompt and update:'), error)
-      return false
-    }
+    // Only display notification, never auto-update
+    // This prevents supply chain attacks from auto-executing install commands
+    VersionChecker.displayUpdateNotification(versionResult)
+    return false
   }
 
   /**

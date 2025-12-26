@@ -34,7 +34,7 @@ export const ja: TranslationDictionary = {
   // Validation errors
   'validation.packageNameRequired': 'パッケージ名は必須です',
   'validation.invalidFormat':
-    '無効なフォーマットです。table, json, yaml, minimal のいずれかである必要があります',
+    '無効なフォーマットです。table, json, yaml, minimal, github, gitlab, junit, sarif のいずれかである必要があります',
   'validation.invalidSeverity':
     '無効な重大度です。low, moderate, high, critical のいずれかである必要があります',
   'validation.invalidTarget':
@@ -43,6 +43,14 @@ export const ja: TranslationDictionary = {
   'validation.includePatternsEmpty': 'Include パターンは空にできません',
   'validation.excludePatternsEmpty': 'Exclude パターンは空にできません',
   'validation.workspaceDirNotExist': 'ワークスペースディレクトリが存在しません: {{path}}',
+  'validation.invalidProvider':
+    '無効なプロバイダーです。以下のいずれかである必要があります: auto, claude, gemini, codex',
+  'validation.invalidAnalysisType':
+    '無効な分析タイプです。以下のいずれかである必要があります: impact, security, compatibility, recommend',
+  'validation.invalidGraphType':
+    '無効なグラフタイプです。以下のいずれかである必要があります: {{validTypes}}',
+  'validation.invalidGraphFormat':
+    '無効なグラフ形式です。以下のいずれかである必要があります: {{validFormats}}',
 
   // Success messages
   'success.updateComplete': '更新が正常に完了しました',
@@ -116,6 +124,7 @@ export const ja: TranslationDictionary = {
   'command.update.runningBatchAI':
     '{{count}} 件のパッケージに対して AI 一括分析を実行しています...',
   'command.update.batchAIHint': '効率化のため、すべてのパッケージを1回のリクエストで分析します。',
+  'command.update.processingChunks': 'チャンク {{current}}/{{total}} を処理中...',
   'command.update.aiResults': 'AI 分析結果:',
   'command.update.provider': 'プロバイダー: {{provider}}',
   'command.update.confidence': '信頼度: {{confidence}}%',
@@ -142,6 +151,15 @@ export const ja: TranslationDictionary = {
   'command.update.fetchingChangelogs': '変更履歴を取得しています...',
   'command.update.changelogUnavailable': '変更履歴は利用できません',
   'command.update.cancelled': '操作がキャンセルされました',
+  'command.update.moreLines': 'さらに {{count}} 行あります。--verbose で表示',
+  'command.update.installError': 'インストール中に予期しないエラーが発生しました',
+  'command.update.suggestFix': '提案:',
+  'command.update.suggestManualInstall': '"{{pm}} install" を手動で実行してみてください',
+  'command.update.suggestCheckDeps': 'ワークスペース内の依存関係の競合を確認してください',
+  'command.update.suggestInstallPm':
+    '{{pm}} がインストールされ、PATH に含まれていることを確認してください',
+  'command.update.suggestRetry': 'コマンドを再度実行してみてください',
+  'command.update.suggestCheckNetwork': 'ネットワーク接続を確認してください',
 
   // Rollback command
   'command.rollback.noBackups': 'バックアップが見つかりません',
@@ -160,6 +178,10 @@ export const ja: TranslationDictionary = {
   'command.rollback.chooseBackup': 'バックアップを選択',
   'command.rollback.warning': '警告：これにより現在の pnpm-workspace.yaml が上書きされます',
   'command.rollback.willRestore': '復元元：{{time}}',
+  'command.rollback.autoBackupNote': '復元前に現在の状態が自動的にバックアップされます',
+  'command.rollback.preRestoreBackupCreated': '復元前のバックアップ保存先：{{path}}',
+  'command.rollback.safetyNote':
+    'このロールバックを元に戻すには、"pcu rollback" を再度実行してください',
   'command.rollback.deleteWarning': '警告：{{count}} 個のバックアップが削除されます',
   'command.rollback.confirmDelete': 'すべてのバックアップを削除してもよろしいですか？',
   'command.rollback.deletedBackups': '{{count}} 個のバックアップを削除しました',
@@ -174,6 +196,15 @@ export const ja: TranslationDictionary = {
   'command.watch.foundOutdated': '{{count}} 件の古いパッケージが見つかりました',
   'command.watch.waitingForChanges': '変更を待機中...',
   'command.watch.runUpdateHint': '"pcu update" を実行して更新を適用',
+
+  // Self-update command
+  'command.selfUpdate.checking': 'pcu の更新を確認しています...',
+  'command.selfUpdate.updating': 'pcu をバージョン {{version}} に更新しています...',
+  'command.selfUpdate.success': 'バージョン {{version}} に正常に更新されました！',
+  'command.selfUpdate.failed': 'pcu の更新に失敗しました',
+  'command.selfUpdate.latestAlready': '既に最新バージョン ({{version}}) を使用しています',
+  'command.selfUpdate.restartHint':
+    '新しいバージョンを使用するには、ターミナルを再起動してください。',
 
   // AI command
   'command.ai.cacheCleared': 'AI 分析キャッシュをクリアしました',
@@ -239,6 +270,14 @@ export const ja: TranslationDictionary = {
     '修正を確認するためにセキュリティスキャンを再実行しています...',
   'command.security.allFixed': 'すべての重大および高リスクの脆弱性が修正されました！',
   'command.security.fixesFailed': 'セキュリティ修正の適用に失敗しました:',
+  'command.security.noPackageJson': '{{path}} に package.json が見つかりません',
+  'command.security.auditFailed': 'pnpm audit が失敗しました: {{message}}',
+  'command.security.auditParseError': 'pnpm audit の出力の解析に失敗しました: {{error}}',
+  'command.security.auditExitError': 'pnpm audit がステータス {{status}} で失敗しました: {{error}}',
+  'command.security.snykScanExitError':
+    'Snyk スキャンがステータス {{status}} で失敗しました: {{error}}',
+  'command.security.snykScanFailed': 'Snyk スキャンが失敗しました: {{message}}',
+  'command.security.auditFixFailed': 'pnpm audit --fix がステータス {{status}} で失敗しました',
 
   // Check command additions
   'command.check.errorChecking': '依存関係の確認中にエラーが発生しました:',
@@ -313,6 +352,8 @@ export const ja: TranslationDictionary = {
   'cli.unexpectedError': '予期しないエラー:',
   'cli.fatalError': '致命的なエラー:',
   'cli.cancelled': 'キャンセルされました。',
+  'cli.updateAvailable': '更新が利用可能です：{{current}} → {{latest}}',
+  'cli.updateHint': '"pcu self-update" を実行して更新してください。',
 
   // Progress bar messages
   'progress.securityAnalyzing': 'セキュリティ分析を実行中...',
@@ -329,6 +370,12 @@ export const ja: TranslationDictionary = {
   'progress.steps': '進行ステップ',
   'progress.allStepsCompleted': 'すべてのステップが完了しました！',
   'progress.overallProgress': '全体の進行状況',
+  'progress.checkingPackages': '{{count}} 個の依存パッケージを確認中...',
+  'progress.checkCompleteWithUpdates':
+    '✅ 確認完了! {{count}} 個の更新可能な依存パッケージが見つかりました',
+  'progress.checkCompleteNoUpdates': '✅ 確認完了! すべての依存パッケージは最新です',
+  'progress.checkingPackage': '依存パッケージを確認中: {{packageName}}',
+  'progress.skippingPackage': 'パッケージ {{packageName}} をスキップしました (確認失敗)',
 
   // Security command additions
   'command.security.criticalVulnsFound': '{{count}} 件の重大な脆弱性が見つかりました',
@@ -347,6 +394,8 @@ export const ja: TranslationDictionary = {
   'cli.description.cache': 'PCUレジストリとワークスペースデータのキャッシュを管理',
   'cli.description.rollback': 'カタログの更新を以前の状態にロールバック',
   'cli.description.watch': '変更を監視して更新を確認',
+  'cli.description.selfUpdate': 'pcu を最新バージョンに更新',
+  'cli.description.graph': 'カタログの依存関係を可視化',
   'cli.description.help': 'コマンドのヘルプを表示',
 
   // CLI option descriptions
@@ -359,7 +408,8 @@ export const ja: TranslationDictionary = {
   'cli.option.interactive': '更新を選択するインタラクティブモード',
   'cli.option.dryRun': 'ファイルに書き込まずに変更をプレビュー',
   'cli.option.force': 'リスクがあっても強制更新',
-  'cli.option.createBackup': '更新前にバックアップファイルを作成',
+  'cli.option.createBackup': '更新前にバックアップファイルを作成（デフォルト）',
+  'cli.option.noBackup': '更新前のバックアップ作成をスキップ',
   'cli.option.ai': 'すべての更新にAIバッチ分析を有効化',
   'cli.option.provider': 'AIプロバイダー: auto, claude, gemini, codex',
   'cli.option.analysisType': 'AI分析タイプ: impact, security, compatibility, recommend',
@@ -425,6 +475,8 @@ export const ja: TranslationDictionary = {
   'cli.option.clearConsole': '各チェック前にコンソールをクリア',
   'cli.option.exitCode': '更新がある場合にコード1で終了（CI/CD用）',
   'cli.option.noSecurity': 'セキュリティ脆弱性チェックをスキップ',
+  'cli.option.graphFormat': '出力形式: text, mermaid, dot, json',
+  'cli.option.graphType': 'グラフタイプ: catalog, package, full',
 
   // CLI argument descriptions
   'cli.argument.package': 'パッケージ名',
@@ -655,6 +707,14 @@ export const ja: TranslationDictionary = {
   'format.workspaceStatistics': 'ワークスペース統計',
   'format.packagesCount': '{{count}}件のパッケージ',
   'format.catalogsCount': '{{count}}件のカタログ',
+  'format.noUpdatesPlanned': '更新予定なし',
+  'format.plannedUpdates': '更新予定: {{count}}',
+  'format.versionConflicts': 'バージョン競合',
+  'format.recommendation': '推奨',
+  'format.conflictsDetected': '件のバージョン競合が検出されました',
+
+  // Table headers
+  'table.header.new': '新規',
 
   // Statistics labels (workspaceCommand.ts)
   'stats.totalPackages': 'パッケージ合計',

@@ -108,6 +108,7 @@ vi.mock('../../formatters/outputFormatter.js', () => {
     OutputFormatter: class MockOutputFormatter {
       formatValidationReport = vi.fn().mockReturnValue('Formatted validation')
       formatWorkspaceStats = vi.fn().mockReturnValue('Formatted stats')
+      formatWorkspaceInfo = vi.fn().mockReturnValue('Formatted workspace info: default, react17')
       formatMessage = vi.fn().mockImplementation((msg: string) => msg)
       formatOutdatedReport = vi.fn()
       formatUpdatePlan = vi.fn()

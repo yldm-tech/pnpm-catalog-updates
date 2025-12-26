@@ -5,7 +5,7 @@
  * Includes catalog mode, package patterns, and other workspace-specific settings.
  */
 
-import { CatalogNotFoundError } from '@pcu/utils'
+import { CatalogNotFoundError, ValidationResultClass } from '@pcu/utils'
 import { CatalogMode } from '../entities/catalog.js'
 
 export class WorkspaceConfig {
@@ -185,7 +185,7 @@ export class WorkspaceConfig {
   /**
    * Validate workspace configuration
    */
-  public validate(): WorkspaceConfigValidationResult {
+  public validate(): ValidationResultClass {
     const errors: string[] = []
     const warnings: string[] = []
 
@@ -218,7 +218,7 @@ export class WorkspaceConfig {
       errors.push('Catalog mode is set to "strict" but no catalogs are defined')
     }
 
-    return new WorkspaceConfigValidationResult(errors.length === 0, errors, warnings)
+    return new ValidationResultClass(errors.length === 0, errors, warnings)
   }
 
   /**
@@ -353,7 +353,7 @@ export class CatalogDefinition {
     return new CatalogDefinition(this.name, updatedDependencies)
   }
 
-  public validate(): CatalogDefinitionValidationResult {
+  public validate(): ValidationResultClass {
     const errors: string[] = []
     const warnings: string[] = []
 
@@ -378,7 +378,7 @@ export class CatalogDefinition {
       }
     }
 
-    return new CatalogDefinitionValidationResult(errors.length === 0, errors, warnings)
+    return new ValidationResultClass(errors.length === 0, errors, warnings)
   }
 
   public equals(other: CatalogDefinition): boolean {
@@ -400,66 +400,4 @@ export interface PnpmWorkspaceData {
   shamefullyHoist?: boolean
   linkWorkspacePackages?: boolean | 'deep'
   [key: string]: unknown
-}
-
-/**
- * Workspace Config Validation Result
- */
-export class WorkspaceConfigValidationResult {
-  constructor(
-    private readonly isValid: boolean,
-    private readonly errors: string[],
-    private readonly warnings: string[]
-  ) {}
-
-  public getIsValid(): boolean {
-    return this.isValid
-  }
-
-  public getErrors(): string[] {
-    return [...this.errors]
-  }
-
-  public getWarnings(): string[] {
-    return [...this.warnings]
-  }
-
-  public hasErrors(): boolean {
-    return this.errors.length > 0
-  }
-
-  public hasWarnings(): boolean {
-    return this.warnings.length > 0
-  }
-}
-
-/**
- * Catalog Definition Validation Result
- */
-export class CatalogDefinitionValidationResult {
-  constructor(
-    private readonly isValid: boolean,
-    private readonly errors: string[],
-    private readonly warnings: string[]
-  ) {}
-
-  public getIsValid(): boolean {
-    return this.isValid
-  }
-
-  public getErrors(): string[] {
-    return [...this.errors]
-  }
-
-  public getWarnings(): string[] {
-    return [...this.warnings]
-  }
-
-  public hasErrors(): boolean {
-    return this.errors.length > 0
-  }
-
-  public hasWarnings(): boolean {
-    return this.warnings.length > 0
-  }
 }

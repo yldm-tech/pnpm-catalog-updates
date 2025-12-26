@@ -110,8 +110,9 @@ export class BackupService {
 
   /**
    * Restore a file from a specific backup
+   * @returns The path to the pre-restore backup created for safety
    */
-  async restoreFromBackup(originalFilePath: string, backupPath: string): Promise<void> {
+  async restoreFromBackup(originalFilePath: string, backupPath: string): Promise<string> {
     try {
       // Verify backup exists
       await fs.access(backupPath)
@@ -124,6 +125,8 @@ export class BackupService {
       await fs.copyFile(backupPath, originalFilePath)
 
       logger.info('Restored from backup', { original: originalFilePath, backup: backupPath })
+
+      return preRestoreBackup
     } catch (error) {
       logger.error('Failed to restore from backup', error instanceof Error ? error : undefined, {
         originalFilePath,
@@ -135,8 +138,11 @@ export class BackupService {
 
   /**
    * Restore from the most recent backup
+   * @returns Object containing restored backup path and pre-restore backup path, or null if no backups found
    */
-  async restoreLatest(originalFilePath: string): Promise<string | null> {
+  async restoreLatest(
+    originalFilePath: string
+  ): Promise<{ restoredFromPath: string; preRestoreBackupPath: string } | null> {
     const backups = await this.listBackups(originalFilePath)
 
     if (backups.length === 0) {
@@ -149,8 +155,11 @@ export class BackupService {
       return null
     }
 
-    await this.restoreFromBackup(originalFilePath, latestBackup.path)
-    return latestBackup.path
+    const preRestoreBackupPath = await this.restoreFromBackup(originalFilePath, latestBackup.path)
+    return {
+      restoredFromPath: latestBackup.path,
+      preRestoreBackupPath,
+    }
   }
 
   /**

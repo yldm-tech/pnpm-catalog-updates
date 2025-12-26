@@ -7,7 +7,11 @@
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { FileSystemError, logger } from '@pcu/utils'
+import { FileSizeExceededError, FileSystemError, logger } from '@pcu/utils'
+
+// SEC-008: Maximum YAML file size to prevent DoS attacks (10MB)
+const MAX_YAML_FILE_SIZE = 10 * 1024 * 1024
+
 import { glob } from 'glob'
 import YAML from 'yaml'
 import type { PackageJsonData } from '../../domain/entities/package.js'
@@ -49,7 +53,7 @@ export class FileSystemService {
       throw new FileSystemError(
         filePath,
         'read',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -67,7 +71,7 @@ export class FileSystemService {
       throw new FileSystemError(
         filePath,
         'write',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -84,7 +88,7 @@ export class FileSystemService {
       throw new FileSystemError(
         filePath,
         'readJSON',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -101,7 +105,7 @@ export class FileSystemService {
       throw new FileSystemError(
         filePath,
         'writeJSON',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -109,16 +113,27 @@ export class FileSystemService {
 
   /**
    * Read and parse a YAML file
+   * SEC-008: Includes file size validation to prevent DoS attacks
    */
-  async readYamlFile<T = unknown>(filePath: string): Promise<T> {
+  async readYamlFile<T = unknown>(filePath: string, maxSize = MAX_YAML_FILE_SIZE): Promise<T> {
     try {
+      // SEC-008: Check file size before reading to prevent DoS
+      const stat = await fs.stat(filePath)
+      if (stat.size > maxSize) {
+        throw new FileSizeExceededError(filePath, stat.size, maxSize)
+      }
+
       const content = await this.readTextFile(filePath)
       return YAML.parse(content) as T
     } catch (error) {
+      // Re-throw FileSizeExceededError as-is
+      if (error instanceof FileSizeExceededError) {
+        throw error
+      }
       throw new FileSystemError(
         filePath,
         'readYAML',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -137,7 +152,7 @@ export class FileSystemService {
       throw new FileSystemError(
         filePath,
         'writeYAML',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -750,7 +765,7 @@ export class FileSystemService {
       throw new FileSystemError(
         filePath,
         'stat',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -770,7 +785,7 @@ export class FileSystemService {
       throw new FileSystemError(
         filePath,
         'backup',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -786,7 +801,7 @@ export class FileSystemService {
       throw new FileSystemError(
         originalPath,
         'restore',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -802,7 +817,7 @@ export class FileSystemService {
       throw new FileSystemError(
         filePath,
         'delete',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -819,7 +834,7 @@ export class FileSystemService {
       throw new FileSystemError(
         dirPath,
         'listFiles',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }
@@ -836,7 +851,7 @@ export class FileSystemService {
       throw new FileSystemError(
         dirPath,
         'listDirs',
-        `${error}`,
+        error instanceof Error ? error.message : String(error),
         error instanceof Error ? error : undefined
       )
     }

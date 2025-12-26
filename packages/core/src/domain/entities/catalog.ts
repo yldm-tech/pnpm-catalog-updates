@@ -5,7 +5,7 @@
  * A catalog contains a collection of dependencies with their version ranges.
  */
 
-import { InvalidVersionRangeError } from '@pcu/utils'
+import { InvalidVersionRangeError, isValidPackageName, ValidationResultClass } from '@pcu/utils'
 import { VersionRange } from '../value-objects/version.js'
 
 export type CatalogId = string
@@ -168,7 +168,7 @@ export class Catalog {
   /**
    * Validate catalog integrity
    */
-  public validate(): CatalogValidationResult {
+  public validate(): ValidationResultClass {
     const errors: string[] = []
     const warnings: string[] = []
 
@@ -177,10 +177,10 @@ export class Catalog {
       warnings.push(`Catalog "${this.name}" is empty`)
     }
 
-    // Validate each dependency
+    // Validate each dependency (QUAL-004: using shared utility)
     for (const [packageName, versionRange] of this.dependencies) {
       // Check package name format
-      if (!this.isValidPackageName(packageName)) {
+      if (!isValidPackageName(packageName)) {
         errors.push(`Invalid package name: "${packageName}"`)
       }
 
@@ -190,7 +190,7 @@ export class Catalog {
       }
     }
 
-    return new CatalogValidationResult(errors.length === 0, errors, warnings)
+    return new ValidationResultClass(errors.length === 0, errors, warnings)
   }
 
   /**
@@ -216,15 +216,6 @@ export class Catalog {
    */
   public static fromPlainObject(data: CatalogData): Catalog {
     return Catalog.create(data.id, data.name, data.dependencies, data.mode)
-  }
-
-  /**
-   * Check if a package name is valid
-   */
-  private isValidPackageName(packageName: string): boolean {
-    // Basic npm package name validation
-    const validPackageNameRegex = /^(@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/
-    return validPackageNameRegex.test(packageName)
   }
 
   /**
@@ -267,35 +258,4 @@ export interface CatalogData {
   name: CatalogName
   dependencies: Record<string, string>
   mode: CatalogMode
-}
-
-/**
- * Catalog Validation Result
- */
-export class CatalogValidationResult {
-  constructor(
-    private readonly isValid: boolean,
-    private readonly errors: string[],
-    private readonly warnings: string[]
-  ) {}
-
-  public getIsValid(): boolean {
-    return this.isValid
-  }
-
-  public getErrors(): string[] {
-    return [...this.errors]
-  }
-
-  public getWarnings(): string[] {
-    return [...this.warnings]
-  }
-
-  public hasErrors(): boolean {
-    return this.errors.length > 0
-  }
-
-  public hasWarnings(): boolean {
-    return this.warnings.length > 0
-  }
 }

@@ -234,5 +234,9 @@ export interface AIConfig {
    */
   securityData?: {
     enabled?: boolean
+    /** Concurrency limit for security queries (default: 5) */
+    concurrency?: number
+    /** Timeout in ms for security queries (default: 10000) */
+    timeout?: number
   }
 }

@@ -2,40 +2,75 @@
  * Output Formatter
  *
  * Provides formatted output for CLI commands in various formats.
- * Supports table, JSON, YAML, and minimal output formats.
+ * Supports table, JSON, YAML, minimal, and CI/CD output formats.
+ * CI formats include GitHub Actions, GitLab CI, JUnit XML, and SARIF.
  */
 
 import type {
   AnalysisResult,
   ImpactAnalysis,
   OutdatedReport,
+  UpdatePlan,
   UpdateResult,
   WorkspaceInfo,
   WorkspaceStats,
   WorkspaceValidationReport,
 } from '@pcu/core'
+import { countUpdateTypes } from '@pcu/core'
 import { t } from '@pcu/utils'
 import chalk from 'chalk'
 import Table from 'cli-table3'
 import YAML from 'yaml'
 import type { SecurityReport } from '../commands/securityCommand.js'
+import { CIFormatter, type CIOutputFormat } from './ciFormatter.js'
 
-export type OutputFormat = 'table' | 'json' | 'yaml' | 'minimal'
+export type OutputFormat =
+  | 'table'
+  | 'json'
+  | 'yaml'
+  | 'minimal'
+  | 'github'
+  | 'gitlab'
+  | 'junit'
+  | 'sarif'
+
+export type CIFormat = 'github' | 'gitlab' | 'junit' | 'sarif'
+
+export function isCIFormat(format: OutputFormat): format is CIFormat {
+  return ['github', 'gitlab', 'junit', 'sarif'].includes(format)
+}
 
 // Build ANSI escape regex without literal control characters
 const ANSI_ESCAPE = String.fromCharCode(27)
 const ansiRegex: RegExp = new RegExp(`${ANSI_ESCAPE}\\[[0-9;]*m`, 'g')
 
 export class OutputFormatter {
+  private ciFormatter: CIFormatter | null = null
+
   constructor(
     private readonly format: OutputFormat = 'table',
     private readonly useColor: boolean = true
   ) {}
 
   /**
+   * Get or create CIFormatter instance for CI output formats
+   */
+  private getCIFormatter(): CIFormatter {
+    if (!this.ciFormatter) {
+      this.ciFormatter = new CIFormatter(this.format as CIOutputFormat)
+    }
+    return this.ciFormatter
+  }
+
+  /**
    * Format outdated dependencies report
    */
   formatOutdatedReport(report: OutdatedReport): string {
+    // Delegate to CIFormatter for CI output formats
+    if (isCIFormat(this.format)) {
+      return this.getCIFormatter().formatOutdatedReport(report)
+    }
+
     switch (this.format) {
       case 'json':
         return JSON.stringify(report, null, 2)
@@ -52,6 +87,11 @@ export class OutputFormatter {
    * Format update result
    */
   formatUpdateResult(result: UpdateResult): string {
+    // Delegate to CIFormatter for CI output formats
+    if (isCIFormat(this.format)) {
+      return this.getCIFormatter().formatUpdateResult(result)
+    }
+
     switch (this.format) {
       case 'json':
         return JSON.stringify(result, null, 2)
@@ -61,6 +101,27 @@ export class OutputFormatter {
         return this.formatUpdateMinimal(result)
       default:
         return this.formatUpdateTable(result)
+    }
+  }
+
+  /**
+   * Format update plan (for dry-run mode)
+   */
+  formatUpdatePlan(plan: UpdatePlan): string {
+    // Delegate to CIFormatter for CI output formats
+    if (isCIFormat(this.format)) {
+      return this.getCIFormatter().formatUpdatePlan(plan)
+    }
+
+    switch (this.format) {
+      case 'json':
+        return JSON.stringify(plan, null, 2)
+      case 'yaml':
+        return YAML.stringify(plan)
+      case 'minimal':
+        return this.formatUpdatePlanMinimal(plan)
+      default:
+        return this.formatUpdatePlanTable(plan)
     }
   }
 
@@ -84,6 +145,11 @@ export class OutputFormatter {
    * Format workspace validation report
    */
   formatValidationReport(report: WorkspaceValidationReport): string {
+    // Delegate to CIFormatter for CI output formats
+    if (isCIFormat(this.format)) {
+      return this.getCIFormatter().formatValidationReport(report)
+    }
+
     switch (this.format) {
       case 'json':
         return JSON.stringify(report, null, 2)
@@ -132,6 +198,11 @@ export class OutputFormatter {
    * Format security report
    */
   formatSecurityReport(report: SecurityReport): string {
+    // Delegate to CIFormatter for CI output formats
+    if (isCIFormat(this.format)) {
+      return this.getCIFormatter().formatSecurityReport(report)
+    }
+
     switch (this.format) {
       case 'json':
         return JSON.stringify(report, null, 2)
@@ -425,6 +496,171 @@ export class OutputFormatter {
 
         lines.push(`${paddedName}  ${paddedCurrent} → ${dep.latestColored}`)
       }
+    }
+
+    return lines.join('\n')
+  }
+
+  /**
+   * Format update plan as table (for dry-run mode)
+   */
+  private formatUpdatePlanTable(plan: UpdatePlan): string {
+    const lines: string[] = []
+
+    // Header
+    lines.push(this.colorize(chalk.bold, `\n${t('format.workspace')}: ${plan.workspace.name}`))
+    lines.push(this.colorize(chalk.gray, `${t('format.path')}: ${plan.workspace.path}`))
+
+    if (plan.totalUpdates === 0) {
+      lines.push(this.colorize(chalk.green, `\n✅ ${t('format.noUpdatesPlanned')}`))
+      return lines.join('\n')
+    }
+
+    lines.push(
+      this.colorize(
+        chalk.cyan,
+        `\n${t('format.plannedUpdates', { count: String(plan.totalUpdates) })}`
+      )
+    )
+    lines.push('')
+
+    // Updates table
+    if (plan.updates.length > 0) {
+      const table = new Table({
+        head: this.colorizeHeaders([
+          t('table.header.catalog'),
+          t('table.header.package'),
+          t('table.header.current'),
+          t('table.header.new'),
+          t('table.header.type'),
+        ]),
+        style: { head: [], border: [] },
+        colWidths: [15, 30, 15, 15, 8],
+      })
+
+      for (const update of plan.updates) {
+        const typeColor = this.getUpdateTypeColor(update.updateType)
+        const { currentColored, latestColored } = this.colorizeVersionDiff(
+          update.currentVersion,
+          update.newVersion,
+          update.updateType
+        )
+
+        table.push([
+          update.catalogName,
+          update.packageName,
+          currentColored,
+          latestColored,
+          this.colorize(typeColor, update.updateType),
+        ])
+      }
+
+      lines.push(table.toString())
+      lines.push('')
+    }
+
+    // Conflicts warning
+    if (plan.hasConflicts && plan.conflicts.length > 0) {
+      lines.push(this.colorize(chalk.yellow, `⚠️ ${t('format.versionConflicts')}:`))
+      lines.push('')
+
+      for (const conflict of plan.conflicts) {
+        lines.push(this.colorize(chalk.bold, `  ${conflict.packageName}:`))
+        for (const catalog of conflict.catalogs) {
+          lines.push(
+            `    ${catalog.catalogName}: ${catalog.currentVersion} → ${catalog.proposedVersion}`
+          )
+        }
+        if (conflict.recommendation) {
+          lines.push(
+            this.colorize(
+              chalk.gray,
+              `    ${t('format.recommendation')}: ${conflict.recommendation}`
+            )
+          )
+        }
+        lines.push('')
+      }
+    }
+
+    // Summary breakdown
+    const updateTypes = countUpdateTypes(plan.updates)
+
+    lines.push(this.colorize(chalk.bold, `${t('format.summary')}:`))
+    if (updateTypes.major > 0) {
+      lines.push(
+        this.colorize(
+          chalk.red,
+          `  • ${t('command.check.majorUpdates', { count: String(updateTypes.major) })}`
+        )
+      )
+    }
+    if (updateTypes.minor > 0) {
+      lines.push(
+        this.colorize(
+          chalk.yellow,
+          `  • ${t('command.check.minorUpdates', { count: String(updateTypes.minor) })}`
+        )
+      )
+    }
+    if (updateTypes.patch > 0) {
+      lines.push(
+        this.colorize(
+          chalk.green,
+          `  • ${t('command.check.patchUpdates', { count: String(updateTypes.patch) })}`
+        )
+      )
+    }
+
+    return lines.join('\n')
+  }
+
+  /**
+   * Format update plan minimally (for dry-run mode)
+   */
+  private formatUpdatePlanMinimal(plan: UpdatePlan): string {
+    if (plan.totalUpdates === 0) {
+      return t('format.noUpdatesPlanned')
+    }
+
+    // Collect update info for alignment calculation
+    const updatesWithVersions = plan.updates.map((update) => {
+      const { currentColored, latestColored } = this.colorizeVersionDiff(
+        update.currentVersion,
+        update.newVersion,
+        update.updateType
+      )
+      return {
+        packageName: update.packageName,
+        currentColored,
+        latestColored,
+      }
+    })
+
+    // Calculate max widths for alignment
+    const maxNameWidth = Math.max(...updatesWithVersions.map((u) => u.packageName.length))
+
+    const stripAnsi = (str: string) => str.replace(ansiRegex, '')
+    const maxCurrentWidth = Math.max(
+      ...updatesWithVersions.map((u) => stripAnsi(u.currentColored).length)
+    )
+
+    const lines: string[] = []
+    for (const update of updatesWithVersions) {
+      const paddedName = update.packageName.padEnd(maxNameWidth)
+
+      // Pad current version for alignment
+      const currentVisible = stripAnsi(update.currentColored)
+      const currentPadding = maxCurrentWidth - currentVisible.length
+      const paddedCurrent = update.currentColored + ' '.repeat(currentPadding)
+
+      lines.push(`${paddedName}  ${paddedCurrent} → ${update.latestColored}`)
+    }
+
+    // Add conflicts warning if any
+    if (plan.hasConflicts && plan.conflicts.length > 0) {
+      lines.push('')
+      lines.push(`⚠️ ${plan.conflicts.length} ${t('format.conflictsDetected')}`)
     }
 
     return lines.join('\n')

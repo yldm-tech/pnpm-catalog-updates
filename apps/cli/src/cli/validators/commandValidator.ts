@@ -1,415 +1,367 @@
 /**
  * CLI Command Validation
  *
- * Validates CLI command options and arguments before execution.
- * Provides detailed error messages and suggestions.
+ * QUAL-002: Unified validation logic for CLI commands.
+ * Provides composable validators that can be combined per command.
  */
 
-import { getConfig, t, type ValidationResult, validateCliOptions } from '@pcu/utils'
+import { existsSync } from 'node:fs'
+import { createValidationResult, t, type ValidationResult } from '@pcu/utils'
+import {
+  FORMAT_CHOICES,
+  isValidAnalysisType,
+  isValidFormat,
+  isValidProvider,
+  isValidSeverity,
+  isValidTarget,
+  SEVERITY_CHOICES,
+  TARGET_CHOICES,
+} from '../constants/cliChoices.js'
 
-export interface ValidatedOptions {
+/**
+ * Validation rule function signature
+ */
+type ValidationRule<T> = (options: T) => { errors: string[]; warnings: string[] }
+
+/**
+ * Base options that many commands share
+ */
+export interface BaseCommandOptions {
   workspace?: string
   catalog?: string
   format?: string
-  target?: string
-  interactive?: boolean
-  dryRun?: boolean
-  force?: boolean
-  prerelease?: boolean
-  include?: string[]
-  exclude?: string[]
-  createBackup?: boolean
   verbose?: boolean
   color?: boolean
-  registry?: string
-  timeout?: number
 }
 
 /**
- * Raw command options input (unvalidated)
+ * Options that include update target
  */
-interface RawCommandOptions {
-  workspace?: unknown
-  catalog?: unknown
-  format?: unknown
-  target?: unknown
-  interactive?: unknown
-  dryRun?: unknown
-  force?: unknown
-  prerelease?: unknown
-  include?: unknown
-  exclude?: unknown
-  createBackup?: unknown
-  verbose?: unknown
-  silent?: unknown
-  color?: unknown
-  noColor?: unknown
-  registry?: unknown
-  timeout?: unknown
-  validate?: unknown
-  stats?: unknown
-  info?: unknown
-  [key: string]: unknown
+export interface TargetOptions {
+  target?: string
 }
 
-export class CommandValidator {
-  private config = getConfig().getConfig()
+/**
+ * Options for interactive mode
+ */
+export interface InteractiveOptions {
+  interactive?: boolean
+  dryRun?: boolean
+}
 
-  /**
-   * Validate check command options
-   */
-  validateCheckOptions(options: RawCommandOptions): ValidationResult {
-    const errors: string[] = []
-    const warnings: string[] = []
+/**
+ * Options for AI analysis
+ */
+export interface AIOptions {
+  ai?: boolean
+  provider?: string
+  analysisType?: string
+  skipCache?: boolean
+}
 
-    // Basic validation using utility
-    const basicValidation = validateCliOptions(options)
-    errors.push(...basicValidation.errors)
-    warnings.push(...basicValidation.warnings)
+/**
+ * Options for security command
+ */
+export interface SecurityOptions {
+  severity?: string
+}
 
-    // Check-specific validations
-    if (options.catalog && typeof options.catalog !== 'string') {
-      errors.push(t('validation.catalogMustBeString'))
+/**
+ * Graph command specific options
+ */
+export interface GraphOptions {
+  type?: string
+}
+
+/**
+ * Create validation result from errors and warnings
+ */
+function toValidationResult(errors: string[], warnings: string[]): ValidationResult {
+  return createValidationResult(errors.length === 0, errors, warnings)
+}
+
+/**
+ * Compose multiple validation rules into a single validator
+ */
+export function composeValidators<T>(
+  ...rules: ValidationRule<T>[]
+): (options: T) => ValidationResult {
+  return (options: T) => {
+    const allErrors: string[] = []
+    const allWarnings: string[] = []
+
+    for (const rule of rules) {
+      const { errors, warnings } = rule(options)
+      allErrors.push(...errors)
+      allWarnings.push(...warnings)
     }
 
-    // Validate mutually exclusive options
-    if (options.interactive && options.format === 'json') {
-      warnings.push(t('validation.interactiveNotUsefulWithJson'))
-    }
+    return toValidationResult(allErrors, allWarnings)
+  }
+}
 
-    if (options.verbose && options.silent) {
-      errors.push(t('validation.verboseWithSilent'))
-    }
+// ============================================================================
+// Individual Validation Rules
+// ============================================================================
 
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    }
+/**
+ * Validate output format
+ */
+export function validateFormat<T extends { format?: string }>(
+  options: T
+): {
+  errors: string[]
+  warnings: string[]
+} {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (options.format && !isValidFormat(options.format)) {
+    errors.push(t('validation.invalidFormat'))
   }
 
-  /**
-   * Validate update command options
-   */
-  validateUpdateOptions(options: RawCommandOptions): ValidationResult {
-    const errors: string[] = []
-    const warnings: string[] = []
+  return { errors, warnings }
+}
 
-    // Basic validation
-    const basicValidation = validateCliOptions(options)
-    errors.push(...basicValidation.errors)
-    warnings.push(...basicValidation.warnings)
+/**
+ * Validate update target
+ */
+export function validateTarget<T extends TargetOptions>(
+  options: T
+): {
+  errors: string[]
+  warnings: string[]
+} {
+  const errors: string[] = []
+  const warnings: string[] = []
 
-    // Update-specific validations
-    if (options.interactive && options.dryRun) {
-      errors.push(t('validation.interactiveWithDryRun'))
-    }
-
-    if (options.force && !options.dryRun && !options.createBackup) {
-      warnings.push(t('validation.forceWithoutBackup'))
-    }
-
-    if (options.target === 'major' && !options.force && !options.interactive) {
-      warnings.push(t('validation.majorUpdatesWarning'))
-    }
-
-    // Validate include/exclude patterns
-    if (options.include && options.exclude) {
-      const includeArray = Array.isArray(options.include) ? options.include : []
-      const excludeArray = Array.isArray(options.exclude) ? options.exclude : []
-      const overlapping = includeArray.some((inc: unknown) =>
-        excludeArray.some((exc: unknown) => inc === exc)
-      )
-      if (overlapping) {
-        warnings.push(t('validation.patternsOverlap'))
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    }
+  if (options.target && !isValidTarget(options.target)) {
+    errors.push(t('validation.invalidTarget'))
   }
 
-  /**
-   * Validate analyze command arguments
-   */
-  validateAnalyzeArgs(catalog: string, packageName: string, version?: string): ValidationResult {
-    const errors: string[] = []
-    const warnings: string[] = []
+  return { errors, warnings }
+}
 
-    // Validate catalog name
-    if (!catalog || catalog.trim() === '') {
-      errors.push(t('validation.catalogRequired'))
-    } else if (catalog.includes('/') || catalog.includes('\\')) {
-      errors.push(t('validation.catalogNoPathSeparators'))
-    }
+/**
+ * Validate workspace path exists
+ */
+export function validateWorkspacePath<T extends { workspace?: string }>(
+  options: T
+): {
+  errors: string[]
+  warnings: string[]
+} {
+  const errors: string[] = []
+  const warnings: string[] = []
 
-    // Validate package name
-    if (!packageName || packageName.trim() === '') {
-      errors.push(t('validation.packageNameRequired'))
-    } else {
-      // Basic package name validation
-      const packageNameRegex = /^(?:@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/
-      if (!packageNameRegex.test(packageName)) {
-        errors.push(t('validation.invalidPackageNameFormat'))
-      }
-    }
-
-    // Validate version if provided
-    if (version) {
-      const semverRegex =
-        /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
-      if (!semverRegex.test(version)) {
-        errors.push(t('validation.invalidVersionFormat'))
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    }
+  if (options.workspace && !existsSync(options.workspace)) {
+    errors.push(t('validation.workspaceDirNotExist', { path: options.workspace }))
   }
 
-  /**
-   * Validate workspace command options
-   */
-  validateWorkspaceOptions(options: RawCommandOptions): ValidationResult {
-    const errors: string[] = []
-    const warnings: string[] = []
+  return { errors, warnings }
+}
 
-    // Basic validation
-    const basicValidation = validateCliOptions(options)
-    errors.push(...basicValidation.errors)
-    warnings.push(...basicValidation.warnings)
+/**
+ * Validate interactive mode conflicts
+ */
+export function validateInteractiveConflicts<T extends InteractiveOptions>(
+  options: T
+): {
+  errors: string[]
+  warnings: string[]
+} {
+  const errors: string[] = []
+  const warnings: string[] = []
 
-    // Workspace-specific validations
-    const actionCount = [options.validate, options.stats, options.info].filter(Boolean).length
-    if (actionCount > 1) {
-      errors.push(t('validation.multipleWorkspaceActions'))
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    }
+  if (options.interactive && options.dryRun) {
+    errors.push(t('validation.interactiveWithDryRun'))
   }
 
-  /**
-   * Validate global options
-   */
-  validateGlobalOptions(options: RawCommandOptions): ValidationResult {
-    const errors: string[] = []
-    const warnings: string[] = []
+  return { errors, warnings }
+}
 
-    // Validate workspace path
-    if (options.workspace) {
-      // Future: Add path validation logic here
-      // Currently skipped to avoid TypeScript errors
-    }
+/**
+ * Validate AI provider options
+ */
+export function validateAIOptions<T extends AIOptions>(
+  options: T
+): {
+  errors: string[]
+  warnings: string[]
+} {
+  const errors: string[] = []
+  const warnings: string[] = []
 
-    // Validate color options
-    if (options.noColor && options.color) {
-      errors.push(t('validation.colorWithNoColor'))
-    }
-
-    // Check for deprecated options (future-proofing)
-    const deprecatedOptions = ['silent'] // Example
-    for (const deprecated of deprecatedOptions) {
-      if (options[deprecated]) {
-        warnings.push(t('validation.deprecatedOption', { option: deprecated }))
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    }
+  if (options.provider && !isValidProvider(options.provider)) {
+    errors.push(t('validation.invalidProvider'))
   }
 
-  /**
-   * Validate configuration object
-   */
-  validateConfigFile(configPath: string): ValidationResult {
-    const errors: string[] = []
-    const warnings: string[] = []
-
-    try {
-      const fs = require('node:fs')
-      // const path = require('path'); // Reserved for future use
-
-      if (!fs.existsSync(configPath)) {
-        errors.push(t('validation.configNotFound', { path: configPath }))
-        return { isValid: false, errors, warnings }
-      }
-
-      let config: Record<string, unknown>
-
-      if (configPath.endsWith('.js')) {
-        // JavaScript config file
-        try {
-          delete require.cache[require.resolve(configPath)]
-          config = require(configPath)
-        } catch (error) {
-          errors.push(t('validation.failedToLoadJsConfig', { error: String(error) }))
-          return { isValid: false, errors, warnings }
-        }
-      } else {
-        // JSON config file
-        try {
-          const content = fs.readFileSync(configPath, 'utf-8')
-          config = JSON.parse(content)
-        } catch (error) {
-          errors.push(t('validation.failedToParseJsonConfig', { error: String(error) }))
-          return { isValid: false, errors, warnings }
-        }
-      }
-
-      // Validate config structure
-      if (typeof config !== 'object' || config === null) {
-        errors.push(t('validation.configMustBeObject'))
-        return { isValid: false, errors, warnings }
-      }
-
-      // Validate known configuration sections
-      if (config.registry && typeof config.registry !== 'object') {
-        errors.push(t('validation.registryMustBeObject'))
-      }
-
-      if (config.update && typeof config.update !== 'object') {
-        errors.push(t('validation.updateMustBeObject'))
-      }
-
-      if (config.output && typeof config.output !== 'object') {
-        errors.push(t('validation.outputMustBeObject'))
-      }
-
-      // Check for unknown top-level keys
-      const knownKeys = ['registry', 'update', 'output', 'workspace', 'notification', 'logging']
-      const unknownKeys = Object.keys(config).filter((key) => !knownKeys.includes(key))
-
-      if (unknownKeys.length > 0) {
-        warnings.push(t('validation.unknownConfigKeys', { keys: unknownKeys.join(', ') }))
-      }
-    } catch (error) {
-      errors.push(t('validation.failedToValidateConfig', { error: String(error) }))
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    }
+  if (options.analysisType && !isValidAnalysisType(options.analysisType)) {
+    errors.push(t('validation.invalidAnalysisType'))
   }
 
-  /**
-   * Sanitize and normalize options
-   */
-  sanitizeOptions(options: RawCommandOptions): ValidatedOptions {
-    const sanitized: ValidatedOptions = {}
+  return { errors, warnings }
+}
 
-    // String options
-    if (options.workspace) {
-      sanitized.workspace = String(options.workspace).trim()
-    }
-    if (options.catalog) {
-      sanitized.catalog = String(options.catalog).trim()
-    }
-    if (options.format) {
-      sanitized.format = String(options.format).toLowerCase().trim()
-    }
-    if (options.target) {
-      sanitized.target = String(options.target).toLowerCase().trim()
-    }
-    if (options.registry) {
-      sanitized.registry = String(options.registry).trim()
-    }
+/**
+ * Validate severity level
+ */
+export function validateSeverity<T extends SecurityOptions>(
+  options: T
+): {
+  errors: string[]
+  warnings: string[]
+} {
+  const errors: string[] = []
+  const warnings: string[] = []
 
-    // Boolean options
-    sanitized.interactive = Boolean(options.interactive)
-    sanitized.dryRun = Boolean(options.dryRun)
-    sanitized.force = Boolean(options.force)
-    sanitized.prerelease = Boolean(options.prerelease)
-    sanitized.createBackup = Boolean(options.createBackup)
-    sanitized.verbose = Boolean(options.verbose)
-
-    // Handle color option (tri-state: true, false, or undefined)
-    if (options.color !== undefined) {
-      sanitized.color = Boolean(options.color)
-    } else if (options.noColor) {
-      sanitized.color = false
-    }
-
-    // Number options
-    if (options.timeout) {
-      const timeout = parseInt(String(options.timeout), 10)
-      if (!Number.isNaN(timeout) && timeout > 0) {
-        sanitized.timeout = timeout
-      }
-    }
-
-    // Array options
-    if (options.include) {
-      sanitized.include = Array.isArray(options.include)
-        ? options.include.map((p: unknown) => String(p).trim()).filter(Boolean)
-        : [String(options.include).trim()].filter(Boolean)
-    }
-    if (options.exclude) {
-      sanitized.exclude = Array.isArray(options.exclude)
-        ? options.exclude.map((p: unknown) => String(p).trim()).filter(Boolean)
-        : [String(options.exclude).trim()].filter(Boolean)
-    }
-
-    return sanitized
+  if (options.severity && !isValidSeverity(options.severity)) {
+    errors.push(t('validation.invalidSeverity'))
   }
 
-  /**
-   * Get validation suggestions based on common mistakes
-   */
-  getSuggestions(command: string, options: RawCommandOptions): string[] {
-    const suggestions: string[] = []
+  return { errors, warnings }
+}
 
-    switch (command) {
-      case 'check':
-        if (!options.workspace) {
-          suggestions.push(t('suggestion.specifyWorkspace'))
-        }
-        if (options.format === 'json' && options.verbose) {
-          suggestions.push(t('suggestion.jsonAlreadyDetailed'))
-        }
-        break
+/**
+ * Validate graph type
+ */
+export function validateGraphType<T extends GraphOptions>(
+  options: T
+): {
+  errors: string[]
+  warnings: string[]
+} {
+  const errors: string[] = []
+  const warnings: string[] = []
+  const validTypes = ['catalog', 'package', 'full']
 
-      case 'update':
-        if (!options.dryRun && !options.createBackup && !options.force) {
-          suggestions.push(t('suggestion.useDryRunFirst'))
-        }
-        if (options.target === 'greatest' && !options.prerelease) {
-          suggestions.push(t('suggestion.addPrereleaseWithGreatest'))
-        }
-        break
-
-      case 'analyze':
-        if (!options.format) {
-          suggestions.push(t('suggestion.useJsonForProgrammatic'))
-        }
-        break
-
-      case 'workspace':
-        if (!options.validate && !options.stats) {
-          suggestions.push(t('suggestion.useValidateOrStats'))
-        }
-        break
-    }
-
-    // General suggestions
-    if (this.config.output.verbose && !options.verbose) {
-      suggestions.push(t('suggestion.globalVerboseEnabled'))
-    }
-
-    return suggestions
+  if (options.type && !validTypes.includes(options.type)) {
+    errors.push(t('validation.invalidGraphType', { validTypes: validTypes.join(', ') }))
   }
+
+  return { errors, warnings }
+}
+
+/**
+ * Validate graph format (subset of formats)
+ */
+export function validateGraphFormat<T extends { format?: string }>(
+  options: T
+): {
+  errors: string[]
+  warnings: string[]
+} {
+  const errors: string[] = []
+  const warnings: string[] = []
+  const validFormats = ['text', 'mermaid', 'dot', 'json']
+
+  if (options.format && !validFormats.includes(options.format)) {
+    errors.push(t('validation.invalidGraphFormat', { validFormats: validFormats.join(', ') }))
+  }
+
+  return { errors, warnings }
+}
+
+/**
+ * Options for pattern validation
+ */
+export interface PatternOptions {
+  include?: string[]
+  exclude?: string[]
+}
+
+/**
+ * Validate include/exclude patterns
+ */
+export function validatePatterns<T extends PatternOptions>(
+  options: T
+): {
+  errors: string[]
+  warnings: string[]
+} {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (options.include?.some((pattern) => !pattern.trim())) {
+    errors.push(t('validation.includePatternsEmpty'))
+  }
+
+  if (options.exclude?.some((pattern) => !pattern.trim())) {
+    errors.push(t('validation.excludePatternsEmpty'))
+  }
+
+  return { errors, warnings }
+}
+
+// ============================================================================
+// Pre-composed Validators for Common Command Types
+// ============================================================================
+
+/**
+ * Validator for check command
+ */
+export const validateCheckOptions = composeValidators<
+  BaseCommandOptions & TargetOptions & PatternOptions
+>(validateFormat, validateTarget, validatePatterns)
+
+/**
+ * Validator for update command
+ */
+export const validateUpdateOptions = composeValidators<
+  BaseCommandOptions & TargetOptions & InteractiveOptions & AIOptions
+>(validateFormat, validateTarget, validateInteractiveConflicts, validateAIOptions)
+
+/**
+ * Validator for security command
+ */
+export const validateSecurityOptions = composeValidators<BaseCommandOptions & SecurityOptions>(
+  validateFormat,
+  validateSeverity
+)
+
+/**
+ * Validator for graph command
+ */
+export const validateGraphOptions = composeValidators<BaseCommandOptions & GraphOptions>(
+  validateGraphFormat,
+  validateGraphType
+)
+
+/**
+ * Validator for init command
+ */
+export const validateInitOptions = composeValidators<BaseCommandOptions>(validateWorkspacePath)
+
+// ============================================================================
+// Legacy Compatibility - Returns string[] for existing command signatures
+// ============================================================================
+
+/**
+ * Wrap validator to return only errors array (legacy compatibility)
+ */
+export function errorsOnly<T>(
+  validator: (options: T) => ValidationResult
+): (options: T) => string[] {
+  return (options: T) => validator(options).errors
+}
+
+/**
+ * Format choices for help text
+ */
+export function formatChoicesHelp(): string {
+  return FORMAT_CHOICES.join(', ')
+}
+
+/**
+ * Target choices for help text
+ */
+export function targetChoicesHelp(): string {
+  return TARGET_CHOICES.join(', ')
+}
+
+/**
+ * Severity choices for help text
+ */
+export function severityChoicesHelp(): string {
+  return SEVERITY_CHOICES.join(', ')
 }

@@ -7,7 +7,7 @@
  * @see https://osv.dev/
  */
 
-import { ExternalServiceError, logger, NetworkError } from '@pcu/utils'
+import { ExternalServiceError, logger, NetworkError, toError } from '@pcu/utils'
 
 export interface VulnerabilityInfo {
   id: string
@@ -179,8 +179,13 @@ export class SecurityAdvisoryService {
           }
         }
       }
-    } catch {
-      // Silently ignore failures - this is best-effort discovery
+    } catch (error) {
+      // ERR-001: Best-effort discovery - log at debug level for troubleshooting
+      logger.debug('Failed to discover ecosystem packages', {
+        packageName,
+        version,
+        error: error instanceof Error ? error.message : String(error),
+      })
     }
 
     return relatedPackages
@@ -218,72 +223,111 @@ export class SecurityAdvisoryService {
 
       // Use shorter timeout for search queries (50% of discovery timeout)
       const searchTimeout = Math.floor(this.discoveryTimeout * 0.5)
-      for (const query of searchQueries) {
-        try {
+
+      // PERF-002: Parallelize search queries instead of sequential execution
+      const searchResults = await Promise.allSettled(
+        searchQueries.map(async (query) => {
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), searchTimeout)
 
-          const response = await fetch(
-            `https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}&size=50`,
-            { signal: controller.signal }
-          )
+          try {
+            const response = await fetch(
+              `https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}&size=50`,
+              { signal: controller.signal }
+            )
 
-          clearTimeout(timeoutId)
+            clearTimeout(timeoutId)
 
-          if (response.ok) {
-            const data = (await response.json()) as {
-              objects?: Array<{ package: { name: string } }>
-            }
-
-            if (data.objects) {
-              for (const obj of data.objects) {
-                const pkgName = obj.package.name
-                // Only consider packages that start with the main package name
-                if (pkgName.startsWith(`${packageName}-`) && pkgName !== packageName) {
-                  foundPackages.add(pkgName)
-                }
+            if (response.ok) {
+              const data = (await response.json()) as {
+                objects?: Array<{ package: { name: string } }>
               }
+              return data.objects || []
+            }
+            return []
+          } catch (error) {
+            clearTimeout(timeoutId)
+            // ERR-002: Continue with other queries - log at debug level
+            logger.debug('Search query failed, continuing with others', {
+              query,
+              error: error instanceof Error ? error.message : String(error),
+            })
+            return []
+          }
+        })
+      )
+
+      // Collect results from all parallel searches
+      for (const result of searchResults) {
+        if (result.status === 'fulfilled') {
+          for (const obj of result.value) {
+            const pkgName = obj.package.name
+            // Only consider packages that start with the main package name
+            if (pkgName.startsWith(`${packageName}-`) && pkgName !== packageName) {
+              foundPackages.add(pkgName)
             }
           }
-        } catch {
-          // Continue with next search query
         }
       }
 
+      // PERF-002: Parallelize package verification instead of sequential execution
       // Verify each found package:
       // 1. Has the same version
       // 2. Shares the same repository URL (confirms it's from the same monorepo)
-      for (const pkgName of foundPackages) {
-        try {
+      const verificationResults = await Promise.allSettled(
+        Array.from(foundPackages).map(async (pkgName) => {
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), searchTimeout)
 
-          const response = await fetch(
-            `https://registry.npmjs.org/${encodeURIComponent(pkgName)}/${encodeURIComponent(version)}`,
-            { signal: controller.signal }
-          )
+          try {
+            const response = await fetch(
+              `https://registry.npmjs.org/${encodeURIComponent(pkgName)}/${encodeURIComponent(version)}`,
+              { signal: controller.signal }
+            )
 
-          clearTimeout(timeoutId)
+            clearTimeout(timeoutId)
 
-          if (response.ok) {
-            const data = (await response.json()) as {
-              repository?: { url?: string } | string
+            if (response.ok) {
+              const data = (await response.json()) as {
+                repository?: { url?: string } | string
+              }
+
+              // Verify it's from the same repository
+              const pkgRepoUrl =
+                typeof data.repository === 'string' ? data.repository : data.repository?.url
+
+              if (pkgRepoUrl && this.normalizeRepoUrl(pkgRepoUrl) === normalizedRepoUrl) {
+                return pkgName // Return the verified sibling package name
+              }
             }
-
-            // Verify it's from the same repository
-            const pkgRepoUrl =
-              typeof data.repository === 'string' ? data.repository : data.repository?.url
-
-            if (pkgRepoUrl && this.normalizeRepoUrl(pkgRepoUrl) === normalizedRepoUrl) {
-              siblings.push(pkgName)
-            }
+            return null
+          } catch (error) {
+            clearTimeout(timeoutId)
+            // ERR-003: Skip packages we can't verify - log at debug level
+            logger.debug('Failed to verify package sibling', {
+              pkgName,
+              version,
+              error: error instanceof Error ? error.message : String(error),
+            })
+            return null
           }
-        } catch {
-          // Skip packages we can't verify
+        })
+      )
+
+      // Collect verified siblings
+      for (const result of verificationResults) {
+        if (result.status === 'fulfilled' && result.value !== null) {
+          siblings.push(result.value)
         }
       }
-    } catch {
-      // Silently ignore failures
+    } catch (error) {
+      // ERR-004: Best-effort sibling discovery - log at debug level
+      logger.debug('Failed to find monorepo siblings', {
+        packageName,
+        repoUrl,
+        version,
+        error: error instanceof Error ? error.message : String(error),
+      })
     }
 
     return siblings
@@ -335,8 +379,14 @@ export class SecurityAdvisoryService {
             limitedEcosystemPackages.map(async (pkgName) => {
               try {
                 return await this.queryOSV(pkgName, version)
-              } catch {
-                return null // Ignore individual ecosystem package failures
+              } catch (error) {
+                // ERR-005: Individual ecosystem package query failed - log at debug level
+                logger.debug('Ecosystem package vulnerability query failed', {
+                  pkgName,
+                  version,
+                  error: error instanceof Error ? error.message : String(error),
+                })
+                return null
               }
             })
           )
@@ -460,7 +510,7 @@ export class SecurityAdvisoryService {
     } catch (error) {
       clearTimeout(timeoutId)
 
-      if ((error as Error).name === 'AbortError') {
+      if (toError(error).name === 'AbortError') {
         throw new NetworkError(
           'OSV',
           `batch request timed out after ${this.timeout}ms for ${packages.length} packages`
@@ -509,7 +559,7 @@ export class SecurityAdvisoryService {
     } catch (error) {
       clearTimeout(timeoutId)
 
-      if ((error as Error).name === 'AbortError') {
+      if (toError(error).name === 'AbortError') {
         throw new NetworkError(
           'OSV',
           `request timed out after ${this.timeout}ms for ${packageName}@${version}. Consider increasing timeout in config.`

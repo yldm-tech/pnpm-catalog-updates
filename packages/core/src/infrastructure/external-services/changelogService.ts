@@ -5,7 +5,7 @@
  * Fetches from GitHub API for GitHub-hosted packages, with fallback to npm.
  */
 
-import { UserFriendlyErrorHandler } from '@pcu/utils'
+import { ExternalServiceError, toError, UserFriendlyErrorHandler } from '@pcu/utils'
 
 export interface ChangelogEntry {
   version: string
@@ -112,7 +112,7 @@ export class ChangelogService {
           changelog.releases = releases
         } catch (error) {
           // Log but don't fail - we'll show the URL instead
-          UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error, {
+          UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, toError(error), {
             operation: 'changelog-fetch',
           })
           changelog.error = 'Unable to fetch releases from GitHub'
@@ -178,9 +178,17 @@ export class ChangelogService {
 
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error(`Repository ${owner}/${repo} not found or no releases available`)
+        throw new ExternalServiceError(
+          'GitHub',
+          'fetch-releases',
+          `Repository ${owner}/${repo} not found or no releases available`
+        )
       }
-      throw new Error(`GitHub API error: ${response.status} ${response.statusText}`)
+      throw new ExternalServiceError(
+        'GitHub',
+        'fetch-releases',
+        `HTTP ${response.status} ${response.statusText}`
+      )
     }
 
     const releases = (await response.json()) as GitHubRelease[]

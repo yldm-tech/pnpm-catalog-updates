@@ -32,6 +32,30 @@ const mocks = vi.hoisted(() => {
     }
   }
 
+  // Create a chainable chalk mock that supports all color combinations
+  const createChalkMock = () => {
+    const createColorFn = (text: string) => text
+    const colorFn = Object.assign(createColorFn, {
+      bold: Object.assign((text: string) => text, {
+        cyan: (text: string) => text,
+        white: (text: string) => text,
+      }),
+      dim: Object.assign((text: string) => text, {
+        white: (text: string) => text,
+      }),
+      red: Object.assign((text: string) => text, {
+        bold: (text: string) => text,
+      }),
+      green: (text: string) => text,
+      yellow: (text: string) => text,
+      blue: (text: string) => text,
+      gray: (text: string) => text,
+      cyan: (text: string) => text,
+      white: (text: string) => text,
+    })
+    return colorFn
+  }
+
   return {
     spawnSync: vi.fn(),
     exec: vi.fn(
@@ -45,6 +69,7 @@ const mocks = vi.hoisted(() => {
     pathExists: vi.fn(),
     formatSecurityReport: vi.fn().mockReturnValue('Formatted security report'),
     CommandExitError: MockCommandExitError,
+    createChalkMock,
   }
 })
 
@@ -58,6 +83,24 @@ vi.mock('@pcu/utils', () => ({
     debug: vi.fn(),
   },
   t: (key: string) => key,
+  // Include async utilities that are used by the code
+  timeout: vi.fn().mockImplementation((promise: Promise<unknown>) => promise),
+  delay: vi.fn().mockResolvedValue(undefined),
+  retry: vi.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
+  // Include validation utilities
+  createValidationResult: (isValid = true, errors: string[] = [], warnings: string[] = []) => ({
+    isValid,
+    errors,
+    warnings,
+  }),
+  // ERR-003: Include error handling utilities
+  getErrorCode: (error: unknown) => {
+    if (error instanceof Error && 'code' in error) {
+      return (error as NodeJS.ErrnoException).code
+    }
+    return undefined
+  },
+  toError: (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
 }))
 
 // Mock child_process
@@ -108,33 +151,9 @@ vi.mock('../../themes/colorTheme.js', () => ({
   },
 }))
 
-// Create a chainable chalk mock
-const createChalkMock = () => {
-  const createColorFn = (text: string) => text
-  const colorFn = Object.assign(createColorFn, {
-    bold: Object.assign((text: string) => text, {
-      cyan: (text: string) => text,
-      white: (text: string) => text,
-    }),
-    dim: Object.assign((text: string) => text, {
-      white: (text: string) => text,
-    }),
-    red: Object.assign((text: string) => text, {
-      bold: (text: string) => text,
-    }),
-    green: (text: string) => text,
-    yellow: (text: string) => text,
-    blue: (text: string) => text,
-    gray: (text: string) => text,
-    cyan: (text: string) => text,
-    white: (text: string) => text,
-  })
-  return colorFn
-}
-
-// Mock chalk
+// Mock chalk with chainable functions from hoisted mock
 vi.mock('chalk', () => ({
-  default: createChalkMock(),
+  default: mocks.createChalkMock(),
 }))
 
 // Import after mock setup

@@ -52,6 +52,7 @@ export interface AnalysisCacheStats {
  *
  * Uses Cache class internally via composition to avoid code duplication.
  * Adds analysis-specific functionality on top of the base cache.
+ * PERF-002: Removed duplicate entryTimestamps - base Cache already tracks timestamps.
  */
 export class AnalysisCache {
   // Internal Cache instance handles storage, TTL, disk persistence, cleanup
@@ -62,9 +63,6 @@ export class AnalysisCache {
     persistToDisk: boolean
     cacheDir?: string
   }
-
-  // Track additional statistics not provided by base cache
-  private entryTimestamps = new Map<string, number>()
 
   constructor(options: AnalysisCacheOptions = {}) {
     this.options = {
@@ -128,7 +126,6 @@ export class AnalysisCache {
     const contextHash = this.generateContextHash(context)
     if (entry.contextHash !== contextHash) {
       this.cache.delete(key)
-      this.entryTimestamps.delete(key)
       return undefined
     }
 
@@ -148,7 +145,6 @@ export class AnalysisCache {
     }
 
     this.cache.set(key, entry, entryTtl)
-    this.entryTimestamps.set(key, Date.now())
   }
 
   /**
@@ -160,19 +156,18 @@ export class AnalysisCache {
 
   /**
    * Invalidate cache for specific packages
+   * PERF-002: Uses base cache's keys() method instead of duplicate tracking
    */
   invalidateForPackages(packageNames: string[]): void {
     const packageSet = new Set(packageNames)
 
-    // We need to iterate through the timestamps map to find matching entries
-    // This is less efficient than before, but avoids code duplication
-    for (const key of this.entryTimestamps.keys()) {
+    // Use base cache's keys() method to iterate
+    for (const key of this.cache.keys()) {
       const entry = this.cache.get(key)
       if (entry) {
         const hasPackage = entry.result.recommendations.some((r) => packageSet.has(r.package))
         if (hasPackage) {
           this.cache.delete(key)
-          this.entryTimestamps.delete(key)
         }
       }
     }
@@ -183,15 +178,23 @@ export class AnalysisCache {
    */
   clear(): void {
     this.cache.clear()
-    this.entryTimestamps.clear()
   }
 
   /**
    * Get cache statistics
+   * PERF-002: Uses base cache's getEntryTimestamp() instead of duplicate tracking
    */
   getStats(): AnalysisCacheStats {
     const baseStats = this.cache.getStats()
-    const timestamps = Array.from(this.entryTimestamps.values())
+
+    // Collect timestamps from base cache entries
+    const timestamps: number[] = []
+    for (const key of this.cache.keys()) {
+      const timestamp = this.cache.getEntryTimestamp(key)
+      if (timestamp !== undefined) {
+        timestamps.push(timestamp)
+      }
+    }
 
     return {
       totalEntries: baseStats.totalEntries,

@@ -191,6 +191,7 @@ vi.mock('@pcu/utils', () => {
     parallelLimitWithRateLimit: mocks.parallelLimitWithRateLimit,
     timeout: mocks.timeout,
     isValidPackageName: mocks.isValidPackageName,
+    toError: vi.fn((e: unknown) => (e instanceof Error ? e : new Error(String(e)))),
   }
 })
 

@@ -193,10 +193,12 @@ export class CatalogCollection {
 
     for (const catalog of this.catalogs.values()) {
       for (const packageName of catalog.getPackageNames()) {
-        if (!packageCatalogMap.has(packageName)) {
-          packageCatalogMap.set(packageName, [])
+        const catalogNames = packageCatalogMap.get(packageName)
+        if (catalogNames) {
+          catalogNames.push(catalog.getName())
+        } else {
+          packageCatalogMap.set(packageName, [catalog.getName()])
         }
-        packageCatalogMap.get(packageName)!.push(catalog.getName())
       }
     }
 

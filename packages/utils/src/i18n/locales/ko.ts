@@ -139,6 +139,7 @@ export const ko: TranslationDictionary = {
   'command.update.generatingPreview': '미리보기 생성 중...',
   'command.update.previewComplete': '업데이트 미리보기 완료',
   'command.update.dryRunHint': '드라이런 - 변경 사항 없음',
+  'command.update.planSaved': '업데이트 계획이 {path}에 저장되었습니다',
   'command.update.processComplete': '업데이트 프로세스 완료!',
   'command.update.aiBatchFailed': 'AI 일괄 분석 실패, AI 인사이트 없이 계속:',
   'command.update.runningPnpmInstall': 'pnpm install을 실행하여 잠금 파일을 업데이트하는 중...',
@@ -178,6 +179,15 @@ export const ko: TranslationDictionary = {
   'command.rollback.deleteWarning': '경고: {{count}}개의 백업이 삭제됩니다',
   'command.rollback.confirmDelete': '모든 백업을 삭제하시겠습니까?',
   'command.rollback.deletedBackups': '{{count}}개의 백업을 삭제했습니다',
+  // Rollback verification
+  'command.rollback.verification.validYaml': '유효한 YAML 구조',
+  'command.rollback.verification.catalogsFound': '{{count}}개의 카탈로그를 찾았습니다',
+  'command.rollback.verification.catalogs': '카탈로그',
+  'command.rollback.verification.dependencies': '총 의존성: {{count}}',
+  'command.rollback.verification.warning': '롤백이 완료되었지만 경고가 있습니다',
+  'command.rollback.verification.invalidYaml': '유효하지 않은 YAML 구조',
+  'command.rollback.verification.noCatalogs': '카탈로그 구조를 찾을 수 없습니다',
+  'command.rollback.verification.skipped': 'Verification skipped',
 
   // Watch command
   'command.watch.starting': '감시 모드를 시작하는 중...',
@@ -395,10 +405,15 @@ export const ko: TranslationDictionary = {
   'cli.option.exclude': '패턴과 일치하는 패키지 제외',
   'cli.option.interactive': '업데이트 선택을 위한 대화형 모드',
   'cli.option.dryRun': '파일에 쓰지 않고 변경 사항 미리보기',
+  'cli.option.savePlan': '드라이런 계획을 파일에 저장 (JSON 또는 YAML)',
   'cli.option.force': '위험해도 강제 업데이트',
   'cli.option.createBackup': '업데이트 전 백업 파일 생성',
   'cli.option.noBackup': '업데이트 전 백업 생성 건너뛰기',
   'cli.option.ai': '모든 업데이트에 AI 일괄 분석 활성화',
+  'cli.option.aiStatus': 'AI 공급자 상태 표시 (기본값)',
+  'cli.option.aiTest': 'AI 공급자 연결 테스트',
+  'cli.option.aiCacheStats': 'AI 분석 캐시 통계 표시',
+  'cli.option.aiClearCache': 'AI 분석 캐시 지우기',
   'cli.option.provider': 'AI 공급자: auto, claude, gemini, codex',
   'cli.option.analysisType': 'AI 분석 유형: impact, security, compatibility, recommend',
   'cli.option.skipCache': 'AI 분석 캐시 건너뛰기',
@@ -983,4 +998,11 @@ export const ko: TranslationDictionary = {
   'interactive.rollback.action.listHint': '사용 가능한 모든 백업 표시',
   'interactive.rollback.action.latestHint': '가장 최근 백업 복원',
   'interactive.rollback.action.deleteAllHint': '모든 백업 파일 삭제',
+
+  // Update reason messages (DOC-001: i18n for update reasons)
+  'update.reason.security': '보안 업데이트 사용 가능',
+  'update.reason.major': '메이저 버전 업데이트 사용 가능',
+  'update.reason.minor': '마이너 버전 업데이트 사용 가능',
+  'update.reason.patch': '패치 버전 업데이트 사용 가능',
+  'update.reason.default': '업데이트 사용 가능',
 }

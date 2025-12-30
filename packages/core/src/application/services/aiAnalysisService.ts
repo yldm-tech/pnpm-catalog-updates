@@ -5,7 +5,7 @@
  * Handles provider selection, caching, fallback strategies, and result aggregation.
  */
 
-import { AIAnalysisError, logger } from '@pcu/utils'
+import { AIAnalysisError, getErrorMessage, logger } from '@pcu/utils'
 import type {
   AIConfig,
   AIProvider,
@@ -289,7 +289,7 @@ export class AIAnalysisService {
         // Log the error and fallback to rule engine
         logger.warn('AI provider analysis failed, falling back to rule engine', {
           provider: provider.name,
-          error: (error as Error).message,
+          error: getErrorMessage(error),
           packages: packages.length,
         })
         if (this.config.fallback.enabled && this.config.fallback.useRuleEngine) {
@@ -701,12 +701,13 @@ export class AIAnalysisService {
    * Merge results from multiple chunks
    */
   private mergeChunkResults(results: AnalysisResult[], totalPackages: number): AnalysisResult {
-    if (results.length === 0) {
+    const firstResult = results[0]
+    if (!firstResult) {
       throw new AIAnalysisError('merge', 'No chunk results to merge')
     }
 
     if (results.length === 1) {
-      return results[0]!
+      return firstResult
     }
 
     // Collect all recommendations
@@ -731,7 +732,7 @@ export class AIAnalysisService {
 
     return {
       provider: providerList,
-      analysisType: results[0]!.analysisType,
+      analysisType: firstResult.analysisType,
       recommendations: allRecommendations,
       summary: `Chunked analysis completed: ${totalPackages} packages analyzed in ${results.length} chunks`,
       confidence: avgConfidence,
@@ -828,7 +829,7 @@ export class AIAnalysisService {
     } catch (error) {
       // Log error but don't fail the analysis - security data is supplementary
       logger.warn('Failed to fetch security data, continuing without it', {
-        error: (error as Error).message,
+        error: getErrorMessage(error),
         packages: packages.length,
       })
     }

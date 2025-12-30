@@ -135,6 +135,7 @@ export const en: TranslationDictionary = {
   'command.update.generatingPreview': 'Generating preview...',
   'command.update.previewComplete': 'Update preview complete',
   'command.update.dryRunHint': 'Dry run - no changes made',
+  'command.update.planSaved': 'Update plan saved to {path}',
   'command.update.processComplete': 'Update process completed!',
   'command.update.aiBatchFailed': 'AI batch analysis failed, continuing without AI insights:',
   'command.update.runningPnpmInstall': 'Running pnpm install to update lock file...',
@@ -174,6 +175,15 @@ export const en: TranslationDictionary = {
   'command.rollback.deleteWarning': 'Warning: This will delete {{count}} backup(s)',
   'command.rollback.confirmDelete': 'Are you sure you want to delete all backups?',
   'command.rollback.deletedBackups': 'Deleted {{count}} backup(s)',
+  // Rollback verification
+  'command.rollback.verification.validYaml': 'Valid YAML structure',
+  'command.rollback.verification.catalogsFound': 'Found {{count}} catalog(s)',
+  'command.rollback.verification.catalogs': 'Catalogs',
+  'command.rollback.verification.dependencies': 'Total dependencies: {{count}}',
+  'command.rollback.verification.warning': 'Rollback completed with warnings',
+  'command.rollback.verification.invalidYaml': 'Invalid YAML structure',
+  'command.rollback.verification.noCatalogs': 'No catalog structure found',
+  'command.rollback.verification.skipped': 'Verification skipped',
 
   // Watch command
   'command.watch.starting': 'Starting watch mode...',
@@ -390,10 +400,15 @@ export const en: TranslationDictionary = {
   'cli.option.exclude': 'exclude packages matching pattern',
   'cli.option.interactive': 'interactive mode to choose updates',
   'cli.option.dryRun': 'preview changes without writing files',
+  'cli.option.savePlan': 'save dry-run plan to file (JSON or YAML)',
   'cli.option.force': 'force updates even if risky',
   'cli.option.createBackup': 'create backup files before updating (default)',
   'cli.option.noBackup': 'skip creating backup before updating',
   'cli.option.ai': 'enable AI-powered batch analysis for all updates',
+  'cli.option.aiStatus': 'show AI provider status (default)',
+  'cli.option.aiTest': 'test AI provider connectivity',
+  'cli.option.aiCacheStats': 'show AI analysis cache statistics',
+  'cli.option.aiClearCache': 'clear AI analysis cache',
   'cli.option.provider': 'AI provider: auto, claude, gemini, codex',
   'cli.option.analysisType': 'AI analysis type: impact, security, compatibility, recommend',
   'cli.option.skipCache': 'skip AI analysis cache',
@@ -975,4 +990,11 @@ export const en: TranslationDictionary = {
   'interactive.rollback.action.listHint': 'Show all available backups',
   'interactive.rollback.action.latestHint': 'Restore most recent backup',
   'interactive.rollback.action.deleteAllHint': 'Remove all backup files',
+
+  // Update reason messages (DOC-001: i18n for update reasons)
+  'update.reason.security': 'Security update available',
+  'update.reason.major': 'Major version update available',
+  'update.reason.minor': 'Minor version update available',
+  'update.reason.patch': 'Patch version update available',
+  'update.reason.default': 'Update available',
 }

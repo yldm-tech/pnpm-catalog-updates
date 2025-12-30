@@ -7,6 +7,12 @@
 
 import { CatalogNotFoundError, ValidationResultClass } from '@pcu/utils'
 import type { CatalogCollection } from '../value-objects/catalogCollection.js'
+
+/**
+ * Re-export ValidationResultClass as ValidationResult for backward compatibility
+ */
+export { ValidationResultClass as ValidationResult }
+
 import type { PackageCollection } from '../value-objects/packageCollection.js'
 import type { WorkspaceConfig } from '../value-objects/workspaceConfig.js'
 import type { WorkspaceId } from '../value-objects/workspaceId.js'

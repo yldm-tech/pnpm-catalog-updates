@@ -184,6 +184,12 @@ export class Version {
 export class VersionRange {
   private readonly value: string
 
+  /**
+   * PERF-004: Pre-compiled regex for detecting version range characters.
+   * Single regex test is more efficient than 6 separate .includes() calls.
+   */
+  private static readonly RANGE_CHARS_REGEX = /[\^~><*x]/
+
   private constructor(value: string) {
     this.value = value
   }
@@ -286,16 +292,10 @@ export class VersionRange {
 
   /**
    * Check if this is an exact version
+   * PERF-004: Use single regex test instead of 6 separate .includes() calls
    */
   public isExact(): boolean {
-    return (
-      !this.value.includes('^') &&
-      !this.value.includes('~') &&
-      !this.value.includes('>') &&
-      !this.value.includes('<') &&
-      !this.value.includes('*') &&
-      !this.value.includes('x')
-    )
+    return !VersionRange.RANGE_CHARS_REGEX.test(this.value)
   }
 
   /**

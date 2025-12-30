@@ -129,6 +129,7 @@ export type TranslationKey =
   | 'command.update.generatingPreview'
   | 'command.update.previewComplete'
   | 'command.update.dryRunHint'
+  | 'command.update.planSaved'
   | 'command.update.processComplete'
   | 'command.update.aiBatchFailed'
   | 'command.update.runningPnpmInstall'
@@ -166,6 +167,15 @@ export type TranslationKey =
   | 'command.rollback.deleteWarning'
   | 'command.rollback.confirmDelete'
   | 'command.rollback.deletedBackups'
+  // Rollback verification
+  | 'command.rollback.verification.validYaml'
+  | 'command.rollback.verification.catalogsFound'
+  | 'command.rollback.verification.catalogs'
+  | 'command.rollback.verification.dependencies'
+  | 'command.rollback.verification.warning'
+  | 'command.rollback.verification.invalidYaml'
+  | 'command.rollback.verification.noCatalogs'
+  | 'command.rollback.verification.skipped'
   // Watch command
   | 'command.watch.starting'
   | 'command.watch.watching'
@@ -365,10 +375,15 @@ export type TranslationKey =
   | 'cli.option.exclude'
   | 'cli.option.interactive'
   | 'cli.option.dryRun'
+  | 'cli.option.savePlan'
   | 'cli.option.force'
   | 'cli.option.createBackup'
   | 'cli.option.noBackup'
   | 'cli.option.ai'
+  | 'cli.option.aiStatus'
+  | 'cli.option.aiTest'
+  | 'cli.option.aiCacheStats'
+  | 'cli.option.aiClearCache'
   | 'cli.option.provider'
   | 'cli.option.analysisType'
   | 'cli.option.skipCache'
@@ -889,6 +904,12 @@ export type TranslationKey =
   | 'interactive.choice.target.minorHint'
   | 'interactive.choice.target.patchHint'
   | 'interactive.choice.target.newestHint'
+  // Update reason messages (DOC-001: i18n for update reasons)
+  | 'update.reason.security'
+  | 'update.reason.major'
+  | 'update.reason.minor'
+  | 'update.reason.patch'
+  | 'update.reason.default'
 
 /**
  * Parameters for translation interpolation

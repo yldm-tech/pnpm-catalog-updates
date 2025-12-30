@@ -226,20 +226,6 @@ catalog:
     })
   })
 
-  describe('cache command', () => {
-    it('should display cache stats', async () => {
-      const result = await runCli(['cache', '--stats'])
-
-      expect(result.exitCode).toBe(0)
-    })
-
-    it('should clear cache', async () => {
-      const result = await runCli(['cache', '--clear'])
-
-      expect(result.exitCode).toBe(0)
-    })
-  })
-
   describe('theme command', () => {
     it('should list available themes', async () => {
       const result = await runCli(['theme', '--list'])

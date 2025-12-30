@@ -7,8 +7,9 @@
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { CommandExitError, logger, type PackageFilterConfig, t } from '@pcu/utils'
+import { CommandExitError, type PackageFilterConfig, t } from '@pcu/utils'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
+import { handleCommandError } from '../utils/commandHelpers.js'
 import { errorsOnly, validateInitOptions } from '../validators/index.js'
 
 export interface InitCommandOptions {
@@ -123,14 +124,13 @@ export class InitCommand {
         throw error
       }
 
-      logger.error('Init command failed', error instanceof Error ? error : undefined, { options })
-      console.error(StyledText.iconError(t('command.init.errorInitializing')))
-      console.error(StyledText.error(String(error)))
-
-      if (options.verbose && error instanceof Error) {
-        console.error(StyledText.muted(t('common.stackTrace')))
-        console.error(StyledText.muted(error.stack || t('common.noStackTrace')))
-      }
+      // QUAL-007: Use unified error handling
+      handleCommandError(error, {
+        verbose: options.verbose,
+        errorMessage: 'Init command failed',
+        context: { options },
+        errorDisplayKey: 'command.init.errorInitializing',
+      })
 
       throw CommandExitError.failure('Init command failed')
     }

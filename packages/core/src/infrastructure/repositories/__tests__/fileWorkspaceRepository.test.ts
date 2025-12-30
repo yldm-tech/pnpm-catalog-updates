@@ -4,6 +4,29 @@
 
 import { FileSystemError } from '@pcu/utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// ERR-003: Mock @pcu/utils with getErrorCode for type-safe error code extraction
+vi.mock('@pcu/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@pcu/utils')>()
+  return {
+    ...actual,
+    // Provide getErrorCode implementation for tests
+    getErrorCode: (error: unknown): string | undefined => {
+      if (error instanceof Error && 'code' in error) {
+        return (error as NodeJS.ErrnoException).code
+      }
+      return undefined
+    },
+    // Keep logger as mock to avoid console output during tests
+    logger: {
+      error: vi.fn(),
+      warn: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+    },
+  }
+})
+
 import { Workspace } from '../../../domain/entities/workspace.js'
 import { CatalogCollection } from '../../../domain/value-objects/catalogCollection.js'
 import { PackageCollection } from '../../../domain/value-objects/packageCollection.js'

@@ -22,9 +22,7 @@ PCU proporciona varios comandos principales con nombres completos y atajos conve
 | `pcu workspace`  | `pcu w`, `pcu -s`, `pcu --workspace-info` | Mostrar información y validación del workspace          |
 | `pcu theme`      | `pcu t`, `pcu -t`, `pcu --theme`          | Configurar temas de color y configuraciones UI          |
 | `pcu security`   | `pcu sec`                                 | Escaneo y correcciones de vulnerabilidades de seguridad |
-| `pcu cache`      | -                                         | Gestión de caché (estadísticas y limpieza)              |
 | `pcu rollback`   | -                                         | Revertir actualizaciones de catálogo a un estado anterior |
-| `pcu watch`      | -                                         | Vigilar cambios y verificar actualizaciones automáticamente |
 | `pcu help`       | `pcu h`, `pcu -h`                         | Mostrar información de ayuda                            |
 
 ### Atajos Especiales
@@ -70,9 +68,7 @@ El modo híbrido está disponible para los siguientes comandos:
 | `security`   | Formato, severidad, auto-fix                        |
 | `init`       | Plantilla, opciones de framework, asistente interactivo |
 | `ai`         | Estado de proveedor, prueba, operaciones de caché   |
-| `cache`      | Selección de estadísticas/limpiar                   |
 | `rollback`   | Selección de versión, formato                       |
-| `watch`      | Intervalo, formato, opciones de notificación        |
 
 ### Beneficios
 
@@ -1163,198 +1159,6 @@ pcu rollback --delete-all --verbose
 ```
 
 Elimina todos los archivos de backup con prompt de confirmación y salida detallada.
-
----
-
-## `pcu watch` - Modo de Observación
-
-Observar cambios en `pnpm-workspace.yaml` y verificar automáticamente dependencias desactualizadas cuando se detectan modificaciones.
-
-<CodeGroup>
-
-```bash {{ title: 'Observación Básica' }}
-pcu watch
-```
-
-```bash {{ title: 'Observación Avanzada' }}
-pcu watch --debounce 1000 --clear
-pcu watch --catalog default --target minor
-pcu watch --include "react*" --exclude "*-dev"
-```
-
-</CodeGroup>
-
-### Opciones
-
-<Properties>
-  <Property name="--catalog" type="string">
-    Verificar solo un catálogo específico
-  </Property>
-  <Property name="-f, --format" type="enum" default="table">
-    Formato de salida: table, json, markdown
-  </Property>
-  <Property name="-t, --target" type="enum" default="latest">
-    Objetivo de actualización: latest, minor, patch
-  </Property>
-  <Property name="--prerelease" type="boolean">
-    Incluir versiones prerelease
-  </Property>
-  <Property name="--include" type="string">
-    Incluir paquetes que coincidan con el patrón
-  </Property>
-  <Property name="--exclude" type="string">
-    Excluir paquetes que coincidan con el patrón
-  </Property>
-  <Property name="--debounce" type="number" default="300">
-    Retraso de debounce en milisegundos antes de verificar
-  </Property>
-  <Property name="--clear" type="boolean">
-    Limpiar consola antes de cada verificación
-  </Property>
-  <Property name="-w, --workspace" type="string">
-    Ruta del directorio del workspace (predeterminado: directorio actual)
-  </Property>
-  <Property name="-v, --verbose" type="boolean">
-    Mostrar información detallada
-  </Property>
-</Properties>
-
-### Comportamiento de Observación
-
-El comando watch proporciona monitoreo continuo con características inteligentes:
-
-- **Verificación Inicial**: Ejecuta una verificación inmediatamente cuando inicia la observación
-- **Debouncing**: Previene re-verificaciones rápidas cuando los archivos cambian rápidamente
-- **Apagado Elegante**: Presione `Ctrl+C` para detener la observación limpiamente
-- **Actualizaciones en Tiempo Real**: Muestra conteos de paquetes desactualizados a medida que se detectan
-
-### Ejemplos de Uso
-
-#### Modo de Observación Básico
-
-```bash
-pcu watch
-```
-
-Observa el `pnpm-workspace.yaml` del directorio actual para cambios.
-
-#### Observar con Limpieza de Consola
-
-```bash
-pcu watch --clear
-```
-
-Limpia la consola antes de cada verificación para una salida más limpia.
-
-#### Observar con Debounce Personalizado
-
-```bash
-pcu watch --debounce 1000
-```
-
-Espera 1 segundo después de cambios en archivos antes de ejecutar verificaciones.
-
-#### Observar Catálogo Específico
-
-```bash
-pcu watch --catalog default --target minor
-```
-
-Observa cambios y solo verifica el catálogo default para actualizaciones minor.
-
-#### Observar con Filtros
-
-```bash
-pcu watch --include "react*,@types/*" --exclude "*-dev"
-```
-
-Observa y filtra resultados a patrones de paquetes específicos.
-
-### Consejos de Integración
-
-El modo de observación es ideal para:
-
-- **Flujos de Desarrollo**: Mantener las actualizaciones de dependencias visibles durante el desarrollo activo
-- **Monitoreo CI/CD**: Monitorear actualizaciones en entornos de desarrollo de larga duración
-- **Notificaciones de Equipo**: Combinar con herramientas de notificación para alertar sobre actualizaciones
-
----
-
-## `pcu cache` - Gestión de Caché
-
-Gestionar el caché de PCU para respuestas del registro NPM, datos del workspace y resultados de análisis AI.
-
-<CodeGroup>
-
-```bash {{ title: 'Mostrar Estadísticas' }}
-pcu cache
-pcu cache --stats
-pcu cache --stats --verbose
-```
-
-```bash {{ title: 'Limpiar Caché' }}
-pcu cache --clear
-pcu cache --clear --verbose
-```
-
-</CodeGroup>
-
-### Opciones
-
-<Properties>
-  <Property name="--stats" type="boolean">
-    Mostrar estadísticas de caché (comportamiento predeterminado)
-  </Property>
-  <Property name="--clear" type="boolean">
-    Limpiar todas las entradas de caché
-  </Property>
-  <Property name="-v, --verbose" type="boolean">
-    Mostrar información detallada incluyendo descripciones y contadores de aciertos/fallos
-  </Property>
-  <Property name="--no-color" type="boolean">
-    Deshabilitar salida a color
-  </Property>
-</Properties>
-
-### Tipos de Caché
-
-PCU gestiona tres cachés separados:
-
-#### Caché de Registro
-
-- **Propósito**: Almacena respuestas de la API del registro NPM
-- **Beneficios**: Reduce solicitudes de red, consultas de versión más rápidas
-- **TTL**: 1 hora (configurable)
-
-#### Caché de Workspace
-
-- **Propósito**: Almacena datos del sistema de archivos del workspace
-- **Beneficios**: Análisis de workspace más rápido en ejecuciones repetidas
-- **TTL**: 5 minutos (configurable)
-
-#### Caché de Análisis AI
-
-- **Propósito**: Almacena resultados de análisis impulsados por AI
-- **Beneficios**: Evita llamadas redundantes a APIs de AI, resultados consistentes
-- **TTL**: 24 horas (configurable)
-
-### Ejemplos de Uso
-
-#### Mostrar Estadísticas de Caché
-
-```bash
-pcu cache
-```
-
-Muestra estadísticas resumidas de todos los cachés.
-
-#### Limpiar Todos los Cachés
-
-```bash
-pcu cache --clear
-```
-
-Limpia todas las entradas de caché. Útil cuando experimentas problemas con datos obsoletos.
 
 ---
 

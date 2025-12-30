@@ -10,6 +10,7 @@ const backupServiceMocks = vi.hoisted(() => ({
   listBackups: vi.fn(),
   restoreFromBackup: vi.fn(),
   deleteAllBackups: vi.fn(),
+  verifyRestoredFile: vi.fn(),
 }))
 
 vi.mock('@pcu/core', () => {
@@ -18,6 +19,7 @@ vi.mock('@pcu/core', () => {
       listBackups = backupServiceMocks.listBackups
       restoreFromBackup = backupServiceMocks.restoreFromBackup
       deleteAllBackups = backupServiceMocks.deleteAllBackups
+      verifyRestoredFile = backupServiceMocks.verifyRestoredFile
     },
   }
 })
@@ -66,7 +68,18 @@ vi.mock('../../themes/colorTheme.js', () => ({
     iconWarning: (text: string) => `[warning]${text}`,
     iconSuccess: (text: string) => `[success]${text}`,
     iconError: (text: string) => `[error]${text}`,
+    error: (text: string) => `[error]${text}`,
+    muted: (text: string) => `[muted]${text}`,
   },
+}))
+
+// Mock commandHelpers
+vi.mock('../../utils/commandHelpers.js', () => ({
+  handleCommandError: vi.fn((error: unknown, _options?: unknown) => {
+    console.error(`[error]error.unknown`)
+    console.error(`[error]${String(error)}`)
+    return false
+  }),
 }))
 
 const { RollbackCommand } = await import('../rollbackCommand.js')
@@ -102,6 +115,15 @@ describe('RollbackCommand', () => {
     command = new RollbackCommand()
     consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    // Setup default mock for verifyRestoredFile
+    backupServiceMocks.verifyRestoredFile.mockResolvedValue({
+      success: true,
+      isValidYaml: true,
+      hasCatalogStructure: true,
+      catalogs: ['default'],
+      dependencyCount: 5,
+    })
   })
 
   afterEach(() => {

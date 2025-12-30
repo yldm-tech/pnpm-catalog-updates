@@ -5,7 +5,7 @@
  * Categorizes errors and provides helpful suggestions where possible.
  */
 
-import { readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Logger } from '../logger/logger.js'
@@ -39,30 +39,59 @@ function matchesErrorPattern(message: string, patterns: readonly string[]): bool
   return patterns.some((pattern) => lowerMessage.includes(pattern.toLowerCase()))
 }
 
-// Lazy load package suggestions to optimize startup
+// PERF-001: Lazy load package suggestions with async preloading to avoid blocking I/O
 let _packageSuggestions: Map<string, string[]> | null = null
+let _preloadPromise: Promise<void> | null = null
 
+/**
+ * PERF-001: Async preload package suggestions to avoid blocking I/O during error handling.
+ * Call this during CLI startup to load suggestions in the background.
+ * This is fire-and-forget - if it fails, getPackageSuggestions() returns empty map.
+ */
+export async function preloadPackageSuggestions(): Promise<void> {
+  if (_packageSuggestions !== null) {
+    return // Already loaded
+  }
+
+  if (_preloadPromise !== null) {
+    return _preloadPromise // Loading in progress
+  }
+
+  _preloadPromise = (async () => {
+    try {
+      const __filename = fileURLToPath(import.meta.url)
+      const __dirname = dirname(__filename)
+      const dataPath = join(__dirname, 'data', 'packageSuggestions.json')
+      const content = await readFile(dataPath, 'utf-8')
+      const data = JSON.parse(content) as Record<string, string[]>
+      _packageSuggestions = new Map(Object.entries(data))
+    } catch (error) {
+      // ERR-001: Log at warn level for better visibility of configuration issues
+      const logger = Logger.getLogger('ErrorHandler')
+      logger.warn('Failed to load package suggestions file', {
+        error: error instanceof Error ? error.message : String(error),
+        hint: 'Package name suggestions will be unavailable',
+      })
+      _packageSuggestions = new Map()
+    }
+  })()
+
+  return _preloadPromise
+}
+
+/**
+ * Get package suggestions synchronously.
+ * Returns preloaded data if available, otherwise returns empty map.
+ * Call preloadPackageSuggestions() during startup for best experience.
+ */
 function getPackageSuggestions(): Map<string, string[]> {
   if (_packageSuggestions !== null) {
     return _packageSuggestions
   }
 
-  try {
-    const __filename = fileURLToPath(import.meta.url)
-    const __dirname = dirname(__filename)
-    const dataPath = join(__dirname, 'data', 'packageSuggestions.json')
-    const data = JSON.parse(readFileSync(dataPath, 'utf-8')) as Record<string, string[]>
-    _packageSuggestions = new Map(Object.entries(data))
-  } catch (error) {
-    // Log the error for debugging instead of silently ignoring
-    const logger = Logger.getLogger('ErrorHandler')
-    logger.debug('Failed to load package suggestions', {
-      error: error instanceof Error ? error.message : String(error),
-    })
-    _packageSuggestions = new Map()
-  }
-
-  return _packageSuggestions
+  // If not preloaded, return empty map instead of blocking
+  // The preload should be called during CLI startup
+  return new Map()
 }
 
 export class UserFriendlyErrorHandler {

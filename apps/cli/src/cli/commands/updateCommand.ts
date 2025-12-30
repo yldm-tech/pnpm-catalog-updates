@@ -14,7 +14,7 @@ import type {
   UpdateTarget,
   WorkspaceService,
 } from '@pcu/core'
-import { logger, type PackageFilterConfig, t } from '@pcu/utils'
+import { type PackageFilterConfig, t } from '@pcu/utils'
 import type { OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { ProgressBar } from '../formatters/progressBar.js'
 import { AIAnalysisHandler, ChangelogHandler, InstallHandler } from '../handlers/index.js'
@@ -25,6 +25,7 @@ import {
   createFormatter,
   getEffectivePatterns,
   getEffectiveTarget,
+  handleCommandError,
   initializeTheme,
   loadConfiguration,
   mergeWithConfig,
@@ -177,37 +178,26 @@ export class UpdateCommand {
 
   /**
    * Handle errors during execute()
+   * QUAL-007: Uses unified error handling from commandHelpers
    */
   private handleExecuteError(
     error: unknown,
     progressBar: ProgressBar,
     options: UpdateCommandOptions
   ): never | undefined {
-    // Handle user cancellation gracefully (Ctrl+C)
-    if (this.isUserCancellation(error)) {
-      progressBar.stop()
-      cliOutput.print(StyledText.iconWarning(t('command.update.cancelled')))
+    // Use unified error handling - returns true if user cancellation was handled
+    const wasCancelled = handleCommandError(error, {
+      verbose: options.verbose,
+      progressBar,
+      errorMessage: 'Update command failed',
+      context: { options },
+    })
+
+    if (wasCancelled) {
       return
     }
 
-    // Log and display error
-    logger.error('Update command failed', error instanceof Error ? error : undefined, { options })
-    progressBar.fail(t('progress.operationFailed'))
-
-    const errorMessage = error instanceof Error ? error.message : t('error.unknown')
-    cliOutput.error(StyledText.iconError(`${t('cli.error')} ${errorMessage}`))
-
     throw error
-  }
-
-  /**
-   * Check if error is a user cancellation
-   */
-  private isUserCancellation(error: unknown): boolean {
-    return (
-      error instanceof Error &&
-      (error.name === 'ExitPromptError' || error.message.includes('force closed'))
-    )
   }
 
   /**

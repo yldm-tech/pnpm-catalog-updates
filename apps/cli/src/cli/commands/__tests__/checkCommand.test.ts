@@ -63,6 +63,16 @@ vi.mock('@pcu/utils', () => ({
     }
     return key
   },
+  // Include async utilities that are used by the code
+  timeout: vi.fn().mockImplementation((promise: Promise<unknown>) => promise),
+  delay: vi.fn().mockResolvedValue(undefined),
+  retry: vi.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
+  // Include validation utilities
+  createValidationResult: (isValid = true, errors: string[] = [], warnings: string[] = []) => ({
+    isValid,
+    errors,
+    warnings,
+  }),
 }))
 
 // Mock OutputFormatter - needs to be a proper class constructor

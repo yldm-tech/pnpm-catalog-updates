@@ -94,13 +94,18 @@ export class CheckCommand {
       // Otherwise exit with 0 since this is just a check command
       throw CommandExitError.success()
     } catch (error) {
-      // Re-throw CommandExitError as-is
+      // Re-throw CommandExitError as-is (success or controlled exit)
       if (error instanceof CommandExitError) {
         throw error
       }
 
-      handleCommandError(error, 'Check dependencies failed', options, { options })
-      console.error(StyledText.iconError(t('command.check.errorChecking')))
+      // QUAL-007: Use unified error handling
+      handleCommandError(error, {
+        verbose: options.verbose,
+        errorMessage: 'Check dependencies failed',
+        context: { options },
+        errorDisplayKey: 'command.check.errorChecking',
+      })
       throw CommandExitError.failure('Check command failed')
     }
   }

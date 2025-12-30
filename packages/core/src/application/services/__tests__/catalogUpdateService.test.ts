@@ -115,6 +115,10 @@ vi.mock('@pcu/utils', () => {
     getConfig: vi.fn(() => ({ getConfig: vi.fn(() => ({ logLevel: 'info' })) })),
     ConfigManager: vi.fn(),
     parallelLimit: mocks.parallelLimit,
+    toError: vi.fn((e: unknown) => (e instanceof Error ? e : new Error(String(e)))),
+    timeout: vi.fn(async <T>(promise: Promise<T>, _ms: number, _message?: string): Promise<T> => {
+      return promise
+    }),
   }
 })
 

@@ -41,9 +41,23 @@ const mockUtils = vi.hoisted(() => {
     }
   }
 
+  // Mock FileSizeExceededError class
+  class MockFileSizeExceededError extends Error {
+    constructor(filePath: string, actualSize: number, maxSize: number, cause?: Error) {
+      const actualSizeMB = (actualSize / 1024 / 1024).toFixed(2)
+      const maxSizeMB = (maxSize / 1024 / 1024).toFixed(2)
+      super(
+        `File "${filePath}" exceeds maximum allowed size (${actualSizeMB}MB > ${maxSizeMB}MB)`,
+        { cause }
+      )
+      this.name = 'FileSizeExceededError'
+    }
+  }
+
   return {
     logger: mockLogger,
     FileSystemError: MockFileSystemError,
+    FileSizeExceededError: MockFileSizeExceededError,
   }
 })
 
@@ -51,6 +65,7 @@ const mockUtils = vi.hoisted(() => {
 vi.mock('@pcu/utils', () => ({
   logger: mockUtils.logger,
   FileSystemError: mockUtils.FileSystemError,
+  FileSizeExceededError: mockUtils.FileSizeExceededError,
 }))
 
 // Mock fs/promises with default export
@@ -196,6 +211,7 @@ describe('FileSystemService', () => {
 
   describe('readJsonFile', () => {
     it('should read and parse JSON file', async () => {
+      mocks.stat.mockResolvedValue({ size: 100 })
       mocks.readFile.mockResolvedValue('{"name": "test", "version": "1.0.0"}')
 
       const result = await service.readJsonFile('/path/to/package.json')
@@ -242,6 +258,7 @@ describe('FileSystemService', () => {
 
   describe('readYamlFile', () => {
     it('should read and parse YAML file', async () => {
+      mocks.stat.mockResolvedValue({ size: 100 })
       mocks.readFile.mockResolvedValue('packages:\n  - "packages/*"')
       mocks.yamlParse.mockReturnValue({ packages: ['packages/*'] })
 
@@ -324,6 +341,7 @@ catalog:
   describe('readPnpmWorkspaceConfig', () => {
     it('should read workspace config', async () => {
       mocks.access.mockResolvedValue(undefined)
+      mocks.stat.mockResolvedValue({ size: 100 })
       mocks.readFile.mockResolvedValue('packages:\n  - "packages/*"')
       mocks.yamlParse.mockReturnValue({ packages: ['packages/*'] })
 
@@ -360,6 +378,7 @@ catalog:
   describe('readPackageJson', () => {
     it('should read package.json', async () => {
       mocks.access.mockResolvedValue(undefined)
+      mocks.stat.mockResolvedValue({ size: 100 })
       mocks.readFile.mockResolvedValue('{"name": "test", "version": "1.0.0"}')
 
       const packagePath = WorkspacePath.fromString('/package')

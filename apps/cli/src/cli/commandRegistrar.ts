@@ -25,8 +25,8 @@ import {
 } from '@pcu/utils'
 import chalk from 'chalk'
 import { type Command, Option } from 'commander'
+import { AiCommand } from './commands/aiCommand.js'
 import { AnalyzeCommand } from './commands/analyzeCommand.js'
-import { CacheCommand } from './commands/cacheCommand.js'
 import { CheckCommand } from './commands/checkCommand.js'
 import { GraphCommand } from './commands/graphCommand.js'
 import { InitCommand } from './commands/initCommand.js'
@@ -34,7 +34,6 @@ import { RollbackCommand } from './commands/rollbackCommand.js'
 import { SecurityCommand } from './commands/securityCommand.js'
 import { ThemeCommand } from './commands/themeCommand.js'
 import { UpdateCommand } from './commands/updateCommand.js'
-import { WatchCommand } from './commands/watchCommand.js'
 import { WorkspaceCommand } from './commands/workspaceCommand.js'
 import { CLI_CHOICES } from './constants/cliChoices.js'
 import { type OutputFormat, OutputFormatter } from './formatters/outputFormatter.js'
@@ -629,32 +628,6 @@ ${t('cli.help.tipLabel')} ${t('cli.help.tipContent', { locale: I18n.getLocale() 
       )
     )
 
-  // Cache command
-  program
-    .command('cache')
-    .description(t('cli.description.cache'))
-    .option('--stats', t('cli.option.stats'))
-    .option('--clear', t('cli.option.clear'))
-    .action(
-      createCommandAction(
-        serviceFactory,
-        {
-          name: 'cache',
-          needsServices: false,
-          interactiveCollector: (opts) => interactiveOptionsCollector.collectCacheOptions(opts),
-        },
-        async ({ options, globalOptions }) => {
-          const cacheCommand = new CacheCommand()
-          await cacheCommand.execute({
-            stats: options.stats,
-            clear: options.clear,
-            verbose: globalOptions.verbose,
-            color: !globalOptions.noColor,
-          })
-        }
-      )
-    )
-
   // Rollback command
   program
     .command('rollback')
@@ -679,55 +652,6 @@ ${t('cli.help.tipLabel')} ${t('cli.help.tipContent', { locale: I18n.getLocale() 
             deleteAll: options.deleteAll,
             verbose: globalOptions.verbose,
             color: !globalOptions.noColor,
-          })
-        }
-      )
-    )
-
-  // Watch command
-  program
-    .command('watch')
-    .description(t('cli.description.watch'))
-    .option('--catalog <name>', t('cli.option.catalog'))
-    .addOption(
-      new Option('-f, --format <type>', t('cli.option.format'))
-        .choices(CLI_CHOICES.format)
-        .default('table')
-    )
-    .addOption(
-      new Option('-t, --target <type>', t('cli.option.target'))
-        .choices(CLI_CHOICES.target)
-        .default('latest')
-    )
-    .option('--prerelease', t('cli.option.prerelease'))
-    .option('--include <pattern...>', t('cli.option.include'))
-    .option('--exclude <pattern...>', t('cli.option.exclude'))
-    .option('--debounce <ms>', t('cli.option.debounce'), '300')
-    .option('--clear', t('cli.option.clearConsole'))
-    .action(
-      createCommandAction(
-        serviceFactory,
-        {
-          name: 'watch',
-          interactiveCollector: (opts) => interactiveOptionsCollector.collectWatchOptions(opts),
-        },
-        async ({ options, globalOptions, services }) => {
-          const watchCommand = new WatchCommand(services.catalogUpdateService)
-          await watchCommand.execute({
-            workspace: globalOptions.workspace,
-            catalog: options.catalog,
-            format: options.format,
-            target: options.target,
-            prerelease: options.prerelease,
-            include: options.include ?? [],
-            exclude: options.exclude ?? [],
-            verbose: globalOptions.verbose,
-            color: !globalOptions.noColor,
-            debounce:
-              typeof options.debounce === 'number'
-                ? options.debounce
-                : parseInt(options.debounce, 10),
-            clear: options.clear,
           })
         }
       )
@@ -763,6 +687,33 @@ ${t('cli.help.tipLabel')} ${t('cli.help.tipContent', { locale: I18n.getLocale() 
             catalog: options.catalog,
             verbose: globalOptions.verbose,
             color: !globalOptions.noColor,
+          })
+        }
+      )
+    )
+
+  // AI command - check AI provider status
+  program
+    .command('ai')
+    .description(t('cli.description.ai'))
+    .option('--status', t('cli.option.aiStatus'), true)
+    .option('--test', t('cli.option.aiTest'))
+    .option('--cache-stats', t('cli.option.aiCacheStats'))
+    .option('--clear-cache', t('cli.option.aiClearCache'))
+    .action(
+      createCommandAction(
+        serviceFactory,
+        {
+          name: 'ai',
+          needsServices: false,
+        },
+        async ({ options }) => {
+          const aiCommand = new AiCommand()
+          await aiCommand.execute({
+            status: options.status,
+            test: options.test,
+            cacheStats: options.cacheStats,
+            clearCache: options.clearCache,
           })
         }
       )

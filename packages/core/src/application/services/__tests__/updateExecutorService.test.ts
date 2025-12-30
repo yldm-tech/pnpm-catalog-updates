@@ -28,6 +28,20 @@ vi.mock('@pcu/utils', () => ({
     handleSecurityCheckFailure: vi.fn(),
   },
   logger: loggerMocks,
+  toError: (e: unknown) => (e instanceof Error ? e : new Error(String(e))),
+  parallelLimit: vi.fn(
+    async <T, R>(
+      items: T[],
+      callback: (item: T) => Promise<R>,
+      _concurrency?: number
+    ): Promise<R[]> => {
+      const results: R[] = []
+      for (const item of items) {
+        results.push(await callback(item))
+      }
+      return results
+    }
+  ),
 }))
 
 // Mock WorkspacePath

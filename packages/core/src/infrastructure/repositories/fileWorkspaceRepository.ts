@@ -7,7 +7,7 @@
 
 import path from 'node:path'
 
-import { FileSystemError, logger, WorkspaceNotFoundError } from '@pcu/utils'
+import { FileSystemError, getErrorCode, logger, WorkspaceNotFoundError } from '@pcu/utils'
 import { Catalog } from '../../domain/entities/catalog.js'
 import { Package } from '../../domain/entities/package.js'
 import { Workspace } from '../../domain/entities/workspace.js'
@@ -166,13 +166,10 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
 
   /**
    * Check if an error is a "file not found" error (ENOENT)
+   * ERR-003: Use type-safe error code extraction
    */
   private isFileNotFoundError(error: unknown): boolean {
-    return (
-      error instanceof Error &&
-      'code' in error &&
-      (error as NodeJS.ErrnoException).code === 'ENOENT'
-    )
+    return getErrorCode(error) === 'ENOENT'
   }
 
   /**
@@ -377,10 +374,11 @@ export class FileWorkspaceRepository implements WorkspaceRepository {
 
   /**
    * Categorize package load errors for better diagnostics.
+   * ERR-003: Use type-safe error code extraction
    */
   private categorizePackageLoadError(error: Error): string {
     const message = error.message?.toLowerCase() ?? ''
-    const code = (error as NodeJS.ErrnoException).code
+    const code = getErrorCode(error)
 
     if (code === 'ENOENT' || message.includes('no such file')) {
       return 'file_not_found'

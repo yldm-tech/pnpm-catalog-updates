@@ -43,9 +43,6 @@ export type {
   // Utility types
   UpdateTypeCounts,
   VersionConflict,
-  // Watch types
-  WatchCallbacks,
-  WatchOptions,
   // Workspace types
   WorkspaceStats,
   WorkspaceValidationReport,
@@ -68,7 +65,6 @@ export {
   ImpactAnalysisService,
   UpdateExecutorService,
   UpdatePlanService,
-  WatchService,
   WorkspaceService,
 } from './application/index.js'
 export type {
@@ -99,6 +95,7 @@ export {
   Package,
   PackageCollection,
   Version,
+  VersionRange,
   Workspace,
   WorkspaceConfig,
   WorkspaceId,
@@ -157,6 +154,7 @@ export {
   RegistryCache,
   RuleEngine,
   registryCache,
+  resetAllCaches,
   SecurityAdvisoryService,
   startCacheInitialization,
   WorkspaceCache,

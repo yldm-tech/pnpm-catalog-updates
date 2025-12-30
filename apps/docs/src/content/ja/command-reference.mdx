@@ -21,10 +21,8 @@ PCU はいくつかの主要なコマンドを提供し、完全名と便利な�
 | `pcu workspace` | `pcu w`, `pcu -s`, `pcu --workspace-info` | ワークスペース情報と検証を表示         |
 | `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | カラーテーマと UI 設定を構成           |
 | `pcu security`  | `pcu sec`                                 | セキュリティ脆弱性スキャンと修復       |
-| `pcu cache`     | -                                         | キャッシュ管理（統計とクリア）         |
 | `pcu ai`        | -                                         | AIプロバイダー管理と分析テスト         |
 | `pcu rollback`  | -                                         | カタログ更新を以前の状態にロールバック |
-| `pcu watch`     | -                                         | 変更を監視して自動的に更新をチェック   |
 | `pcu help`      | `pcu h`, `pcu -h`                         | ヘルプ情報を表示                       |
 
 ### 特別なショートカット
@@ -79,9 +77,7 @@ pcu theme --set modern
 | `pcu security` | フォーマット、重大度フィルター、修復オプション、開発依存関係 |
 | `pcu init`     | テンプレート、フレームワークオプション、ワークスペース作成 |
 | `pcu ai`       | プロバイダーステータス、テスト、キャッシュ操作           |
-| `pcu cache`    | 統計表示、クリアオプション                               |
 | `pcu rollback` | バックアップ選択、確認                                   |
-| `pcu watch`    | カタログ、フォーマット、ターゲット、デバウンス、クリアオプション |
 
 ### メリット
 
@@ -875,198 +871,6 @@ pcu rollback --delete-all --verbose
 ```
 
 確認プロンプトと詳細出力でバックアップファイルをすべて削除します。
-
----
-
-## `pcu watch` - ウォッチモード
-
-`pnpm-workspace.yaml` の変更を監視し、変更が検出されたときに自動的に古い依存関係をチェックします。
-
-<CodeGroup>
-
-```bash {{ title: '基本的なウォッチ' }}
-pcu watch
-```
-
-```bash {{ title: '詳細なウォッチ' }}
-pcu watch --debounce 1000 --clear
-pcu watch --catalog default --target minor
-pcu watch --include "react*" --exclude "*-dev"
-```
-
-</CodeGroup>
-
-### オプション
-
-<Properties>
-  <Property name="--catalog" type="string">
-    特定のカタログのみをチェック
-  </Property>
-  <Property name="-f, --format" type="enum" default="table">
-    出力フォーマット：table、json、markdown
-  </Property>
-  <Property name="-t, --target" type="enum" default="latest">
-    更新ターゲット：latest、minor、patch
-  </Property>
-  <Property name="--prerelease" type="boolean">
-    プレリリースバージョンを含める
-  </Property>
-  <Property name="--include" type="string">
-    パターンに一致するパッケージを含める
-  </Property>
-  <Property name="--exclude" type="string">
-    パターンに一致するパッケージを除外
-  </Property>
-  <Property name="--debounce" type="number" default="300">
-    チェック前のデバウンス遅延（ミリ秒）
-  </Property>
-  <Property name="--clear" type="boolean">
-    各チェック前にコンソールをクリア
-  </Property>
-  <Property name="-w, --workspace" type="string">
-    ワークスペースディレクトリのパス（デフォルト：現在のディレクトリ）
-  </Property>
-  <Property name="-v, --verbose" type="boolean">
-    詳細情報を表示
-  </Property>
-</Properties>
-
-### ウォッチ動作
-
-watch コマンドはスマートな機能を備えた継続的な監視を提供します：
-
-- **初期チェック**：ウォッチ開始時にすぐにチェックを実行
-- **デバウンス**：ファイルが急速に変更されるときの再チェックを防止
-- **グレースフルシャットダウン**：`Ctrl+C` を押してクリーンに監視を停止
-- **リアルタイム更新**：検出された古いパッケージ数を表示
-
-### 使用例
-
-#### 基本的なウォッチモード
-
-```bash
-pcu watch
-```
-
-現在のディレクトリの `pnpm-workspace.yaml` の変更を監視します。
-
-#### コンソールクリア付きウォッチ
-
-```bash
-pcu watch --clear
-```
-
-各チェック前にコンソールをクリアして、より見やすい出力を提供します。
-
-#### カスタムデバウンス付きウォッチ
-
-```bash
-pcu watch --debounce 1000
-```
-
-ファイル変更後 1 秒待ってからチェックを実行します。
-
-#### 特定のカタログを監視
-
-```bash
-pcu watch --catalog default --target minor
-```
-
-変更を監視し、default カタログのマイナー更新のみをチェックします。
-
-#### フィルター付きウォッチ
-
-```bash
-pcu watch --include "react*,@types/*" --exclude "*-dev"
-```
-
-監視し、特定のパッケージパターンに結果をフィルタリングします。
-
-### 統合のヒント
-
-ウォッチモードは以下に最適です：
-
-- **開発ワークフロー**：アクティブな開発中に依存関係の更新を可視化
-- **CI/CD 監視**：長時間稼働する開発環境での更新を監視
-- **チーム通知**：通知ツールと組み合わせて更新をアラート
-
----
-
-## `pcu cache` - キャッシュ管理
-
-NPM レジストリ応答、ワークスペースデータ、AI 分析結果のための PCU キャッシュを管理します。
-
-<CodeGroup>
-
-```bash {{ title: '統計を表示' }}
-pcu cache
-pcu cache --stats
-pcu cache --stats --verbose
-```
-
-```bash {{ title: 'キャッシュをクリア' }}
-pcu cache --clear
-pcu cache --clear --verbose
-```
-
-</CodeGroup>
-
-### オプション
-
-<Properties>
-  <Property name="--stats" type="boolean">
-    キャッシュ統計を表示（デフォルト動作）
-  </Property>
-  <Property name="--clear" type="boolean">
-    すべてのキャッシュエントリをクリア
-  </Property>
-  <Property name="-v, --verbose" type="boolean">
-    説明やヒット/ミスカウンターを含む詳細情報を表示
-  </Property>
-  <Property name="--no-color" type="boolean">
-    カラー出力を無効にする
-  </Property>
-</Properties>
-
-### キャッシュタイプ
-
-PCU は 3 つの別々のキャッシュを管理します：
-
-#### レジストリキャッシュ
-
-- **目的**: NPM レジストリ API 応答を保存
-- **利点**: ネットワークリクエストを削減、より高速なバージョンクエリ
-- **TTL**: 1 時間（設定可能）
-
-#### ワークスペースキャッシュ
-
-- **目的**: ワークスペースファイルシステムデータを保存
-- **利点**: 繰り返し実行時のより高速なワークスペース分析
-- **TTL**: 5 分（設定可能）
-
-#### AI 分析キャッシュ
-
-- **目的**: AI 駆動の分析結果を保存
-- **利点**: 冗長な AI API 呼び出しを回避、一貫した結果
-- **TTL**: 24 時間（設定可能）
-
-### 使用例
-
-#### キャッシュ統計の表示
-
-```bash
-pcu cache
-```
-
-すべてのキャッシュの概要統計を表示します。
-
-#### すべてのキャッシュをクリア
-
-```bash
-pcu cache --clear
-```
-
-すべてのキャッシュエントリをクリアします。古いデータの問題が発生した場合に便利です。
 
 ---
 

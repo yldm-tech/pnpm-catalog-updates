@@ -13,17 +13,57 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockCliOutput, resetCliOutput, setCliOutput } from '../../utils/cliOutput.js'
 
 // Use vi.hoisted to ensure mocks are available during vi.mock hoisting
-const mocks = vi.hoisted(() => ({
-  loadConfig: vi.fn(),
-  selectPackages: vi.fn(),
-  analyzeWithChunking: vi.fn(),
-  getWorkspaceInfo: vi.fn(),
-  formatUpdatePlan: vi.fn().mockReturnValue('Formatted plan'),
-  formatUpdateResult: vi.fn().mockReturnValue('Formatted result'),
-  // Package manager service mocks
-  packageManagerInstall: vi.fn(),
-  packageManagerGetName: vi.fn().mockReturnValue('pnpm'),
-}))
+const mocks = vi.hoisted(() => {
+  // Create a chainable chalk mock that supports all color combinations
+  const createChalkMock = () => {
+    const createColorFn = (text: string) => text
+    // Create a function that returns itself for chaining
+    const chainableFn = Object.assign(createColorFn, {
+      bold: Object.assign((text: string) => text, {
+        cyan: (text: string) => text,
+        white: (text: string) => text,
+        red: (text: string) => text,
+        green: (text: string) => text,
+        yellow: (text: string) => text,
+        blue: (text: string) => text,
+      }),
+      dim: Object.assign((text: string) => text, {
+        white: (text: string) => text,
+      }),
+      red: Object.assign((text: string) => text, {
+        bold: (text: string) => text,
+      }),
+      green: Object.assign((text: string) => text, {
+        bold: (text: string) => text,
+      }),
+      yellow: Object.assign((text: string) => text, {
+        bold: (text: string) => text,
+      }),
+      blue: Object.assign((text: string) => text, {
+        bold: (text: string) => text,
+      }),
+      cyan: Object.assign((text: string) => text, {
+        bold: (text: string) => text,
+      }),
+      gray: (text: string) => text,
+      white: (text: string) => text,
+    })
+    return chainableFn
+  }
+
+  return {
+    loadConfig: vi.fn(),
+    selectPackages: vi.fn(),
+    analyzeWithChunking: vi.fn(),
+    getWorkspaceInfo: vi.fn(),
+    formatUpdatePlan: vi.fn().mockReturnValue('Formatted plan'),
+    formatUpdateResult: vi.fn().mockReturnValue('Formatted result'),
+    // Package manager service mocks
+    packageManagerInstall: vi.fn(),
+    packageManagerGetName: vi.fn().mockReturnValue('pnpm'),
+    createChalkMock,
+  }
+})
 
 // Mock @pcu/utils
 vi.mock('@pcu/utils', () => ({
@@ -49,6 +89,16 @@ vi.mock('@pcu/utils', () => ({
     }
     return key
   },
+  // Include async utilities that are used by the code
+  timeout: vi.fn().mockImplementation((promise: Promise<unknown>) => promise),
+  delay: vi.fn().mockResolvedValue(undefined),
+  retry: vi.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
+  // Include validation utilities
+  createValidationResult: (isValid = true, errors: string[] = [], warnings: string[] = []) => ({
+    isValid,
+    errors,
+    warnings,
+  }),
 }))
 
 // Mock OutputFormatter - needs to be a proper class constructor
@@ -100,46 +150,9 @@ vi.mock('../../themes/colorTheme.js', () => ({
   },
 }))
 
-// Create a chainable chalk mock that supports all color combinations
-const createChalkMock = () => {
-  const createColorFn = (text: string) => text
-  // Create a function that returns itself for chaining
-  const chainableFn = Object.assign(createColorFn, {
-    bold: Object.assign((text: string) => text, {
-      cyan: (text: string) => text,
-      white: (text: string) => text,
-      red: (text: string) => text,
-      green: (text: string) => text,
-      yellow: (text: string) => text,
-      blue: (text: string) => text,
-    }),
-    dim: Object.assign((text: string) => text, {
-      white: (text: string) => text,
-    }),
-    red: Object.assign((text: string) => text, {
-      bold: (text: string) => text,
-    }),
-    green: Object.assign((text: string) => text, {
-      bold: (text: string) => text,
-    }),
-    yellow: Object.assign((text: string) => text, {
-      bold: (text: string) => text,
-    }),
-    blue: Object.assign((text: string) => text, {
-      bold: (text: string) => text,
-    }),
-    cyan: Object.assign((text: string) => text, {
-      bold: (text: string) => text,
-    }),
-    gray: (text: string) => text,
-    white: (text: string) => text,
-  })
-  return chainableFn
-}
-
-// Mock chalk
+// Mock chalk with chainable functions from hoisted mock
 vi.mock('chalk', () => ({
-  default: createChalkMock(),
+  default: mocks.createChalkMock(),
 }))
 
 // Mock interactive prompts
@@ -530,9 +543,15 @@ describe('UpdateCommand', () => {
 
       // Should not throw for user cancellation
       await expect(command.execute({})).resolves.not.toThrow()
-      expect(cliMock.prints.some((p) => p.includes('cancelled') || p.includes('warning'))).toBe(
-        true
-      )
+      // Check if any print output contains 'cancelled' or 'warning'
+      // prints is unknown[][], so we need to flatten and check string content
+      const hasExpectedOutput = cliMock.prints
+        .flat()
+        .some(
+          (item) =>
+            typeof item === 'string' && (item.includes('cancelled') || item.includes('warning'))
+        )
+      expect(hasExpectedOutput).toBe(true)
     })
 
     it('should handle force closed prompt gracefully', async () => {

@@ -38,6 +38,8 @@ export {
   initializeCaches,
   RegistryCache,
   registryCache,
+  // ARCH-001: Test isolation helper
+  resetAllCaches,
   startCacheInitialization,
   WorkspaceCache,
   workspaceCache,

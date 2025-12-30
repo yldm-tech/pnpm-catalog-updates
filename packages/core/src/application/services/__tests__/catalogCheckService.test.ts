@@ -49,6 +49,7 @@ vi.mock('@pcu/utils', () => {
     CatalogNotFoundError,
     logger: mockLogger,
     t: vi.fn((key: string) => key),
+    toError: vi.fn((e: unknown) => (e instanceof Error ? e : new Error(String(e)))),
     UserFriendlyErrorHandler: {
       handleSecurityCheckFailure: mocks.handleSecurityCheckFailure,
       handlePackageQueryFailure: mocks.handlePackageQueryFailure,

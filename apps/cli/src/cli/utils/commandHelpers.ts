@@ -5,10 +5,11 @@
  * Reduces code duplication across check, update, and other commands.
  */
 
-import type { PackageFilterConfig } from '@pcu/utils'
+import type { PackageFilterConfig, TranslationKey } from '@pcu/utils'
 import { ConfigLoader, Logger, logger, t } from '@pcu/utils'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
+import { cliOutput } from './cliOutput.js'
 
 /**
  * Common command options shared across multiple commands
@@ -132,23 +133,80 @@ function showVerboseInfo(
 }
 
 /**
+ * Error handling options for commands
+ * QUAL-007: Unified error handling configuration
+ */
+export interface ErrorHandlingOptions {
+  /** Whether to show verbose information (stack trace) */
+  verbose?: boolean
+  /** Progress bar to stop/fail on error */
+  progressBar?: { stop: () => void; fail: (msg: string) => void }
+  /** Custom error message for logging */
+  errorMessage?: string
+  /** Additional context for logging */
+  context?: Record<string, unknown>
+  /** Custom i18n key for failed progress message */
+  failedProgressKey?: string
+  /** Custom i18n key for error display */
+  errorDisplayKey?: string
+}
+
+/**
+ * Check if error is a user cancellation (e.g., Ctrl+C)
+ */
+export function isUserCancellation(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === 'ExitPromptError' || error.message.includes('force closed'))
+  )
+}
+
+/**
  * Handle command error with consistent logging
- * Common pattern used in: checkCommand, updateCommand
+ * QUAL-007: Unified error handling pattern for all commands
+ *
+ * @returns true if error was handled as user cancellation (command should return gracefully)
  */
 export function handleCommandError(
   error: Error | unknown,
-  errorMessage: string,
-  options: { verbose?: boolean },
-  context?: Record<string, unknown>
-): void {
-  logger.error(errorMessage, error instanceof Error ? error : undefined, context)
-  console.error(StyledText.iconError(t('cli.error')))
-  console.error(StyledText.error(String(error)))
+  options: ErrorHandlingOptions = {}
+): boolean {
+  const {
+    verbose = false,
+    progressBar,
+    errorMessage = 'Command failed',
+    context,
+    failedProgressKey = 'progress.operationFailed',
+    errorDisplayKey,
+  } = options
 
-  if (options.verbose && error instanceof Error) {
-    console.error(StyledText.muted(t('common.stackTrace')))
-    console.error(StyledText.muted(error.stack || t('common.noStackTrace')))
+  // Handle user cancellation gracefully (Ctrl+C)
+  if (isUserCancellation(error)) {
+    progressBar?.stop()
+    cliOutput.print(StyledText.iconWarning(t('cli.cancelled')))
+    return true
   }
+
+  // Log error with context
+  logger.error(errorMessage, error instanceof Error ? error : undefined, context)
+
+  // Fail progress bar if provided
+  if (progressBar) {
+    progressBar.fail(t(failedProgressKey as TranslationKey))
+  }
+
+  // Display error to user
+  const displayKey = errorDisplayKey || 'cli.error'
+  cliOutput.error(StyledText.iconError(t(displayKey as TranslationKey)))
+  cliOutput.error(StyledText.error(String(error)))
+
+  // Show stack trace in verbose mode
+  if (verbose && error instanceof Error) {
+    cliOutput.error(StyledText.muted(t('common.stackTrace')))
+    cliOutput.error(StyledText.muted(error.stack || t('common.noStackTrace')))
+  }
+
+  return false
 }
 
 /**

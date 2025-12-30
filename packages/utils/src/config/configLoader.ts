@@ -20,6 +20,7 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { ConfigurationError } from '../error-handling/index.js'
 import { logger } from '../logger/logger.js'
+import { validatePackageFilterConfig } from '../utils/validation.js'
 import {
   CONFIG_FILE_NAMES,
   DEFAULT_PACKAGE_FILTER_CONFIG,
@@ -138,6 +139,9 @@ export class ConfigLoader implements IConfigLoader {
 
   // Static cache for backward compatibility with static methods
   private static staticInstance: ConfigLoader | null = null
+
+  // PERF-005: Static regex cache to avoid recompiling patterns on every match
+  private static regexCache = new Map<string, RegExp>()
 
   private static getInstance(): ConfigLoader {
     if (!ConfigLoader.staticInstance) {
@@ -259,6 +263,15 @@ export class ConfigLoader implements IConfigLoader {
         try {
           return await ConfigLoader.loadConfigFile(configPath)
         } catch (error) {
+          // QUAL-002: Don't swallow configuration errors - user needs to know their config is broken
+          if (error instanceof ConfigurationError) {
+            throw error
+          }
+          // JSON syntax errors should also be thrown so users know their config is malformed
+          if (error instanceof SyntaxError) {
+            throw new ConfigurationError(configPath, `Invalid JSON syntax: ${error.message}`)
+          }
+          // Other errors (permissions, etc.) can be logged and skipped
           logger.warn(
             `Failed to load config file ${configPath}`,
             error instanceof Error ? error : undefined
@@ -294,6 +307,15 @@ export class ConfigLoader implements IConfigLoader {
         try {
           return ConfigLoader.loadConfigFileSync(configPath)
         } catch (error) {
+          // QUAL-002: Don't swallow configuration errors - user needs to know their config is broken
+          if (error instanceof ConfigurationError) {
+            throw error
+          }
+          // JSON syntax errors should also be thrown so users know their config is malformed
+          if (error instanceof SyntaxError) {
+            throw new ConfigurationError(configPath, `Invalid JSON syntax: ${error.message}`)
+          }
+          // Other errors (permissions, etc.) can be logged and skipped
           logger.warn(
             `Failed to load config file ${configPath}`,
             error instanceof Error ? error : undefined
@@ -317,7 +339,20 @@ export class ConfigLoader implements IConfigLoader {
   private static async loadConfigFile(configPath: string): Promise<PackageFilterConfig> {
     if (configPath.endsWith('.json')) {
       const content = readFileSync(configPath, 'utf-8')
-      return JSON.parse(content) as PackageFilterConfig
+      const parsed: unknown = JSON.parse(content)
+      // QUAL-015: Validate config structure at runtime instead of unsafe type assertion
+      const validation = validatePackageFilterConfig(parsed)
+      if (!validation.isValid) {
+        throw new ConfigurationError(
+          configPath,
+          `Invalid configuration: ${validation.errors.join('; ')}`
+        )
+      }
+      // Log warnings for non-critical issues
+      if (validation.warnings.length > 0) {
+        logger.warn(`Configuration warnings in ${configPath}: ${validation.warnings.join('; ')}`)
+      }
+      return parsed as PackageFilterConfig
     }
 
     if (configPath.endsWith('.js') || configPath.endsWith('.ts')) {
@@ -341,7 +376,20 @@ export class ConfigLoader implements IConfigLoader {
   private static loadConfigFileSync(configPath: string): PackageFilterConfig {
     if (configPath.endsWith('.json')) {
       const content = readFileSync(configPath, 'utf-8')
-      return JSON.parse(content) as PackageFilterConfig
+      const parsed: unknown = JSON.parse(content)
+      // QUAL-015: Validate config structure at runtime instead of unsafe type assertion
+      const validation = validatePackageFilterConfig(parsed)
+      if (!validation.isValid) {
+        throw new ConfigurationError(
+          configPath,
+          `Invalid configuration: ${validation.errors.join('; ')}`
+        )
+      }
+      // Log warnings for non-critical issues
+      if (validation.warnings.length > 0) {
+        logger.warn(`Configuration warnings in ${configPath}: ${validation.warnings.join('; ')}`)
+      }
+      return parsed as PackageFilterConfig
     }
 
     throw new ConfigurationError(
@@ -371,6 +419,18 @@ export class ConfigLoader implements IConfigLoader {
         )
       }
 
+      // QUAL-015: Validate config structure at runtime instead of unsafe type assertion
+      const validation = validatePackageFilterConfig(config)
+      if (!validation.isValid) {
+        throw new ConfigurationError(
+          configPath,
+          `Invalid configuration: ${validation.errors.join('; ')}`
+        )
+      }
+      // Log warnings for non-critical issues
+      if (validation.warnings.length > 0) {
+        logger.warn(`Configuration warnings in ${configPath}: ${validation.warnings.join('; ')}`)
+      }
       return config as PackageFilterConfig
     } catch (error) {
       if (error instanceof ConfigurationError) {
@@ -555,12 +615,17 @@ export class ConfigLoader implements IConfigLoader {
    * - `eslint*` matches `eslint`, `eslint-plugin-react`
    */
   private static matchesPattern(packageName: string, pattern: string): boolean {
-    // Escape regex metacharacters first, preserving * and ? for glob conversion
-    const escapedPattern = pattern
-      .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape regex special chars
-      .replace(/\*/g, '.*') // Convert glob * to regex .*
-      .replace(/\?/g, '.') // Convert glob ? to regex .
-    const regex = new RegExp(`^${escapedPattern}$`, 'i')
+    // PERF-005: Use cached regex to avoid recompilation on every call
+    let regex = ConfigLoader.regexCache.get(pattern)
+    if (!regex) {
+      // Escape regex metacharacters first, preserving * and ? for glob conversion
+      const escapedPattern = pattern
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape regex special chars
+        .replace(/\*/g, '.*') // Convert glob * to regex .*
+        .replace(/\?/g, '.') // Convert glob ? to regex .
+      regex = new RegExp(`^${escapedPattern}$`, 'i')
+      ConfigLoader.regexCache.set(pattern, regex)
+    }
     return regex.test(packageName)
   }
 

@@ -22,9 +22,7 @@ PCU bietet mehrere Hauptbefehle mit sowohl vollständigen Namen als auch praktis
 | `pcu workspace`      | `pcu w`, `pcu -s`, `pcu --workspace-info` | Workspace-Informationen und Validierung anzeigen    |
 | `pcu theme`          | `pcu t`, `pcu -t`, `pcu --theme`          | Farbthemen und UI-Einstellungen konfigurieren       |
 | `pcu security`       | `pcu sec`                                 | Sicherheitslücken-Scanning und -Fixes               |
-| `pcu cache`          | -                                         | Cache-Verwaltung (Statistiken und Löschen)          |
 | `pcu rollback`       | -                                         | Katalog-Updates auf vorherigen Zustand zurücksetzen |
-| `pcu watch`          | -                                         | Änderungen überwachen und automatisch prüfen        |
 | `pcu help`           | `pcu h`, `pcu -h`                         | Hilfeinformationen anzeigen                         |
 
 ### Spezielle Shortcuts
@@ -70,9 +68,7 @@ Der Hybrid-Modus ist für folgende Befehle verfügbar:
 | `security`   | Format, Schweregrad, Auto-Fix                      |
 | `init`       | Vorlage, Framework-Optionen, Interaktiver Assistent |
 | `ai`         | Provider-Status, Test, Cache-Operationen           |
-| `cache`      | Statistiken/Löschen-Auswahl                        |
 | `rollback`   | Backup-Auswahl, Bestätigung                        |
-| `watch`      | Katalog, Format, Ziel, Debounce, Löschen-Optionen  |
 
 ### Vorteile
 
@@ -755,174 +751,6 @@ pcu rollback --select
 ```
 
 Öffnet eine interaktive Eingabeaufforderung zur Auswahl des wiederherzustellenden Backups.
-
----
-
-## `pcu watch` - Überwachungsmodus
-
-Änderungen in `pnpm-workspace.yaml` überwachen und automatisch nach veralteten Dependencies prüfen.
-
-<CodeGroup>
-
-```bash {{ title: 'Grundlegende Überwachung' }}
-pcu watch
-```
-
-```bash {{ title: 'Erweiterte Überwachung' }}
-pcu watch --debounce 1000 --clear
-pcu watch --catalog default --target minor
-pcu watch --include "react*" --exclude "*-dev"
-```
-
-</CodeGroup>
-
-### Optionen
-
-<Properties>
-  <Property name="--catalog" type="string">
-    Nur bestimmten Katalog prüfen
-  </Property>
-  <Property name="-f, --format" type="enum" default="table">
-    Ausgabeformat: table, json, markdown
-  </Property>
-  <Property name="-t, --target" type="enum" default="latest">
-    Update-Ziel: latest, minor, patch
-  </Property>
-  <Property name="--prerelease" type="boolean">
-    Prerelease-Versionen einbeziehen
-  </Property>
-  <Property name="--include" type="string">
-    Pakete einbeziehen, die dem Muster entsprechen
-  </Property>
-  <Property name="--exclude" type="string">
-    Pakete ausschließen, die dem Muster entsprechen
-  </Property>
-  <Property name="--debounce" type="number" default="300">
-    Entprellungsverzögerung in Millisekunden vor der Prüfung
-  </Property>
-  <Property name="--clear" type="boolean">
-    Konsole vor jeder Prüfung löschen
-  </Property>
-  <Property name="-w, --workspace" type="string">
-    Workspace-Verzeichnispfad (Standard: aktuelles Verzeichnis)
-  </Property>
-  <Property name="-v, --verbose" type="boolean">
-    Detaillierte Informationen anzeigen
-  </Property>
-</Properties>
-
-### Überwachungsverhalten
-
-Der Watch-Befehl bietet kontinuierliche Überwachung mit intelligenten Funktionen:
-
-- **Initiale Prüfung**: Führt sofort beim Start eine Prüfung durch
-- **Entprellung**: Verhindert schnelle Wiederholungsprüfungen bei schnellen Dateiänderungen
-- **Sauberes Beenden**: Drücken Sie `Strg+C` zum sauberen Beenden
-- **Echtzeit-Updates**: Zeigt veraltete Paketanzahlen bei Erkennung
-
-### Verwendungsbeispiele
-
-#### Grundlegender Überwachungsmodus
-
-```bash
-pcu watch
-```
-
-Überwacht die `pnpm-workspace.yaml` des aktuellen Verzeichnisses auf Änderungen.
-
-#### Überwachung mit Konsolen-Löschung
-
-```bash
-pcu watch --clear
-```
-
-Löscht die Konsole vor jeder Prüfung für sauberere Ausgabe.
-
-#### Überwachung mit benutzerdefinierter Entprellung
-
-```bash
-pcu watch --debounce 1000
-```
-
-Wartet 1 Sekunde nach Dateiänderungen vor der Prüfung.
-
----
-
-## `pcu cache` - Cache-Verwaltung
-
-PCU-Cache für NPM-Registry-Antworten, Workspace-Daten und AI-Analyseergebnisse verwalten.
-
-<CodeGroup>
-
-```bash {{ title: 'Statistiken anzeigen' }}
-pcu cache
-pcu cache --stats
-pcu cache --stats --verbose
-```
-
-```bash {{ title: 'Cache löschen' }}
-pcu cache --clear
-pcu cache --clear --verbose
-```
-
-</CodeGroup>
-
-### Optionen
-
-<Properties>
-  <Property name="--stats" type="boolean">
-    Cache-Statistiken anzeigen (Standardverhalten)
-  </Property>
-  <Property name="--clear" type="boolean">
-    Alle Cache-Einträge löschen
-  </Property>
-  <Property name="-v, --verbose" type="boolean">
-    Detaillierte Informationen einschließlich Beschreibungen und Hit/Miss-Zähler anzeigen
-  </Property>
-  <Property name="--no-color" type="boolean">
-    Farbige Ausgabe deaktivieren
-  </Property>
-</Properties>
-
-### Cache-Typen
-
-PCU verwaltet drei separate Caches:
-
-#### Registry-Cache
-
-- **Zweck**: Speichert NPM-Registry-API-Antworten
-- **Vorteile**: Reduziert Netzwerkanfragen, schnellere Versionsabfragen
-- **TTL**: 1 Stunde (konfigurierbar)
-
-#### Workspace-Cache
-
-- **Zweck**: Speichert Workspace-Dateisystemdaten
-- **Vorteile**: Schnellere Workspace-Analyse bei wiederholten Durchläufen
-- **TTL**: 5 Minuten (konfigurierbar)
-
-#### AI-Analyse-Cache
-
-- **Zweck**: Speichert AI-gesteuerte Analyseergebnisse
-- **Vorteile**: Vermeidet redundante AI-API-Aufrufe, konsistente Ergebnisse
-- **TTL**: 24 Stunden (konfigurierbar)
-
-### Verwendungsbeispiele
-
-#### Cache-Statistiken anzeigen
-
-```bash
-pcu cache
-```
-
-Zeigt zusammenfassende Statistiken für alle Caches an.
-
-#### Alle Caches löschen
-
-```bash
-pcu cache --clear
-```
-
-Löscht alle Cache-Einträge. Nützlich bei Problemen mit veralteten Daten.
 
 ---
 

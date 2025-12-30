@@ -20,10 +20,8 @@ PCU는 전체 이름과 편리한 단축키를 모두 제공하는 여러 주요
 | `pcu workspace` | `pcu w`, `pcu -s`, `pcu --workspace-info` | 작업공간 정보 및 유효성 검사 표시 |
 | `pcu theme`     | `pcu t`, `pcu -t`, `pcu --theme`          | 색상 테마 및 UI 설정 구성         |
 | `pcu security`  | `pcu sec`                                 | 보안 취약점 스캔 및 수정          |
-| `pcu cache`     | -                                         | 캐시 관리 (통계 및 삭제)          |
 | `pcu ai`        | -                                         | AI 제공자 관리 및 분석 테스트     |
 | `pcu rollback`  | -                                         | 카탈로그 업데이트를 이전 상태로 롤백 |
-| `pcu watch`     | -                                         | 변경 사항 감시 및 자동 업데이트 확인 |
 | `pcu help`      | `pcu h`, `pcu -h`                         | 도움말 정보 표시                  |
 
 ### 특별 단축키
@@ -69,9 +67,7 @@ pcu update --target minor   # 지정된 옵션으로 직접 실행
 | `security`   | 형식, 심각도, 자동 수정                        |
 | `init`       | 템플릿, 프레임워크 옵션, 대화형 마법사         |
 | `ai`         | 제공자 상태, 테스트, 캐시 작업                 |
-| `cache`      | 통계/삭제 선택                                 |
 | `rollback`   | 버전 선택, 형식                                |
-| `watch`      | 간격, 형식, 알림 옵션                          |
 
 ### 장점
 
@@ -1104,198 +1100,6 @@ pcu rollback --delete-all --verbose
 ```
 
 확인 프롬프트와 상세 출력으로 모든 백업 파일을 삭제합니다.
-
----
-
-## `pcu watch` - 감시 모드
-
-`pnpm-workspace.yaml`의 변경 사항을 감시하고 수정이 감지되면 자동으로 오래된 종속성을 확인합니다.
-
-<CodeGroup>
-
-```bash {{ title: '기본 감시' }}
-pcu watch
-```
-
-```bash {{ title: '고급 감시' }}
-pcu watch --debounce 1000 --clear
-pcu watch --catalog default --target minor
-pcu watch --include "react*" --exclude "*-dev"
-```
-
-</CodeGroup>
-
-### 옵션
-
-<Properties>
-  <Property name="--catalog" type="string">
-    특정 카탈로그만 확인
-  </Property>
-  <Property name="-f, --format" type="enum" default="table">
-    출력 형식: table, json, markdown
-  </Property>
-  <Property name="-t, --target" type="enum" default="latest">
-    업데이트 대상: latest, minor, patch
-  </Property>
-  <Property name="--prerelease" type="boolean">
-    프리릴리즈 버전 포함
-  </Property>
-  <Property name="--include" type="string">
-    패턴과 일치하는 패키지 포함
-  </Property>
-  <Property name="--exclude" type="string">
-    패턴과 일치하는 패키지 제외
-  </Property>
-  <Property name="--debounce" type="number" default="300">
-    확인 전 디바운스 지연 (밀리초)
-  </Property>
-  <Property name="--clear" type="boolean">
-    각 확인 전 콘솔 지우기
-  </Property>
-  <Property name="-w, --workspace" type="string">
-    작업공간 디렉토리 경로 (기본값: 현재 디렉토리)
-  </Property>
-  <Property name="-v, --verbose" type="boolean">
-    상세 정보 표시
-  </Property>
-</Properties>
-
-### 감시 동작
-
-watch 명령은 스마트 기능을 갖춘 지속적인 모니터링을 제공합니다:
-
-- **초기 확인**: 감시 시작 시 즉시 확인 실행
-- **디바운싱**: 파일이 빠르게 변경될 때 재확인 방지
-- **우아한 종료**: `Ctrl+C`를 눌러 깔끔하게 감시 중지
-- **실시간 업데이트**: 감지된 오래된 패키지 수 표시
-
-### 사용 예제
-
-#### 기본 감시 모드
-
-```bash
-pcu watch
-```
-
-현재 디렉토리의 `pnpm-workspace.yaml` 변경 사항을 감시합니다.
-
-#### 콘솔 지우기로 감시
-
-```bash
-pcu watch --clear
-```
-
-각 확인 전 콘솔을 지워 더 깔끔한 출력을 제공합니다.
-
-#### 사용자 지정 디바운스로 감시
-
-```bash
-pcu watch --debounce 1000
-```
-
-파일 변경 후 1초 대기 후 확인을 실행합니다.
-
-#### 특정 카탈로그 감시
-
-```bash
-pcu watch --catalog default --target minor
-```
-
-변경 사항을 감시하고 default 카탈로그의 마이너 업데이트만 확인합니다.
-
-#### 필터로 감시
-
-```bash
-pcu watch --include "react*,@types/*" --exclude "*-dev"
-```
-
-감시하고 특정 패키지 패턴으로 결과를 필터링합니다.
-
-### 통합 팁
-
-감시 모드는 다음에 이상적입니다:
-
-- **개발 워크플로우**: 활발한 개발 중 종속성 업데이트를 가시적으로 유지
-- **CI/CD 모니터링**: 장기 실행 개발 환경에서 업데이트 모니터링
-- **팀 알림**: 알림 도구와 결합하여 업데이트 알림
-
----
-
-## `pcu cache` - 캐시 관리
-
-NPM 레지스트리 응답, 작업공간 데이터 및 AI 분석 결과를 위한 PCU 캐시를 관리합니다.
-
-<CodeGroup>
-
-```bash {{ title: '통계 표시' }}
-pcu cache
-pcu cache --stats
-pcu cache --stats --verbose
-```
-
-```bash {{ title: '캐시 삭제' }}
-pcu cache --clear
-pcu cache --clear --verbose
-```
-
-</CodeGroup>
-
-### 옵션
-
-<Properties>
-  <Property name="--stats" type="boolean">
-    캐시 통계 표시 (기본 동작)
-  </Property>
-  <Property name="--clear" type="boolean">
-    모든 캐시 항목 삭제
-  </Property>
-  <Property name="-v, --verbose" type="boolean">
-    설명 및 히트/미스 카운터를 포함한 자세한 정보 표시
-  </Property>
-  <Property name="--no-color" type="boolean">
-    색상 출력 비활성화
-  </Property>
-</Properties>
-
-### 캐시 유형
-
-PCU는 세 가지 별도의 캐시를 관리합니다:
-
-#### 레지스트리 캐시
-
-- **목적**: NPM 레지스트리 API 응답 저장
-- **이점**: 네트워크 요청 감소, 더 빠른 버전 쿼리
-- **TTL**: 1시간 (구성 가능)
-
-#### 작업공간 캐시
-
-- **목적**: 작업공간 파일 시스템 데이터 저장
-- **이점**: 반복 실행 시 더 빠른 작업공간 분석
-- **TTL**: 5분 (구성 가능)
-
-#### AI 분석 캐시
-
-- **목적**: AI 기반 분석 결과 저장
-- **이점**: 중복 AI API 호출 방지, 일관된 결과
-- **TTL**: 24시간 (구성 가능)
-
-### 사용 예제
-
-#### 캐시 통계 표시
-
-```bash
-pcu cache
-```
-
-모든 캐시의 요약 통계를 표시합니다.
-
-#### 모든 캐시 삭제
-
-```bash
-pcu cache --clear
-```
-
-모든 캐시 항목을 삭제합니다. 오래된 데이터 문제가 발생할 때 유용합니다.
 
 ---
 

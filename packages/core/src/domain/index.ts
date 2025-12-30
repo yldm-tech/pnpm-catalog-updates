@@ -31,7 +31,7 @@ export type { WorkspaceRepository } from './repositories/workspaceRepository.js'
 // Value Objects
 export { CatalogCollection } from './value-objects/catalogCollection.js'
 export { PackageCollection } from './value-objects/packageCollection.js'
-export { Version } from './value-objects/version.js'
+export { Version, VersionRange } from './value-objects/version.js'
 export { WorkspaceConfig } from './value-objects/workspaceConfig.js'
 export { WorkspaceId } from './value-objects/workspaceId.js'
 export { WorkspacePath } from './value-objects/workspacePath.js'

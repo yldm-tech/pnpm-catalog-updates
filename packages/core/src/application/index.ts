@@ -23,7 +23,11 @@ export type {
 export { AIAnalysisService } from './services/aiAnalysisService.js'
 
 // Backup Service
-export type { BackupInfo, BackupServiceOptions } from './services/backupService.js'
+export type {
+  BackupInfo,
+  BackupServiceOptions,
+  RollbackVerificationResult,
+} from './services/backupService.js'
 export { BackupService } from './services/backupService.js'
 // Extracted Services
 export { CatalogCheckService } from './services/catalogCheckService.js'
@@ -53,10 +57,6 @@ export type {
 } from './services/updateExecutorService.js'
 export { UpdateExecutorService } from './services/updateExecutorService.js'
 export { UpdatePlanService } from './services/updatePlanService.js'
-
-// Watch Service
-export type { WatchCallbacks, WatchOptions } from './services/watchService.js'
-export { WatchService } from './services/watchService.js'
 
 // Workspace Service
 export type {

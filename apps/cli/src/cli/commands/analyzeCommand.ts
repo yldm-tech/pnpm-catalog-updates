@@ -10,6 +10,7 @@ import { AIAnalysisService, NpmRegistryService } from '@pcu/core'
 import { logger, t } from '@pcu/utils'
 import chalk from 'chalk'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
+import { errorsOnly, validateAnalyzeOptions } from '../validators/index.js'
 
 export interface AnalyzeCommandOptions {
   workspace?: string
@@ -152,6 +153,13 @@ export class AnalyzeCommand {
     }
 
     return errors
+  }
+
+  /**
+   * Validate command options
+   */
+  static validateOptions(options: AnalyzeCommandOptions): string[] {
+    return errorsOnly(validateAnalyzeOptions)(options)
   }
 
   /**

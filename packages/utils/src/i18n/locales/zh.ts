@@ -135,6 +135,7 @@ export const zh: TranslationDictionary = {
   'command.update.generatingPreview': '正在生成预览...',
   'command.update.previewComplete': '更新预览完成',
   'command.update.dryRunHint': '试运行 - 未进行任何更改',
+  'command.update.planSaved': '更新计划已保存至 {path}',
   'command.update.processComplete': '更新流程已完成！',
   'command.update.aiBatchFailed': 'AI 批量分析失败，继续执行（无 AI 洞察）：',
   'command.update.runningPnpmInstall': '正在运行 pnpm install 更新锁文件...',
@@ -171,6 +172,15 @@ export const zh: TranslationDictionary = {
   'command.rollback.deleteWarning': '警告：这将删除 {{count}} 个备份',
   'command.rollback.confirmDelete': '确定要删除所有备份吗？',
   'command.rollback.deletedBackups': '已删除 {{count}} 个备份',
+  // Rollback verification
+  'command.rollback.verification.validYaml': 'YAML 结构有效',
+  'command.rollback.verification.catalogsFound': '找到 {{count}} 个目录',
+  'command.rollback.verification.catalogs': '目录',
+  'command.rollback.verification.dependencies': '依赖总数: {{count}}',
+  'command.rollback.verification.warning': '回滚完成，但有警告',
+  'command.rollback.verification.invalidYaml': 'YAML 结构无效',
+  'command.rollback.verification.noCatalogs': '未找到目录结构',
+  'command.rollback.verification.skipped': 'Verification skipped',
 
   // Watch command
   'command.watch.starting': '正在启动监视模式...',
@@ -387,10 +397,15 @@ export const zh: TranslationDictionary = {
   'cli.option.exclude': '排除匹配模式的包',
   'cli.option.interactive': '交互模式选择更新',
   'cli.option.dryRun': '预览更改但不写入文件',
+  'cli.option.savePlan': '保存干运行计划到文件（JSON 或 YAML）',
   'cli.option.force': '即使有风险也强制更新',
   'cli.option.createBackup': '更新前创建备份文件（默认）',
   'cli.option.noBackup': '跳过更新前创建备份',
   'cli.option.ai': '为所有更新启用 AI 批量分析',
+  'cli.option.aiStatus': '显示 AI 提供商状态（默认）',
+  'cli.option.aiTest': '测试 AI 提供商连接',
+  'cli.option.aiCacheStats': '显示 AI 分析缓存统计',
+  'cli.option.aiClearCache': '清除 AI 分析缓存',
   'cli.option.provider': 'AI 提供商：auto、claude、gemini、codex',
   'cli.option.analysisType': 'AI 分析类型：impact、security、compatibility、recommend',
   'cli.option.skipCache': '跳过 AI 分析缓存',
@@ -959,4 +974,11 @@ export const zh: TranslationDictionary = {
   'interactive.choice.target.minorHint': '安全，向后兼容',
   'interactive.choice.target.patchHint': '最安全，仅 bug 修复',
   'interactive.choice.target.newestHint': '按发布时间排序',
+
+  // Update reason messages (DOC-001: i18n for update reasons)
+  'update.reason.security': '安全更新可用',
+  'update.reason.major': '主版本更新可用',
+  'update.reason.minor': '次版本更新可用',
+  'update.reason.patch': '补丁版本更新可用',
+  'update.reason.default': '更新可用',
 }

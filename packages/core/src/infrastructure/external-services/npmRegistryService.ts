@@ -12,6 +12,7 @@ import {
   parallelLimitWithRateLimit,
   RegistryError,
   timeout,
+  toError,
   UserFriendlyErrorHandler,
 } from '@pcu/utils'
 import npmRegistryFetch from 'npm-registry-fetch'
@@ -193,8 +194,20 @@ export class NpmRegistryService {
   private readonly npmrcConfig: NpmrcConfig
 
   /**
-   * Create a new NpmRegistryService instance with async npmrc parsing
-   * This is the recommended way to create instances as it properly handles async I/O
+   * API-001: Create a new NpmRegistryService instance with async npmrc parsing.
+   * This is the RECOMMENDED way to create instances as it properly parses
+   * .npmrc files for registry configuration, scoped registries, and auth tokens.
+   *
+   * @param registryUrl - Base registry URL (defaults to npmjs.org)
+   * @param options - Advanced configuration options
+   * @param workingDirectory - Directory to search for .npmrc files
+   * @returns Promise resolving to configured NpmRegistryService instance
+   *
+   * @example
+   * ```typescript
+   * const service = await NpmRegistryService.create()
+   * const info = await service.getPackageVersions('lodash')
+   * ```
    */
   static async create(
     registryUrl: string = 'https://registry.npmjs.org/',
@@ -206,18 +219,61 @@ export class NpmRegistryService {
   }
 
   /**
-   * Constructor that accepts a pre-parsed NpmrcConfig
-   * For async initialization, use the static `create` factory method instead
+   * API-001: Create instance with default configuration (no .npmrc parsing).
+   * Use this for simple cases where you don't need scoped registry or auth support.
+   * For full .npmrc support, use the async `create()` factory method instead.
+   *
+   * @param registryUrl - Base registry URL (defaults to npmjs.org)
+   * @param options - Advanced configuration options
+   * @returns Configured NpmRegistryService instance with default npmrc config
+   *
+   * @example
+   * ```typescript
+   * const service = NpmRegistryService.createWithDefaults()
+   * const info = await service.getPackageVersions('lodash')
+   * ```
+   */
+  static createWithDefaults(
+    registryUrl: string = 'https://registry.npmjs.org/',
+    options: AdvancedConfig = {}
+  ): NpmRegistryService {
+    const defaultNpmrcConfig: NpmrcConfig = {
+      registry: registryUrl.endsWith('/') ? registryUrl : `${registryUrl}/`,
+      scopedRegistries: new Map(),
+      authTokens: new Map(),
+      config: new Map(),
+    }
+    return new NpmRegistryService(registryUrl, options, defaultNpmrcConfig)
+  }
+
+  /**
+   * Constructor that accepts a pre-parsed NpmrcConfig.
+   *
+   * API-001: For most use cases, prefer the static factory methods:
+   * - `NpmRegistryService.create()` - Async, parses .npmrc files (RECOMMENDED)
+   * - `NpmRegistryService.createWithDefaults()` - Sync, uses default config
+   *
+   * Direct constructor usage is primarily for:
+   * - Testing with mocked NpmrcConfig
+   * - Cases where NpmrcConfig is already parsed elsewhere
+   *
+   * @param registryUrl - Base registry URL
+   * @param options - Advanced configuration options
+   * @param npmrcConfigOrWorkDir - Pre-parsed NpmrcConfig or working directory (deprecated: string)
+   *
+   * @deprecated Passing a string as third parameter is deprecated.
+   *             Use `createWithDefaults()` for sync initialization with defaults,
+   *             or `create()` for async initialization with .npmrc parsing.
    */
   constructor(
     registryUrl: string = 'https://registry.npmjs.org/',
     options: AdvancedConfig = {},
     npmrcConfigOrWorkDir: NpmrcConfig | string = process.cwd()
   ) {
-    // Support both pre-parsed config and working directory for backward compatibility
+    // API-001: Support both pre-parsed config and working directory for backward compatibility
     if (typeof npmrcConfigOrWorkDir === 'string') {
       // Legacy sync initialization - use default config
-      // This is kept for backward compatibility but create() is preferred
+      // Deprecated: Use createWithDefaults() or create() instead
       this.npmrcConfig = {
         registry: 'https://registry.npmjs.org/',
         scopedRegistries: new Map(),
@@ -270,18 +326,20 @@ export class NpmRegistryService {
 
   /**
    * Execute a function with retry logic
+   * QUAL-003: Eliminated non-null assertion by initializing lastError
    */
   private async executeWithRetry<T>(
     fn: () => Promise<T>,
     context: string = 'operation'
   ): Promise<T> {
-    let lastError: Error
+    // Initialize with a default error to avoid non-null assertion
+    let lastError: Error = new Error('No retry attempts were made')
 
     for (let attempt = 1; attempt <= this.retries; attempt++) {
       try {
         return await fn()
       } catch (error) {
-        lastError = error as Error
+        lastError = toError(error)
 
         if (attempt === this.retries) {
           const pkgName = context.includes('for ')
@@ -312,9 +370,9 @@ export class NpmRegistryService {
     throw new RegistryError(
       'unknown',
       'retry',
-      `Operation failed: ${lastError!.message}`,
+      `Operation failed: ${lastError.message}`,
       undefined,
-      lastError!
+      lastError
     )
   }
 
@@ -614,7 +672,7 @@ export class NpmRegistryService {
       return securityReport
     } catch (error) {
       // If security check fails, return empty report
-      UserFriendlyErrorHandler.handleSecurityCheckFailure(packageName, error as Error)
+      UserFriendlyErrorHandler.handleSecurityCheckFailure(packageName, toError(error))
 
       const emptyReport: SecurityReport = {
         package: packageName,
@@ -651,7 +709,7 @@ export class NpmRegistryService {
           const info = await this.getPackageInfo(packageName)
           results.set(packageName, info)
         } catch (error) {
-          const err = error as Error
+          const err = toError(error)
           failures.push({
             packageName,
             error: err,
@@ -716,7 +774,7 @@ export class NpmRegistryService {
       return fromAuthor !== toAuthor
     } catch (error) {
       // Log for debugging, don't show to user as this is not critical
-      UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error, {
+      UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, toError(error), {
         operation: 'author-check',
       })
       return false
@@ -762,9 +820,9 @@ export class NpmRegistryService {
         }
         if (status >= 500) {
           // Server error - log for debugging
-          throw new Error(`npm downloads API server error (HTTP ${status})`)
+          throw new RegistryError(packageName, 'download-stats', 'Server error', status)
         }
-        throw new Error(`HTTP error from npm downloads API: ${status}`)
+        throw new RegistryError(packageName, 'download-stats', 'HTTP error', status)
       }
 
       // ERR-003: Safe JSON parsing with explicit error handling
@@ -772,15 +830,19 @@ export class NpmRegistryService {
       try {
         data = (await response.json()) as NpmDownloadStats
       } catch (parseError) {
-        throw new Error(
-          `Failed to parse download stats response for ${packageName}: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`
+        throw new RegistryError(
+          packageName,
+          'download-stats',
+          parseError instanceof Error ? parseError.message : 'Invalid JSON',
+          undefined,
+          parseError instanceof Error ? parseError : undefined
         )
       }
 
       return data.downloads ?? 0
     } catch (error) {
       // Log for debugging, don't show to user as this is not critical
-      UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error, {
+      UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, toError(error), {
         operation: 'download-stats',
       })
       return 0

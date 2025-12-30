@@ -7,12 +7,12 @@
 
 import { spawnSync } from 'node:child_process'
 import * as path from 'node:path'
-import { CommandExitError, logger, t } from '@pcu/utils'
+import { CommandExitError, getErrorCode, logger, t, toError } from '@pcu/utils'
 import * as fs from 'fs-extra'
 import type { OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { ProgressBar } from '../formatters/progressBar.js'
 import { StyledText } from '../themes/colorTheme.js'
-import { initializeTheme } from '../utils/commandHelpers.js'
+import { handleCommandError, initializeTheme } from '../utils/commandHelpers.js'
 import { errorsOnly, validateSecurityOptions } from '../validators/index.js'
 
 export interface SecurityCommandOptions {
@@ -180,18 +180,15 @@ export class SecurityCommand {
         throw error
       }
 
-      logger.error('Security scan failed', error instanceof Error ? error : undefined, { options })
-      if (progressBar) {
-        progressBar.fail(t('progress.securityFailed'))
-      }
-
-      console.error(StyledText.iconError(t('command.security.errorScanning')))
-      console.error(StyledText.error(String(error)))
-
-      if (options.verbose && error instanceof Error) {
-        console.error(StyledText.muted(t('common.stackTrace')))
-        console.error(StyledText.muted(error.stack || t('common.noStackTrace')))
-      }
+      // QUAL-007: Use unified error handling
+      handleCommandError(error, {
+        verbose: options.verbose,
+        progressBar,
+        errorMessage: 'Security scan failed',
+        context: { options },
+        failedProgressKey: 'progress.securityFailed',
+        errorDisplayKey: 'command.security.errorScanning',
+      })
 
       throw CommandExitError.failure('Security scan failed')
     }
@@ -328,12 +325,14 @@ export class SecurityCommand {
       const snykData = JSON.parse(result.stdout)
       return this.parseSnykResults(snykData)
     } catch (error) {
-      const err = error as NodeJS.ErrnoException
-      if (err.code === 'ENOENT') {
-        logger.debug('Snyk not found', { code: err.code })
+      // ERR-003: Use type-safe error code extraction
+      const errorCode = getErrorCode(error)
+      if (errorCode === 'ENOENT') {
+        logger.debug('Snyk not found', { code: errorCode })
         console.warn(StyledText.iconWarning(t('command.security.snykNotFound')))
         return []
       }
+      const err = toError(error)
       logger.error('Snyk scan failed', err, { workspacePath })
       throw new Error(t('command.security.snykScanFailed', { message: err.message }))
     }
@@ -580,7 +579,7 @@ export class SecurityCommand {
         )
       }
     } catch (error) {
-      const err = error as Error
+      const err = toError(error)
       logger.error('Failed to apply security fixes', err, { workspacePath, options })
       console.error(StyledText.iconError(t('command.security.fixesFailed')))
       console.error(StyledText.error(err.message))

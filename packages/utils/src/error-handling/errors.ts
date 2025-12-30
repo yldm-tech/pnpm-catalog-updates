@@ -484,3 +484,36 @@ export function getErrorMessage(error: unknown): string {
   }
   return String(error)
 }
+
+/**
+ * Convert unknown error to Error object
+ * Use this instead of `error as Error` type assertions
+ */
+export function toError(error: unknown): Error {
+  if (error instanceof Error) {
+    return error
+  }
+  return new Error(String(error))
+}
+
+/**
+ * ERR-003: Type guard for NodeJS.ErrnoException
+ * Use this instead of unsafe `as NodeJS.ErrnoException` type assertions.
+ *
+ * @param error - Unknown error value to check
+ * @returns True if error is a NodeJS.ErrnoException with code property
+ */
+export function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error
+}
+
+/**
+ * ERR-003: Safely extract error code from unknown error
+ * Returns undefined if error is not an ErrnoException or has no code.
+ */
+export function getErrorCode(error: unknown): string | undefined {
+  if (isErrnoException(error)) {
+    return error.code
+  }
+  return undefined
+}

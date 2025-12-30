@@ -3,4 +3,4 @@
  */
 
 export * from './cache.js'
-export { registryCache, workspaceCache } from './cache.js'
+export { registryCache, resetAllCaches, workspaceCache } from './cache.js'

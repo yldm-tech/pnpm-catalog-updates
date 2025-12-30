@@ -328,6 +328,14 @@ export const validateGraphOptions = composeValidators<BaseCommandOptions & Graph
 )
 
 /**
+ * Validator for analyze command
+ */
+export const validateAnalyzeOptions = composeValidators<BaseCommandOptions & AIOptions>(
+  validateFormat,
+  validateAIOptions
+)
+
+/**
  * Validator for init command
  */
 export const validateInitOptions = composeValidators<BaseCommandOptions>(validateWorkspacePath)

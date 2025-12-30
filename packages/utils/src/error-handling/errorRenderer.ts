@@ -3,6 +3,9 @@
  *
  * Responsible for rendering error messages to the console.
  * Separates UI presentation from error classification logic.
+ *
+ * QUAL-003: Added configurable output writer for testability.
+ * Default behavior remains unchanged (outputs to console).
  */
 
 import chalk from 'chalk'
@@ -25,23 +28,68 @@ export interface SkippedPackagesSummary {
 }
 
 /**
+ * QUAL-003: Output writer interface for decoupling console dependency.
+ * Allows injection of custom writers for testing or alternative output targets.
+ */
+export interface OutputWriter {
+  log(message: string): void
+}
+
+/**
+ * Default console writer implementation
+ */
+const defaultWriter: OutputWriter = {
+  log: (message: string) => console.log(message),
+}
+
+/**
  * Renders error messages to the console.
  * This class handles all UI/console output for errors.
+ *
+ * QUAL-003: Now supports custom output writer for testability.
  */
 export class ErrorRenderer {
+  private static writer: OutputWriter = defaultWriter
+
+  /**
+   * Set custom output writer (useful for testing or alternative output targets)
+   */
+  static setWriter(writer: OutputWriter): void {
+    ErrorRenderer.writer = writer
+  }
+
+  /**
+   * Reset to default console writer
+   */
+  static resetWriter(): void {
+    ErrorRenderer.writer = defaultWriter
+  }
+
+  /**
+   * Get current writer (useful for testing)
+   */
+  static getWriter(): OutputWriter {
+    return ErrorRenderer.writer
+  }
+
+  private static log(message: string): void {
+    ErrorRenderer.writer.log(message)
+  }
   /**
    * Render package not found error with optional suggestions
    */
   static renderPackageNotFound(packageName: string, suggestions?: string[]): void {
     if (suggestions && suggestions.length > 0) {
-      console.log(chalk.yellow(`⚠️  ${t('error.packageNotFoundWithSuggestion', { packageName })}`))
-      console.log(chalk.cyan(`💡 ${t('error.possiblePackageNames')}`))
+      ErrorRenderer.log(
+        chalk.yellow(`⚠️  ${t('error.packageNotFoundWithSuggestion', { packageName })}`)
+      )
+      ErrorRenderer.log(chalk.cyan(`💡 ${t('error.possiblePackageNames')}`))
       suggestions.forEach((suggestion) => {
-        console.log(chalk.cyan(`   • ${suggestion}`))
+        ErrorRenderer.log(chalk.cyan(`   • ${suggestion}`))
       })
     } else {
-      console.log(chalk.yellow(`⚠️  ${t('error.packageNotFound', { packageName })}`))
-      console.log(chalk.cyan(`💡 ${t('error.checkPackageName')}`))
+      ErrorRenderer.log(chalk.yellow(`⚠️  ${t('error.packageNotFound', { packageName })}`))
+      ErrorRenderer.log(chalk.cyan(`💡 ${t('error.checkPackageName')}`))
     }
   }
 
@@ -49,30 +97,30 @@ export class ErrorRenderer {
    * Render empty version error
    */
   static renderEmptyVersion(packageName: string): void {
-    console.log(chalk.yellow(`⚠️  ${t('error.emptyVersion', { packageName })}`))
-    console.log(chalk.cyan(`💡 ${t('error.emptyVersionReasons')}`))
+    ErrorRenderer.log(chalk.yellow(`⚠️  ${t('error.emptyVersion', { packageName })}`))
+    ErrorRenderer.log(chalk.cyan(`💡 ${t('error.emptyVersionReasons')}`))
   }
 
   /**
    * Render network error
    */
   static renderNetworkError(packageName: string): void {
-    console.log(chalk.yellow(`⚠️  ${t('error.networkError', { packageName })}`))
-    console.log(chalk.cyan(`💡 ${t('error.networkRetry')}`))
+    ErrorRenderer.log(chalk.yellow(`⚠️  ${t('error.networkError', { packageName })}`))
+    ErrorRenderer.log(chalk.cyan(`💡 ${t('error.networkRetry')}`))
   }
 
   /**
    * Render security check unavailable message
    */
   static renderSecurityCheckUnavailable(packageName: string): void {
-    console.log(chalk.yellow(`⚠️  ${t('error.securityCheckUnavailable', { packageName })}`))
+    ErrorRenderer.log(chalk.yellow(`⚠️  ${t('error.securityCheckUnavailable', { packageName })}`))
   }
 
   /**
    * Render generic package skipped message
    */
   static renderPackageSkipped(packageName: string): void {
-    console.log(chalk.yellow(`⚠️  ${t('error.packageSkipped', { packageName })}`))
+    ErrorRenderer.log(chalk.yellow(`⚠️  ${t('error.packageSkipped', { packageName })}`))
   }
 
   /**
@@ -81,11 +129,11 @@ export class ErrorRenderer {
   static renderSkippedPackagesSummary(summary: SkippedPackagesSummary): void {
     if (summary.total === 0) return
 
-    console.log()
-    console.log(chalk.cyan(`📋 ${t('summary.skippedPackages', { count: summary.total })}`))
+    ErrorRenderer.log('')
+    ErrorRenderer.log(chalk.cyan(`📋 ${t('summary.skippedPackages', { count: summary.total })}`))
 
     if (summary.notFound.length > 0) {
-      console.log(
+      ErrorRenderer.log(
         chalk.yellow(
           `   ${t('summary.notFoundPackages', { count: summary.notFound.length, packages: summary.notFound.join(', ') })}`
         )
@@ -93,7 +141,7 @@ export class ErrorRenderer {
     }
 
     if (summary.emptyVersion.length > 0) {
-      console.log(
+      ErrorRenderer.log(
         chalk.yellow(
           `   ${t('summary.emptyVersionPackages', { count: summary.emptyVersion.length, packages: summary.emptyVersion.join(', ') })}`
         )
@@ -101,7 +149,7 @@ export class ErrorRenderer {
     }
 
     if (summary.network.length > 0) {
-      console.log(
+      ErrorRenderer.log(
         chalk.yellow(
           `   ${t('summary.networkIssuePackages', { count: summary.network.length, packages: summary.network.join(', ') })}`
         )
@@ -109,7 +157,7 @@ export class ErrorRenderer {
     }
 
     if (summary.other.length > 0) {
-      console.log(
+      ErrorRenderer.log(
         chalk.yellow(
           `   ${t('summary.otherIssuePackages', { count: summary.other.length, packages: summary.other.join(', ') })}`
         )
@@ -117,7 +165,7 @@ export class ErrorRenderer {
     }
 
     if (summary.securityFailures > 0) {
-      console.log(
+      ErrorRenderer.log(
         chalk.gray(`   ${t('summary.securityCheckFailures', { count: summary.securityFailures })}`)
       )
     }

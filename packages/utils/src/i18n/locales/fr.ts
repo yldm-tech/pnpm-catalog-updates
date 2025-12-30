@@ -143,6 +143,7 @@ export const fr: TranslationDictionary = {
   'command.update.generatingPreview': "Génération de l'aperçu...",
   'command.update.previewComplete': 'Aperçu des mises à jour terminé',
   'command.update.dryRunHint': 'Simulation - aucune modification effectuée',
+  'command.update.planSaved': 'Plan de mise à jour enregistré dans {path}',
   'command.update.processComplete': 'Processus de mise à jour terminé !',
   'command.update.aiBatchFailed': 'Analyse IA par lot échouée, continuation sans informations IA :',
   'command.update.runningPnpmInstall':
@@ -188,6 +189,15 @@ export const fr: TranslationDictionary = {
   'command.rollback.deleteWarning': 'Attention : {{count}} sauvegarde(s) seront supprimées',
   'command.rollback.confirmDelete': 'Êtes-vous sûr de vouloir supprimer toutes les sauvegardes ?',
   'command.rollback.deletedBackups': '{{count}} sauvegarde(s) supprimée(s)',
+  // Rollback verification
+  'command.rollback.verification.validYaml': 'Structure YAML valide',
+  'command.rollback.verification.catalogsFound': '{{count}} catalogue(s) trouvé(s)',
+  'command.rollback.verification.catalogs': 'Catalogues',
+  'command.rollback.verification.dependencies': 'Dépendances totales: {{count}}',
+  'command.rollback.verification.warning': 'Restauration terminée avec des avertissements',
+  'command.rollback.verification.invalidYaml': 'Structure YAML invalide',
+  'command.rollback.verification.noCatalogs': 'Aucune structure de catalogue trouvée',
+  'command.rollback.verification.skipped': 'Verification skipped',
 
   // Watch command
   'command.watch.starting': 'Démarrage du mode surveillance...',
@@ -413,10 +423,15 @@ export const fr: TranslationDictionary = {
   'cli.option.exclude': 'exclure les paquets correspondant au motif',
   'cli.option.interactive': 'mode interactif pour choisir les mises à jour',
   'cli.option.dryRun': 'prévisualiser les modifications sans écrire les fichiers',
+  'cli.option.savePlan': 'enregistrer le plan de simulation dans un fichier (JSON ou YAML)',
   'cli.option.force': 'forcer les mises à jour même si risquées',
   'cli.option.createBackup': 'créer des fichiers de sauvegarde avant la mise à jour',
   'cli.option.noBackup': 'ignorer la création de sauvegarde avant la mise à jour',
   'cli.option.ai': "activer l'analyse par lots IA pour toutes les mises à jour",
+  'cli.option.aiStatus': 'afficher le statut du fournisseur IA (par défaut)',
+  'cli.option.aiTest': 'tester la connectivité du fournisseur IA',
+  'cli.option.aiCacheStats': "afficher les statistiques du cache d'analyse IA",
+  'cli.option.aiClearCache': "effacer le cache d'analyse IA",
   'cli.option.provider': 'fournisseur IA : auto, claude, gemini, codex',
   'cli.option.analysisType': "type d'analyse IA : impact, security, compatibility, recommend",
   'cli.option.skipCache': "ignorer le cache d'analyse IA",
@@ -1017,4 +1032,11 @@ export const fr: TranslationDictionary = {
   'interactive.rollback.action.listHint': 'Afficher toutes les sauvegardes disponibles',
   'interactive.rollback.action.latestHint': 'Restaurer la sauvegarde la plus récente',
   'interactive.rollback.action.deleteAllHint': 'Supprimer tous les fichiers de sauvegarde',
+
+  // Update reason messages (DOC-001: i18n for update reasons)
+  'update.reason.security': 'Mise à jour de sécurité disponible',
+  'update.reason.major': 'Mise à jour de version majeure disponible',
+  'update.reason.minor': 'Mise à jour de version mineure disponible',
+  'update.reason.patch': 'Mise à jour de correctif disponible',
+  'update.reason.default': 'Mise à jour disponible',
 }

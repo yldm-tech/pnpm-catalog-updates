@@ -22,6 +22,7 @@ export {
   targetChoicesHelp,
   validateAIOptions,
   // Pre-composed validators for common commands
+  validateAnalyzeOptions,
   validateCheckOptions,
   // Individual validation rules (can be composed)
   validateFormat,

@@ -6,7 +6,7 @@
  */
 
 import * as p from '@clack/prompts'
-import { t } from '@pcu/utils'
+import { CommandExitError, t } from '@pcu/utils'
 import chalk from 'chalk'
 import { commonSchemas, mergeOptions, type OptionsSchema } from './optionUtils.js'
 
@@ -18,10 +18,13 @@ const theme = {
 
 /**
  * Handle user cancellation
+ *
+ * QUAL-001: Use CommandExitError instead of direct process.exit()
+ * for better testability and consistent error handling
  */
 function handleCancel(): never {
   p.cancel(t('interactive.cancelled'))
-  process.exit(0)
+  throw CommandExitError.success()
 }
 
 /**
@@ -211,38 +214,6 @@ const initOptionsSchema = {
   createWorkspace: { type: 'boolean' as const, default: true },
 } satisfies OptionsSchema<InitOptions>
 
-type CacheOptions = {
-  stats: boolean
-  clear: boolean
-}
-
-const cacheOptionsSchema = {
-  stats: { type: 'boolean' as const, default: true },
-  clear: { type: 'boolean' as const, default: false },
-} satisfies OptionsSchema<CacheOptions>
-
-type WatchOptions = {
-  catalog?: string
-  format: string
-  target: string
-  prerelease: boolean
-  include: string[]
-  exclude: string[]
-  debounce: number
-  clear: boolean
-}
-
-const watchOptionsSchema = {
-  catalog: commonSchemas.catalog,
-  format: commonSchemas.format,
-  target: commonSchemas.target,
-  prerelease: commonSchemas.prerelease,
-  include: commonSchemas.include,
-  exclude: commonSchemas.exclude,
-  debounce: { type: 'number' as const, default: 300 },
-  clear: { type: 'boolean' as const, default: false },
-} satisfies OptionsSchema<WatchOptions>
-
 /**
  * Interactive Options Collector - Minimal prompts, sensible defaults
  */
@@ -374,13 +345,6 @@ export class InteractiveOptionsCollector {
   }
 
   /**
-   * Cache command - no interaction needed, defaults to stats
-   */
-  async collectCacheOptions(existingOptions: Record<string, unknown> = {}): Promise<CacheOptions> {
-    return mergeOptions(existingOptions, cacheOptionsSchema)
-  }
-
-  /**
    * Rollback command - ask what action to take
    */
   async collectRollbackOptions(existingOptions: Record<string, unknown> = {}): Promise<{
@@ -414,13 +378,6 @@ export class InteractiveOptionsCollector {
       latest: result === 'latest',
       deleteAll: result === 'deleteAll',
     }
-  }
-
-  /**
-   * Watch command - no interaction needed, use defaults
-   */
-  async collectWatchOptions(existingOptions: Record<string, unknown> = {}): Promise<WatchOptions> {
-    return mergeOptions(existingOptions, watchOptionsSchema)
   }
 }
 

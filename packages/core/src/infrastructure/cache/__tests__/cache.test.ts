@@ -224,6 +224,54 @@ describe('Cache', () => {
       expect(cache.get('key2')).toBe('value2')
       expect(cache.get('key3')).toBe('value3')
     })
+
+    it('should use LRU eviction - accessing an entry prevents eviction', () => {
+      const cache = new Cache<string>('test', { maxEntries: 2 })
+
+      // Set key1 and key2
+      cache.set('key1', 'value1')
+      vi.spyOn(Date, 'now').mockReturnValue(1000001)
+      cache.set('key2', 'value2')
+
+      // Access key1 to make it recently used
+      vi.spyOn(Date, 'now').mockReturnValue(1000002)
+      cache.get('key1')
+
+      // Now add key3 - should evict key2 (least recently used), not key1
+      vi.spyOn(Date, 'now').mockReturnValue(1000003)
+      cache.set('key3', 'value3')
+
+      // key2 should be evicted because key1 was accessed more recently
+      expect(cache.get('key1')).toBe('value1')
+      expect(cache.get('key2')).toBeUndefined()
+      expect(cache.get('key3')).toBe('value3')
+    })
+
+    it('should preserve LRU order through multiple accesses', () => {
+      const cache = new Cache<string>('test', { maxEntries: 3 })
+
+      // Set three entries
+      cache.set('key1', 'value1')
+      vi.spyOn(Date, 'now').mockReturnValue(1000001)
+      cache.set('key2', 'value2')
+      vi.spyOn(Date, 'now').mockReturnValue(1000002)
+      cache.set('key3', 'value3')
+
+      // Access key1 and key2 in that order
+      vi.spyOn(Date, 'now').mockReturnValue(1000003)
+      cache.get('key1')
+      vi.spyOn(Date, 'now').mockReturnValue(1000004)
+      cache.get('key2')
+
+      // Now add key4 - should evict key3 (least recently used)
+      vi.spyOn(Date, 'now').mockReturnValue(1000005)
+      cache.set('key4', 'value4')
+
+      expect(cache.get('key1')).toBe('value1')
+      expect(cache.get('key2')).toBe('value2')
+      expect(cache.get('key3')).toBeUndefined()
+      expect(cache.get('key4')).toBe('value4')
+    })
   })
 
   describe('has', () => {

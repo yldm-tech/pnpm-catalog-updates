@@ -11,8 +11,10 @@ const mocks = vi.hoisted(() => ({
   handlePackageQueryFailure: vi.fn(),
 }))
 
-vi.mock('@pcu/utils', () => {
+vi.mock('@pcu/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@pcu/utils')>()
   return {
+    ...actual,
     UserFriendlyErrorHandler: {
       handlePackageQueryFailure: mocks.handlePackageQueryFailure,
     },

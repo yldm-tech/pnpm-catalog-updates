@@ -18,6 +18,7 @@ import {
   type AdvancedConfig,
   CatalogNotFoundError,
   ConfigLoader,
+  InvalidVersionError,
   PackageNotFoundError,
 } from '@pcu/utils'
 import type { WorkspaceRepository } from '../../domain/repositories/workspaceRepository.js'
@@ -265,7 +266,10 @@ export class CatalogUpdateService {
     const currentVersionObj = currentRange.getMinVersion()
 
     if (!currentVersionObj) {
-      throw new Error(`Cannot determine current version for ${packageName}`)
+      throw new InvalidVersionError(
+        currentRange.toString(),
+        `Cannot determine current version for ${packageName}`
+      )
     }
 
     const updateType = currentVersionObj.getDifferenceType(proposedVersion)

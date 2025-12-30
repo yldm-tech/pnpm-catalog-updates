@@ -17,6 +17,7 @@ import {
   isCommandExitError,
   Logger,
   logger,
+  preloadPackageSuggestions,
   t,
   VersionChecker,
 } from '@pcu/utils'
@@ -100,8 +101,11 @@ async function showUpdateNotificationIfAvailable(
       cliOutput.print(result.message)
       cliOutput.print(chalk.gray(t('cli.updateHint')))
     }
-  } catch {
-    // Silently ignore - update check is best-effort
+  } catch (error) {
+    // Update check is best-effort, log at debug level for troubleshooting
+    logger.debug('Version update check failed', {
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 }
 
@@ -172,6 +176,10 @@ export async function main(): Promise<void> {
   // Start cache initialization in background (non-blocking)
   // This allows the cache to load from disk while CLI continues startup
   startCacheInitialization()
+
+  // PERF-001: Preload package suggestions in background (non-blocking)
+  // This loads the suggestions file asynchronously during CLI startup
+  preloadPackageSuggestions()
 
   // Start background version check (non-blocking)
   const versionCheckPromise = startBackgroundVersionCheck(config)

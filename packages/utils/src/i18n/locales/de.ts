@@ -145,6 +145,7 @@ export const de: TranslationDictionary = {
   'command.update.generatingPreview': 'Generiere Vorschau...',
   'command.update.previewComplete': 'Aktualisierungsvorschau abgeschlossen',
   'command.update.dryRunHint': 'Testlauf - keine Änderungen vorgenommen',
+  'command.update.planSaved': 'Aktualisierungsplan wurde in {path} gespeichert',
   'command.update.processComplete': 'Aktualisierungsprozess abgeschlossen!',
   'command.update.aiBatchFailed': 'KI-Batch-Analyse fehlgeschlagen, fahre ohne KI-Einblicke fort:',
   'command.update.runningPnpmInstall': 'Führe pnpm install aus, um Lock-Datei zu aktualisieren...',
@@ -192,6 +193,15 @@ export const de: TranslationDictionary = {
   'command.rollback.deleteWarning': 'Warnung: {{count}} Backup(s) werden gelöscht',
   'command.rollback.confirmDelete': 'Sind Sie sicher, dass Sie alle Backups löschen möchten?',
   'command.rollback.deletedBackups': '{{count}} Backup(s) gelöscht',
+  // Rollback verification
+  'command.rollback.verification.validYaml': 'Gültige YAML-Struktur',
+  'command.rollback.verification.catalogsFound': '{{count}} Katalog(e) gefunden',
+  'command.rollback.verification.catalogs': 'Kataloge',
+  'command.rollback.verification.dependencies': 'Gesamtabhängigkeiten: {{count}}',
+  'command.rollback.verification.warning': 'Rollback abgeschlossen mit Warnungen',
+  'command.rollback.verification.invalidYaml': 'Ungültige YAML-Struktur',
+  'command.rollback.verification.noCatalogs': 'Keine Katalogstruktur gefunden',
+  'command.rollback.verification.skipped': 'Verification skipped',
 
   // Watch command
   'command.watch.starting': 'Überwachungsmodus wird gestartet...',
@@ -418,10 +428,15 @@ export const de: TranslationDictionary = {
   'cli.option.exclude': 'Pakete ausschließen, die dem Muster entsprechen',
   'cli.option.interactive': 'Interaktiver Modus zur Auswahl von Updates',
   'cli.option.dryRun': 'Änderungen anzeigen ohne Dateien zu schreiben',
+  'cli.option.savePlan': 'Testlauf-Plan in Datei speichern (JSON oder YAML)',
   'cli.option.force': 'Updates erzwingen, auch wenn riskant',
   'cli.option.createBackup': 'Backup-Dateien vor dem Update erstellen',
   'cli.option.noBackup': 'Backup vor dem Update überspringen',
   'cli.option.ai': 'AI-Batch-Analyse für alle Updates aktivieren',
+  'cli.option.aiStatus': 'AI-Anbieter-Status anzeigen (Standard)',
+  'cli.option.aiTest': 'AI-Anbieter-Konnektivität testen',
+  'cli.option.aiCacheStats': 'AI-Analyse-Cache-Statistiken anzeigen',
+  'cli.option.aiClearCache': 'AI-Analyse-Cache leeren',
   'cli.option.provider': 'AI-Anbieter: auto, claude, gemini, codex',
   'cli.option.analysisType': 'AI-Analysetyp: impact, security, compatibility, recommend',
   'cli.option.skipCache': 'AI-Analyse-Cache überspringen',
@@ -1012,4 +1027,11 @@ export const de: TranslationDictionary = {
   'interactive.rollback.action.listHint': 'Alle verfügbaren Backups anzeigen',
   'interactive.rollback.action.latestHint': 'Neuestes Backup wiederherstellen',
   'interactive.rollback.action.deleteAllHint': 'Alle Backup-Dateien löschen',
+
+  // Update reason messages (DOC-001: i18n for update reasons)
+  'update.reason.security': 'Sicherheitsupdate verfügbar',
+  'update.reason.major': 'Hauptversions-Update verfügbar',
+  'update.reason.minor': 'Nebenversions-Update verfügbar',
+  'update.reason.patch': 'Patch-Update verfügbar',
+  'update.reason.default': 'Update verfügbar',
 }

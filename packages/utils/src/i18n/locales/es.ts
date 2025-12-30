@@ -142,6 +142,7 @@ export const es: TranslationDictionary = {
   'command.update.generatingPreview': 'Generando vista previa...',
   'command.update.previewComplete': 'Vista previa de actualización completa',
   'command.update.dryRunHint': 'Ejecución en seco - sin cambios realizados',
+  'command.update.planSaved': 'Plan de actualización guardado en {path}',
   'command.update.processComplete': '¡Proceso de actualización completado!',
   'command.update.aiBatchFailed':
     'Análisis por lotes de IA fallido, continuando sin información de IA:',
@@ -188,6 +189,15 @@ export const es: TranslationDictionary = {
   'command.rollback.confirmDelete':
     '¿Está seguro de que desea eliminar todas las copias de seguridad?',
   'command.rollback.deletedBackups': 'Se eliminaron {{count}} copia(s) de seguridad',
+  // Rollback verification
+  'command.rollback.verification.validYaml': 'Estructura YAML válida',
+  'command.rollback.verification.catalogsFound': 'Se encontraron {{count}} catálogo(s)',
+  'command.rollback.verification.catalogs': 'Catálogos',
+  'command.rollback.verification.dependencies': 'Total de dependencias: {{count}}',
+  'command.rollback.verification.warning': 'Reversión completada con advertencias',
+  'command.rollback.verification.invalidYaml': 'Estructura YAML inválida',
+  'command.rollback.verification.noCatalogs': 'No se encontró estructura de catálogo',
+  'command.rollback.verification.skipped': 'Verification skipped',
 
   // Watch command
   'command.watch.starting': 'Iniciando modo de vigilancia...',
@@ -411,10 +421,15 @@ export const es: TranslationDictionary = {
   'cli.option.exclude': 'excluir paquetes que coincidan con el patrón',
   'cli.option.interactive': 'modo interactivo para elegir actualizaciones',
   'cli.option.dryRun': 'previsualizar cambios sin escribir archivos',
+  'cli.option.savePlan': 'guardar plan de ejecución en seco en archivo (JSON o YAML)',
   'cli.option.force': 'forzar actualizaciones incluso si son riesgosas',
   'cli.option.createBackup': 'crear archivos de respaldo antes de actualizar',
   'cli.option.noBackup': 'omitir creación de respaldo antes de actualizar',
   'cli.option.ai': 'habilitar análisis por lotes de IA para todas las actualizaciones',
+  'cli.option.aiStatus': 'mostrar estado del proveedor de IA (predeterminado)',
+  'cli.option.aiTest': 'probar conectividad del proveedor de IA',
+  'cli.option.aiCacheStats': 'mostrar estadísticas de caché de análisis de IA',
+  'cli.option.aiClearCache': 'limpiar caché de análisis de IA',
   'cli.option.provider': 'proveedor de IA: auto, claude, gemini, codex',
   'cli.option.analysisType': 'tipo de análisis de IA: impact, security, compatibility, recommend',
   'cli.option.skipCache': 'omitir caché de análisis de IA',
@@ -1010,4 +1025,11 @@ export const es: TranslationDictionary = {
   'interactive.rollback.action.listHint': 'Mostrar todas las copias de seguridad disponibles',
   'interactive.rollback.action.latestHint': 'Restaurar la copia de seguridad más reciente',
   'interactive.rollback.action.deleteAllHint': 'Eliminar todos los archivos de copia de seguridad',
+
+  // Update reason messages (DOC-001: i18n for update reasons)
+  'update.reason.security': 'Actualización de seguridad disponible',
+  'update.reason.major': 'Actualización de versión mayor disponible',
+  'update.reason.minor': 'Actualización de versión menor disponible',
+  'update.reason.patch': 'Actualización de parche disponible',
+  'update.reason.default': 'Actualización disponible',
 }

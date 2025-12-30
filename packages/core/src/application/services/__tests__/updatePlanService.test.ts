@@ -24,9 +24,18 @@ vi.mock('@pcu/utils', () => {
     child: vi.fn().mockReturnThis(),
   }
 
+  // Mock translations for i18n t() function
+  const mockTranslations: Record<string, string> = {
+    'update.reason.security': 'Security update available',
+    'update.reason.major': 'Major version update available',
+    'update.reason.minor': 'Minor version update available',
+    'update.reason.patch': 'Patch version update available',
+    'update.reason.default': 'Update available',
+  }
+
   return {
     logger: mockLogger,
-    t: vi.fn((key: string) => key),
+    t: vi.fn((key: string) => mockTranslations[key] ?? key),
     UserFriendlyErrorHandler: {
       handlePackageQueryFailure: mocks.handlePackageQueryFailure,
     },
@@ -47,6 +56,7 @@ interface MockWorkspaceRepository {
 
 interface MockRegistryService {
   getPackageVersions: ReturnType<typeof vi.fn>
+  batchQueryVersions: ReturnType<typeof vi.fn>
 }
 
 interface MockCheckService {
@@ -94,6 +104,10 @@ describe('UpdatePlanService', () => {
 
     mockRegistryService = {
       getPackageVersions: vi.fn(),
+      batchQueryVersions: vi.fn().mockResolvedValue({
+        results: new Map(),
+        failures: [],
+      }),
     }
 
     mockCheckService = {
@@ -506,10 +520,18 @@ describe('UpdatePlanService', () => {
         }),
       }
 
-      mockRegistryService.getPackageVersions.mockResolvedValue({
-        name: 'lodash',
-        versions: ['4.17.20', '4.17.21'],
-        latestVersion: '4.17.21',
+      mockRegistryService.batchQueryVersions.mockResolvedValue({
+        results: new Map([
+          [
+            'lodash',
+            {
+              name: 'lodash',
+              versions: ['4.17.20', '4.17.21'],
+              latestVersion: '4.17.21',
+            },
+          ],
+        ]),
+        failures: [],
       })
 
       const syncUpdates = await service.createSyncVersionUpdates(
@@ -518,7 +540,7 @@ describe('UpdatePlanService', () => {
         [] // No existing updates
       )
 
-      expect(mockRegistryService.getPackageVersions).toHaveBeenCalledWith('lodash')
+      expect(mockRegistryService.batchQueryVersions).toHaveBeenCalledWith(['lodash'])
       expect(syncUpdates.length).toBeGreaterThanOrEqual(0)
     })
 
@@ -550,7 +572,11 @@ describe('UpdatePlanService', () => {
         }),
       }
 
-      mockRegistryService.getPackageVersions.mockRejectedValue(new Error('Network error'))
+      // batchQueryVersions returns failures in the response instead of throwing
+      mockRegistryService.batchQueryVersions.mockResolvedValue({
+        results: new Map(),
+        failures: [{ packageName: 'lodash', error: new Error('Network error') }],
+      })
 
       const syncUpdates = await service.createSyncVersionUpdates(
         ['lodash'],
@@ -558,7 +584,7 @@ describe('UpdatePlanService', () => {
         []
       )
 
-      expect(mocks.handlePackageQueryFailure).toHaveBeenCalled()
+      // No sync updates should be created when version query fails
       expect(syncUpdates).toHaveLength(0)
     })
   })

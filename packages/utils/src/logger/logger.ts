@@ -11,11 +11,13 @@ import {
   existsSync,
   mkdirSync,
   renameSync,
-  statSync,
   unlinkSync,
   type WriteStream,
 } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
+import chalk from 'chalk'
+import { getErrorCode, getErrorMessage } from '../error-handling/errors.js'
 
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug'
 
@@ -209,23 +211,19 @@ export class Logger {
     const config = getLoggerConfig()
     const useColors = config.output.color
 
-    let colorFn: (text: string) => string
-    let consoleMethod: 'error' | 'warn' | 'info' | 'log'
+    // QUAL-002: Use chalk for consistent color handling across the codebase.
+    // chalk automatically handles terminal color support detection.
+    const colorFn: (text: string) => string = useColors
+      ? {
+          error: chalk.red,
+          warn: chalk.yellow,
+          info: chalk.cyan,
+          debug: chalk.gray,
+        }[entry.level]
+      : (text: string) => text
 
-    if (useColors) {
-      // Simple color functions (avoiding external dependencies)
-      const colors = {
-        error: (text: string) => `\u001b[31m${text}\u001b[0m`, // Red
-        warn: (text: string) => `\u001b[33m${text}\u001b[0m`, // Yellow
-        info: (text: string) => `\u001b[36m${text}\u001b[0m`, // Cyan
-        debug: (text: string) => `\u001b[90m${text}\u001b[0m`, // Gray
-      }
-      colorFn = colors[entry.level]
-      consoleMethod = entry.level === 'debug' ? 'log' : entry.level
-    } else {
-      colorFn = (text: string) => text
-      consoleMethod = entry.level === 'debug' ? 'log' : entry.level
-    }
+    const consoleMethod: 'error' | 'warn' | 'info' | 'log' =
+      entry.level === 'debug' ? 'log' : entry.level
 
     const timestamp = new Date(entry.timestamp).toLocaleTimeString()
     const levelStr = entry.level.toUpperCase().padEnd(5)
@@ -298,10 +296,14 @@ export class Logger {
       }
 
       // Check file size and rotate periodically (not on every write)
+      // PERF-001: Use async rotation check to avoid blocking the event loop
       this.writeCount++
       if (this.writeCount >= Logger.ROTATION_CHECK_INTERVAL) {
         this.writeCount = 0
-        this.checkAndRotate(filePath)
+        // Fire-and-forget: rotation check runs in background, errors are handled internally
+        this.checkAndRotateAsync(filePath).catch(() => {
+          // Error already logged in checkAndRotateAsync
+        })
       }
 
       // Format log entry
@@ -333,19 +335,20 @@ export class Logger {
       // Write to stream (buffered, non-blocking)
       this.fileStream.write(logLine)
     } catch (error) {
-      const err = error as NodeJS.ErrnoException
+      // ERR-003: Use type-safe error code extraction
+      const code = getErrorCode(error)
 
-      if (err.code === 'ENOSPC') {
+      if (code === 'ENOSPC') {
         // Disk full - disable file logging to prevent repeated failures
         console.error('Disk full - file logging disabled')
         this.options.file = undefined
-      } else if (err.code === 'EACCES' || err.code === 'EPERM') {
+      } else if (code === 'EACCES' || code === 'EPERM') {
         // Permission denied - disable file logging
         console.error(`Permission denied for log file: ${this.options.file}`)
         this.options.file = undefined
       } else {
         // Other errors - log once and continue
-        console.error('Failed to write to log file:', err.message || error)
+        console.error('Failed to write to log file:', getErrorMessage(error))
       }
 
       // Fallback to console for this entry
@@ -354,17 +357,20 @@ export class Logger {
   }
 
   /**
-   * Check file size and rotate if necessary.
+   * Check file size and rotate if necessary (async version).
    * Called periodically instead of on every write.
+   *
+   * PERF-001: Use async stat to avoid blocking the event loop during rotation checks.
+   * This method is called in fire-and-forget mode since rotation is non-critical.
    */
-  private checkAndRotate(filePath: string): void {
+  private async checkAndRotateAsync(filePath: string): Promise<void> {
     if (!existsSync(filePath)) return
 
     const config = getLoggerConfig()
     const maxSize = this.parseSize(config.logging.maxSize)
 
     try {
-      const stats = statSync(filePath)
+      const stats = await stat(filePath)
 
       if (stats.size >= maxSize) {
         // Close current stream before rotation
@@ -378,10 +384,11 @@ export class Logger {
         // Stream will be recreated on next write
       }
     } catch (error) {
-      const err = error as NodeJS.ErrnoException
-      if (err.code !== 'ENOENT') {
+      // ERR-003: Use type-safe error code extraction
+      const code = getErrorCode(error)
+      if (code !== 'ENOENT') {
         // Only log non-file-not-found errors (ENOENT is expected during rotation)
-        console.warn(`Log rotation check failed [${err.code}]: ${err.message}`)
+        console.warn(`Log rotation check failed [${code}]: ${getErrorMessage(error)}`)
       }
     }
   }
@@ -418,12 +425,13 @@ export class Logger {
       // Move current file to .1
       renameSync(filePath, `${filePath}.1`)
     } catch (error) {
-      const err = error as NodeJS.ErrnoException
-      const errorContext = err.code ? `[${err.code}]` : ''
-      console.warn(`Failed to rotate log file ${errorContext}: ${err.message}`)
+      // ERR-003: Use type-safe error code extraction
+      const code = getErrorCode(error)
+      const errorContext = code ? `[${code}]` : ''
+      console.warn(`Failed to rotate log file ${errorContext}: ${getErrorMessage(error)}`)
 
       // If rotation fails due to permissions, disable file logging
-      if (err.code === 'EACCES' || err.code === 'EPERM') {
+      if (code === 'EACCES' || code === 'EPERM') {
         this.options.file = undefined
         console.warn('File logging disabled due to rotation permission error')
       }
@@ -551,12 +559,12 @@ export class Logger {
    *
    * Returns a promise that resolves when all pending writes are flushed.
    */
-  static flushAll(): Promise<void[]> {
+  static async flushAll(): Promise<void> {
     const flushPromises: Promise<void>[] = []
     for (const instance of Logger.instances.values()) {
       flushPromises.push(instance.flush())
     }
-    return Promise.all(flushPromises)
+    await Promise.all(flushPromises)
   }
 
   /**

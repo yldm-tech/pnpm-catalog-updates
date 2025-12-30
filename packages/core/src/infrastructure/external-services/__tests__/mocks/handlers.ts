@@ -209,7 +209,7 @@ export function clearMockData(): void {
 
 // Default handlers
 export const handlers = [
-  // OSV API - Query vulnerabilities
+  // OSV API - Query vulnerabilities (single)
   http.post('https://api.osv.dev/v1/query', async ({ request }) => {
     const body = (await request.json()) as {
       package: { name: string; ecosystem: string }
@@ -230,6 +230,36 @@ export const handlers = [
 
     // Default: no vulnerabilities
     return HttpResponse.json({} as OSVQueryResponse)
+  }),
+
+  // OSV API - Query vulnerabilities (batch)
+  http.post('https://api.osv.dev/v1/querybatch', async ({ request }) => {
+    const body = (await request.json()) as {
+      queries: Array<{
+        package: { name: string; ecosystem: string }
+        version: string
+      }>
+    }
+
+    // Process each query in the batch
+    const results = body.queries.map((query) => {
+      const packageName = query.package.name
+      const version = query.version
+      const key = `${packageName}@${version}`
+
+      // Check for stored mock data
+      const storedVulns = vulnerabilityStore.get(key)
+      if (storedVulns !== undefined) {
+        return {
+          vulns: storedVulns.length > 0 ? storedVulns : undefined,
+        } as OSVQueryResponse
+      }
+
+      // Default: no vulnerabilities
+      return {} as OSVQueryResponse
+    })
+
+    return HttpResponse.json({ results })
   }),
 
   // npm Registry - Get package metadata

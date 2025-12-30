@@ -6,7 +6,7 @@
  */
 
 // Error Renderer (UI layer for error messages)
-export type { ErrorInfo, SkippedPackagesSummary } from './errorRenderer.js'
+export type { ErrorInfo, OutputWriter, SkippedPackagesSummary } from './errorRenderer.js'
 export { ErrorRenderer } from './errorRenderer.js'
 // Custom Error Classes
 export {
@@ -16,6 +16,8 @@ export {
   BaseError,
   CacheError,
   CatalogNotFoundError,
+  // CLI exit handling
+  CommandExitError,
   ConfigurationError,
   DomainError,
   // Enums
@@ -23,6 +25,8 @@ export {
   ExternalServiceError,
   FileSizeExceededError,
   FileSystemError,
+  // ERR-003: Error utilities
+  getErrorCode,
   getErrorMessage,
   hasErrorCode,
   ImpactAnalysisError,
@@ -32,13 +36,16 @@ export {
   isApplicationError,
   // Type guards
   isBaseError,
+  isCommandExitError,
   isDomainError,
+  isErrnoException,
   isInfrastructureError,
   NetworkError,
   PackageNotFoundError,
   // Infrastructure errors
   RegistryError,
   SecurityCheckError,
+  toError,
   // Application errors
   UpdatePlanError,
   // Domain errors
@@ -53,4 +60,4 @@ export { ErrorTracker } from './errorTracker.js'
 
 // User-friendly Error Handler
 export type { ErrorContext, PackageSuggestion } from './userFriendlyErrorHandler.js'
-export { UserFriendlyErrorHandler } from './userFriendlyErrorHandler.js'
+export { preloadPackageSuggestions, UserFriendlyErrorHandler } from './userFriendlyErrorHandler.js'

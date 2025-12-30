@@ -143,6 +143,7 @@ export const ja: TranslationDictionary = {
   'command.update.generatingPreview': 'プレビューを生成しています...',
   'command.update.previewComplete': '更新プレビューが完了しました',
   'command.update.dryRunHint': 'ドライラン - 変更は行われていません',
+  'command.update.planSaved': '更新プランを {path} に保存しました',
   'command.update.processComplete': '更新プロセスが完了しました！',
   'command.update.aiBatchFailed': 'AI 一括分析に失敗しました。AI の洞察なしで続行します:',
   'command.update.runningPnpmInstall': 'pnpm install を実行してロックファイルを更新しています...',
@@ -185,6 +186,15 @@ export const ja: TranslationDictionary = {
   'command.rollback.deleteWarning': '警告：{{count}} 個のバックアップが削除されます',
   'command.rollback.confirmDelete': 'すべてのバックアップを削除してもよろしいですか？',
   'command.rollback.deletedBackups': '{{count}} 個のバックアップを削除しました',
+  // Rollback verification
+  'command.rollback.verification.validYaml': '有効なYAML構造',
+  'command.rollback.verification.catalogsFound': '{{count}} 個のカタログが見つかりました',
+  'command.rollback.verification.catalogs': 'カタログ',
+  'command.rollback.verification.dependencies': '依存関係の総数: {{count}}',
+  'command.rollback.verification.warning': 'ロールバックは完了しましたが、警告があります',
+  'command.rollback.verification.invalidYaml': '無効なYAML構造',
+  'command.rollback.verification.noCatalogs': 'カタログ構造が見つかりません',
+  'command.rollback.verification.skipped': 'Verification skipped',
 
   // Watch command
   'command.watch.starting': '監視モードを開始しています...',
@@ -407,10 +417,15 @@ export const ja: TranslationDictionary = {
   'cli.option.exclude': 'パターンに一致するパッケージを除外',
   'cli.option.interactive': '更新を選択するインタラクティブモード',
   'cli.option.dryRun': 'ファイルに書き込まずに変更をプレビュー',
+  'cli.option.savePlan': 'ドライランプランをファイルに保存（JSONまたはYAML）',
   'cli.option.force': 'リスクがあっても強制更新',
   'cli.option.createBackup': '更新前にバックアップファイルを作成（デフォルト）',
   'cli.option.noBackup': '更新前のバックアップ作成をスキップ',
   'cli.option.ai': 'すべての更新にAIバッチ分析を有効化',
+  'cli.option.aiStatus': 'AIプロバイダーのステータスを表示（デフォルト）',
+  'cli.option.aiTest': 'AIプロバイダーの接続をテスト',
+  'cli.option.aiCacheStats': 'AI分析キャッシュの統計を表示',
+  'cli.option.aiClearCache': 'AI分析キャッシュをクリア',
   'cli.option.provider': 'AIプロバイダー: auto, claude, gemini, codex',
   'cli.option.analysisType': 'AI分析タイプ: impact, security, compatibility, recommend',
   'cli.option.skipCache': 'AI分析キャッシュをスキップ',
@@ -998,4 +1013,11 @@ export const ja: TranslationDictionary = {
   'interactive.rollback.action.listHint': '利用可能なすべてのバックアップを表示',
   'interactive.rollback.action.latestHint': '最新のバックアップを復元',
   'interactive.rollback.action.deleteAllHint': 'すべてのバックアップファイルを削除',
+
+  // Update reason messages (DOC-001: i18n for update reasons)
+  'update.reason.security': 'セキュリティアップデートが利用可能',
+  'update.reason.major': 'メジャーバージョンの更新が利用可能',
+  'update.reason.minor': 'マイナーバージョンの更新が利用可能',
+  'update.reason.patch': 'パッチバージョンの更新が利用可能',
+  'update.reason.default': '更新が利用可能',
 }

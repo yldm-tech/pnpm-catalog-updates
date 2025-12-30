@@ -41,11 +41,69 @@ vi.mock('@pcu/utils', () => {
     }
   }
 
+  // ValidationResult class for validation methods
+  class ValidationResultClass {
+    public readonly isValid: boolean
+    public readonly errors: string[]
+    public readonly warnings: string[]
+
+    constructor(isValid: boolean, errors: string[] = [], warnings: string[] = []) {
+      this.isValid = isValid
+      this.errors = [...errors]
+      this.warnings = [...warnings]
+    }
+
+    public getIsValid(): boolean {
+      return this.isValid
+    }
+
+    public getErrors(): string[] {
+      return [...this.errors]
+    }
+
+    public getWarnings(): string[] {
+      return [...this.warnings]
+    }
+
+    public hasErrors(): boolean {
+      return this.errors.length > 0
+    }
+
+    public hasWarnings(): boolean {
+      return this.warnings.length > 0
+    }
+
+    public static merge(
+      ...results: Array<{ errors: string[]; warnings: string[] }>
+    ): ValidationResultClass {
+      const allErrors: string[] = []
+      const allWarnings: string[] = []
+      for (const result of results) {
+        allErrors.push(...result.errors)
+        allWarnings.push(...result.warnings)
+      }
+      return new ValidationResultClass(allErrors.length === 0, allErrors, allWarnings)
+    }
+
+    public static valid(warnings: string[] = []): ValidationResultClass {
+      return new ValidationResultClass(true, [], warnings)
+    }
+
+    public static invalid(errors: string[], warnings: string[] = []): ValidationResultClass {
+      return new ValidationResultClass(false, errors, warnings)
+    }
+  }
+
   return {
     ErrorCode,
     BaseError,
     DomainError,
     CatalogNotFoundError,
+    ValidationResultClass,
+    isValidPackageName: (name: string) => {
+      const packageNameRegex = /^(?:@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/
+      return packageNameRegex.test(name) && name.length <= 214
+    },
     logger: {
       debug: vi.fn(),
       info: vi.fn(),

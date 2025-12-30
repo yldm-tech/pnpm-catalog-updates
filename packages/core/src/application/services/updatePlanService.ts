@@ -5,7 +5,7 @@
  * Extracted from CatalogUpdateService for better separation of concerns.
  */
 
-import { ConfigLoader, UserFriendlyErrorHandler } from '@pcu/utils'
+import { ConfigLoader, t } from '@pcu/utils'
 import type { Catalog } from '../../domain/entities/catalog.js'
 import type { Workspace } from '../../domain/entities/workspace.js'
 import type { WorkspaceRepository } from '../../domain/repositories/workspaceRepository.js'
@@ -117,10 +117,12 @@ export class UpdatePlanService {
     const packageCatalogMap = new Map<string, PlannedUpdate[]>()
 
     for (const update of updates) {
-      if (!packageCatalogMap.has(update.packageName)) {
-        packageCatalogMap.set(update.packageName, [])
+      const packageUpdates = packageCatalogMap.get(update.packageName)
+      if (packageUpdates) {
+        packageUpdates.push(update)
+      } else {
+        packageCatalogMap.set(update.packageName, [update])
       }
-      packageCatalogMap.get(update.packageName)!.push(update)
     }
 
     // Handle conflicts with catalogPriority
@@ -152,26 +154,28 @@ export class UpdatePlanService {
 
   /**
    * Generate update reason description
+   * DOC-001: Uses i18n translation keys for localization
    */
   getUpdateReason(outdated: OutdatedDependencyInfo): string {
     if (outdated.isSecurityUpdate) {
-      return 'Security update available'
+      return t('update.reason.security')
     }
 
     switch (outdated.updateType) {
       case 'major':
-        return 'Major version update available'
+        return t('update.reason.major')
       case 'minor':
-        return 'Minor version update available'
+        return t('update.reason.minor')
       case 'patch':
-        return 'Patch version update available'
+        return t('update.reason.patch')
       default:
-        return 'Update available'
+        return t('update.reason.default')
     }
   }
 
   /**
    * Create sync version updates for packages that should be synchronized across catalogs
+   * PERF-001: Optimized to use batch queries instead of sequential network requests
    */
   async createSyncVersionUpdates(
     syncVersions: string[],
@@ -182,36 +186,64 @@ export class UpdatePlanService {
     const catalogs = workspace.getCatalogs()
     const allCatalogs = catalogs.getAll()
 
+    // Phase 1: Collect packages that need version queries (not in existingUpdates)
+    // and filter to only those in multiple catalogs
+    const packagesNeedingQuery: string[] = []
+    const packageCatalogMap = new Map<
+      string,
+      { catalogs: Catalog[]; existingUpdate?: PlannedUpdate }
+    >()
+
     for (const packageName of syncVersions) {
       // Check if this package exists in multiple catalogs
       const catalogsWithPackage = allCatalogs.filter((catalog: Catalog | undefined) =>
         catalog?.getDependencyVersion(packageName)
-      )
+      ) as Catalog[]
 
       if (catalogsWithPackage.length <= 1) {
         continue // No need to sync if package is only in one catalog
       }
 
-      // Find the highest version from existing updates or determine target version
+      const existingUpdate = existingUpdates.find((u) => u.packageName === packageName)
+      packageCatalogMap.set(packageName, {
+        catalogs: catalogsWithPackage,
+        existingUpdate,
+      })
+
+      // Only query if no existing update provides the version
+      if (!existingUpdate) {
+        packagesNeedingQuery.push(packageName)
+      }
+    }
+
+    // Phase 2: Batch query all packages that need version info (parallel)
+    const versionMap = new Map<string, string>()
+
+    if (packagesNeedingQuery.length > 0) {
+      const batchResult = await this.registryService.batchQueryVersions(packagesNeedingQuery)
+
+      // Extract latest versions from successful queries
+      for (const [packageName, packageInfo] of batchResult.results) {
+        versionMap.set(packageName, packageInfo.latestVersion)
+      }
+
+      // Log failures (already handled by batchQueryVersions)
+      // Failed packages will simply not be in versionMap
+    }
+
+    // Phase 3: Create sync updates using collected version info
+    for (const [
+      packageName,
+      { catalogs: catalogsWithPackage, existingUpdate },
+    ] of packageCatalogMap) {
       let targetVersion: string | null = null
       let targetUpdateType: 'major' | 'minor' | 'patch' = 'patch'
 
-      // Check if this package has any existing updates
-      const existingUpdate = existingUpdates.find((u) => u.packageName === packageName)
       if (existingUpdate) {
         targetVersion = existingUpdate.newVersion
         targetUpdateType = existingUpdate.updateType
       } else {
-        // Get latest version for this package using lightweight API
-        try {
-          const versionInfo = await this.registryService.getPackageVersions(packageName)
-          targetVersion = versionInfo.latestVersion
-        } catch (error) {
-          UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error, {
-            operation: 'sync',
-          })
-          continue
-        }
+        targetVersion = versionMap.get(packageName) || null
       }
 
       if (!targetVersion) continue

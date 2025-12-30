@@ -9,8 +9,11 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { FileSizeExceededError, FileSystemError, logger } from '@pcu/utils'
 
-// SEC-008: Maximum YAML file size to prevent DoS attacks (10MB)
-const MAX_YAML_FILE_SIZE = 10 * 1024 * 1024
+// SEC-008: Maximum file sizes to prevent DoS attacks
+const MAX_YAML_FILE_SIZE = 10 * 1024 * 1024 // 10MB for YAML files
+// SEC-002: Extended file size limits to JSON files
+const MAX_JSON_FILE_SIZE = 10 * 1024 * 1024 // 10MB for JSON files
+const MAX_PACKAGE_JSON_SIZE = 5 * 1024 * 1024 // 5MB for package.json (typically smaller)
 
 import { glob } from 'glob'
 import YAML from 'yaml'
@@ -79,12 +82,23 @@ export class FileSystemService {
 
   /**
    * Read and parse a JSON file
+   * SEC-002: Includes file size validation to prevent DoS attacks
    */
-  async readJsonFile<T = unknown>(filePath: string): Promise<T> {
+  async readJsonFile<T = unknown>(filePath: string, maxSize = MAX_JSON_FILE_SIZE): Promise<T> {
     try {
+      // SEC-002: Check file size before reading to prevent DoS
+      const stat = await fs.stat(filePath)
+      if (stat.size > maxSize) {
+        throw new FileSizeExceededError(filePath, stat.size, maxSize)
+      }
+
       const content = await this.readTextFile(filePath)
       return JSON.parse(content) as T
     } catch (error) {
+      // Re-throw FileSizeExceededError as-is
+      if (error instanceof FileSizeExceededError) {
+        throw error
+      }
       throw new FileSystemError(
         filePath,
         'readJSON',
@@ -669,7 +683,8 @@ export class FileSystemService {
       throw new FileSystemError(packageJsonPath, 'read', 'package.json not found')
     }
 
-    return await this.readJsonFile<PackageJsonData>(packageJsonPath)
+    // SEC-002: Use stricter size limit for package.json files
+    return await this.readJsonFile<PackageJsonData>(packageJsonPath, MAX_PACKAGE_JSON_SIZE)
   }
 
   /**

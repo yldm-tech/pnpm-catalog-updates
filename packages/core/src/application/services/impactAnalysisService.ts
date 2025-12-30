@@ -123,12 +123,21 @@ export class ImpactAnalysisService {
 
   /**
    * Assess overall risk level
+   * QUAL-001: Now properly considers analysisIncomplete flag to avoid underestimating risk
    */
   assessOverallRisk(
     updateType: string,
     packageImpacts: PackageImpact[],
     securityImpact: SecurityImpact
   ): RiskLevel {
+    // QUAL-001: If security analysis is incomplete, we cannot reliably assess risk
+    // Treat incomplete analysis as elevated risk to avoid false sense of security
+    if (securityImpact.analysisIncomplete) {
+      // At minimum return 'medium' risk when analysis is incomplete
+      // Major updates with incomplete analysis are treated as 'high' risk
+      return updateType === UPDATE_TYPES.MAJOR ? 'high' : 'medium'
+    }
+
     // Security fixes reduce risk
     if (securityImpact.fixedVulnerabilities > 0) {
       return updateType === UPDATE_TYPES.MAJOR ? 'medium' : 'low'

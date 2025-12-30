@@ -32,6 +32,7 @@ export const ErrorCode = {
   WORKSPACE_NOT_FOUND: 'WORKSPACE_NOT_FOUND',
   WORKSPACE_VALIDATION_ERROR: 'WORKSPACE_VALIDATION_ERROR',
   FILE_SYSTEM_ERROR: 'FILE_SYSTEM_ERROR',
+  FILE_SIZE_EXCEEDED: 'ERR_FILE_SIZE_EXCEEDED',
   REGISTRY_ERROR: 'REGISTRY_ERROR',
   EXTERNAL_SERVICE_ERROR: 'EXTERNAL_SERVICE_ERROR',
   NETWORK_ERROR: 'NETWORK_ERROR',
@@ -120,6 +121,19 @@ export class FileSystemError extends InfrastructureError {
       `File system ${operation} failed for "${path}": ${reason}`,
       ErrorCode.FILE_SYSTEM_ERROR,
       { path, operation, reason },
+      cause
+    )
+  }
+}
+
+export class FileSizeExceededError extends InfrastructureError {
+  constructor(filePath: string, actualSize: number, maxSize: number, cause?: Error) {
+    const actualSizeMB = (actualSize / 1024 / 1024).toFixed(2)
+    const maxSizeMB = (maxSize / 1024 / 1024).toFixed(2)
+    super(
+      `File "${filePath}" exceeds maximum allowed size (${actualSizeMB}MB > ${maxSizeMB}MB)`,
+      ErrorCode.FILE_SIZE_EXCEEDED,
+      { path: filePath, actualSize, maxSize },
       cause
     )
   }
@@ -242,6 +256,17 @@ export function mockControls(): MockControls {
 }
 
 /**
+ * Mock translations for i18n t() function
+ */
+const mockTranslations: Record<string, string> = {
+  'update.reason.security': 'Security update available',
+  'update.reason.major': 'Major version update available',
+  'update.reason.minor': 'Minor version update available',
+  'update.reason.patch': 'Patch version update available',
+  'update.reason.default': 'Update available',
+}
+
+/**
  * Create the complete @pcu/utils mock with configurable controls
  */
 export function createPcuUtilsMock(controls?: MockControls): Record<string, unknown> {
@@ -249,6 +274,8 @@ export function createPcuUtilsMock(controls?: MockControls): Record<string, unkn
   const mocks = controls ?? mockControls()
 
   return {
+    // i18n translation function
+    t: vi.fn((key: string) => mockTranslations[key] ?? key),
     // Error codes
     ErrorCode,
 
@@ -268,12 +295,27 @@ export function createPcuUtilsMock(controls?: MockControls): Record<string, unkn
 
     // Infrastructure errors
     FileSystemError,
+    FileSizeExceededError,
     RegistryError,
     ExternalServiceError,
     NetworkError,
 
     // Application errors
     AIAnalysisError,
+
+    // Error Renderer (mock)
+    ErrorRenderer: {
+      renderPackageNotFound: vi.fn(),
+      renderEmptyVersion: vi.fn(),
+      renderNetworkError: vi.fn(),
+      renderSecurityCheckUnavailable: vi.fn(),
+      renderPackageSkipped: vi.fn(),
+      renderSkippedPackagesSummary: vi.fn(),
+      render: vi.fn(),
+      setWriter: vi.fn(),
+      resetWriter: vi.fn(),
+      getWriter: vi.fn(),
+    },
 
     // Logger mocks
     logger,
@@ -307,6 +349,95 @@ export function createPcuUtilsMock(controls?: MockControls): Record<string, unkn
 
     // Parallel limit for concurrent operations
     parallelLimit: mocks.parallelLimit,
+
+    // Timeout utility for async operations
+    timeout: vi.fn(async <T>(promise: Promise<T>, _ms: number, _message?: string): Promise<T> => {
+      return promise
+    }),
+
+    // Error conversion utilities
+    toError: vi.fn((e: unknown) => (e instanceof Error ? e : new Error(String(e)))),
+    getErrorMessage: vi.fn((e: unknown) => (e instanceof Error ? e.message : String(e))),
+
+    // Validation utilities
+    isValidPackageName: vi.fn((name: string) => {
+      const packageNameRegex = /^(?:@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/
+      return packageNameRegex.test(name) && name.length <= 214
+    }),
+    isValidSemver: vi.fn((version: string) => {
+      const semverRegex =
+        /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
+      return semverRegex.test(version)
+    }),
+    isValidPath: vi.fn(
+      (path: string) => !path.includes('\0') && path.length > 0 && path.length < 4096
+    ),
+    isValidUrl: vi.fn((url: string) => {
+      try {
+        new URL(url)
+        return true
+      } catch {
+        return false
+      }
+    }),
+    createValidationResult: vi.fn(
+      (isValid: boolean = true, errors: string[] = [], warnings: string[] = []) => ({
+        isValid,
+        errors,
+        warnings,
+      })
+    ),
+    ValidationResultClass: class ValidationResultClass {
+      public readonly isValid: boolean
+      public readonly errors: string[]
+      public readonly warnings: string[]
+
+      constructor(isValid: boolean, errors: string[] = [], warnings: string[] = []) {
+        this.isValid = isValid
+        this.errors = [...errors]
+        this.warnings = [...warnings]
+      }
+
+      public getIsValid(): boolean {
+        return this.isValid
+      }
+
+      public getErrors(): string[] {
+        return [...this.errors]
+      }
+
+      public getWarnings(): string[] {
+        return [...this.warnings]
+      }
+
+      public hasErrors(): boolean {
+        return this.errors.length > 0
+      }
+
+      public hasWarnings(): boolean {
+        return this.warnings.length > 0
+      }
+
+      public static merge(
+        ...results: Array<{ errors: string[]; warnings: string[] }>
+      ): ValidationResultClass {
+        const allErrors: string[] = []
+        const allWarnings: string[] = []
+        for (const result of results) {
+          allErrors.push(...result.errors)
+          allWarnings.push(...result.warnings)
+        }
+        return new ValidationResultClass(allErrors.length === 0, allErrors, allWarnings)
+      }
+
+      public static valid(warnings: string[] = []): ValidationResultClass {
+        return new ValidationResultClass(true, [], warnings)
+      }
+
+      public static invalid(errors: string[], warnings: string[] = []): ValidationResultClass {
+        return new ValidationResultClass(false, errors, warnings)
+      }
+    },
   }
 }
 

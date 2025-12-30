@@ -78,6 +78,28 @@ describe('ImpactAnalysisService', () => {
       expect(result.newVulnerabilities).toBe(0)
       expect(result.severityChange).toBe('same')
     })
+
+    it('should set analysisIncomplete flag and errorMessage on error', async () => {
+      vi.mocked(mockRegistryService.checkSecurityVulnerabilities).mockRejectedValue(
+        new Error('Network error')
+      )
+
+      const result = await service.analyzeSecurityImpact('lodash', '4.17.0', '4.17.21')
+
+      expect(result.analysisIncomplete).toBe(true)
+      expect(result.errorMessage).toBe('Network error')
+    })
+
+    it('should handle non-Error objects in catch block', async () => {
+      vi.mocked(mockRegistryService.checkSecurityVulnerabilities).mockRejectedValue(
+        'String error message'
+      )
+
+      const result = await service.analyzeSecurityImpact('lodash', '4.17.0', '4.17.21')
+
+      expect(result.analysisIncomplete).toBe(true)
+      expect(result.errorMessage).toBe('String error message')
+    })
   })
 
   describe('assessCompatibilityRisk', () => {
@@ -144,6 +166,22 @@ describe('ImpactAnalysisService', () => {
 
     it('should return low risk for patch updates with few affected packages', () => {
       expect(service.assessOverallRisk('patch', [], noSecurityIssues)).toBe('low')
+    })
+
+    it('should return elevated risk when security analysis is incomplete', () => {
+      const incompleteAnalysis = {
+        hasVulnerabilities: false,
+        fixedVulnerabilities: 0,
+        newVulnerabilities: 0,
+        severityChange: 'same' as const,
+        analysisIncomplete: true,
+        errorMessage: 'Security check failed',
+      }
+
+      // QUAL-001: Incomplete analysis should be treated as elevated risk
+      expect(service.assessOverallRisk('major', [], incompleteAnalysis)).toBe('high')
+      expect(service.assessOverallRisk('minor', [], incompleteAnalysis)).toBe('medium')
+      expect(service.assessOverallRisk('patch', [], incompleteAnalysis)).toBe('medium')
     })
   })
 
@@ -235,6 +273,20 @@ describe('ImpactAnalysisService', () => {
       const recommendations = service.generateRecommendations('patch', noSecurityIssues, [])
 
       expect(recommendations).toContain('Low risk update - safe to proceed')
+    })
+
+    it('should recommend manual review when analysis is incomplete', () => {
+      const incompleteSecurityImpact = {
+        ...noSecurityIssues,
+        analysisIncomplete: true,
+        errorMessage: 'Network timeout',
+      }
+
+      const recommendations = service.generateRecommendations('patch', incompleteSecurityImpact, [])
+
+      expect(recommendations).toContain(
+        'Security analysis incomplete - manual review recommended before updating'
+      )
     })
   })
 })

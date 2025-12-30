@@ -9,6 +9,7 @@
  * - Runtime locale switching
  */
 
+import { logger } from '../logger/logger.js'
 import { de } from './locales/de.js'
 import { en } from './locales/en.js'
 import { es } from './locales/es.js'
@@ -57,7 +58,7 @@ export class I18n {
   static detectLocale(configLocale?: string): Locale {
     // 1. Config file locale (highest priority)
     if (configLocale && I18n.isValidLocale(configLocale)) {
-      return configLocale as Locale
+      return configLocale
     }
 
     // 2. Environment variable (e.g., "zh_CN.UTF-8")
@@ -65,7 +66,7 @@ export class I18n {
     const langCode = langEnv.split('_')[0]?.toLowerCase()
 
     if (langCode && I18n.isValidLocale(langCode)) {
-      return langCode as Locale
+      return langCode
     }
 
     // 3. System Intl API
@@ -74,10 +75,14 @@ export class I18n {
       const localeCode = systemLocale.split('-')[0]?.toLowerCase()
 
       if (localeCode && I18n.isValidLocale(localeCode)) {
-        return localeCode as Locale
+        return localeCode
       }
-    } catch {
-      // Intl not available, use default
+    } catch (error) {
+      // Intl API not available in this environment, fall back to default locale
+      logger.debug('Intl API not available for locale detection, using default', {
+        error: error instanceof Error ? error.message : String(error),
+        defaultLocale: DEFAULT_LOCALE,
+      })
     }
 
     return DEFAULT_LOCALE

@@ -8,10 +8,13 @@
 import {
   CatalogNotFoundError,
   ConfigLoader,
+  InvalidVersionError,
   logger,
   type PackageFilterConfig,
+  PackageNotFoundError,
   parallelLimit,
   t,
+  toError,
   UserFriendlyErrorHandler,
 } from '@pcu/utils'
 import type { Catalog } from '../../domain/entities/catalog.js'
@@ -242,7 +245,7 @@ export class CatalogCheckService {
             await progressTracker.increment(t('progress.skippingPackage', { packageName }))
           }
 
-          UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error, {
+          UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, toError(error), {
             operation: 'check',
           })
         }
@@ -266,46 +269,45 @@ export class CatalogCheckService {
   ): Promise<OutdatedDependencyInfo | null> {
     const packageConfig = ConfigLoader.getPackageConfig(packageName, config)
     const effectiveTarget = packageConfig.target as UpdateTarget
+    // PERF-003: Determine skipSecurityCheck once and pass to checkPackageUpdate
+    const skipSecurityCheck = options.noSecurity || config.security?.enableCheck === false
 
     const outdatedInfo = await this.checkPackageUpdate(
       packageName,
       currentRange,
       effectiveTarget,
-      options.includePrerelease || config.defaults?.includePrerelease || false
+      options.includePrerelease || config.defaults?.includePrerelease || false,
+      skipSecurityCheck
     )
 
     if (!outdatedInfo) {
       return null
     }
 
-    const skipSecurityCheck = options.noSecurity || config.security?.enableCheck === false
-    let hasSecurityVulnerabilities = false
+    // PERF-003: Use the security check result from checkPackageUpdate instead of calling again
+    // The security check was already done in checkPackageUpdate and result is in outdatedInfo.isSecurityUpdate
+    const hasSecurityVulnerabilities = outdatedInfo.isSecurityUpdate
 
-    if (!skipSecurityCheck && config.security?.autoFixVulnerabilities) {
+    // If autoFixVulnerabilities is enabled and package has vulnerabilities, try to find a major update
+    if (
+      !skipSecurityCheck &&
+      config.security?.autoFixVulnerabilities &&
+      hasSecurityVulnerabilities &&
+      config.security.allowMajorForSecurity
+    ) {
       try {
-        const currentVersion = currentRange.getMinVersion()?.toString()
-        if (currentVersion) {
-          const securityReport = await this.registryService.checkSecurityVulnerabilities(
-            packageName,
-            currentVersion
-          )
-          hasSecurityVulnerabilities = securityReport.hasVulnerabilities
-
-          if (hasSecurityVulnerabilities && config.security.allowMajorForSecurity) {
-            const securityFixInfo = await this.checkPackageUpdate(
-              packageName,
-              currentRange,
-              'latest',
-              options.includePrerelease || config.defaults?.includePrerelease || false,
-              skipSecurityCheck
-            )
-            if (securityFixInfo) {
-              Object.assign(outdatedInfo, securityFixInfo)
-            }
-          }
+        const securityFixInfo = await this.checkPackageUpdate(
+          packageName,
+          currentRange,
+          'latest',
+          options.includePrerelease || config.defaults?.includePrerelease || false,
+          true // Skip security check for this call since we already know there are vulnerabilities
+        )
+        if (securityFixInfo) {
+          Object.assign(outdatedInfo, securityFixInfo)
         }
       } catch (error) {
-        UserFriendlyErrorHandler.handleSecurityCheckFailure(packageName, error as Error)
+        UserFriendlyErrorHandler.handleSecurityCheckFailure(packageName, toError(error))
       }
     }
 
@@ -351,7 +353,7 @@ export class CatalogCheckService {
         case 'newest': {
           const newestVersions = await this.registryService.getNewestVersions(packageName, 1)
           if (!newestVersions[0]) {
-            throw new Error(`No versions found for ${packageName}`)
+            throw new PackageNotFoundError(packageName, undefined, new Error('No versions found'))
           }
           targetVersion = newestVersions[0]
           break
@@ -388,7 +390,7 @@ export class CatalogCheckService {
           )
           isSecurityUpdate = securityReport.hasVulnerabilities
         } catch (error) {
-          UserFriendlyErrorHandler.handleSecurityCheckFailure(packageName, error as Error)
+          UserFriendlyErrorHandler.handleSecurityCheckFailure(packageName, toError(error))
         }
       }
 
@@ -402,7 +404,7 @@ export class CatalogCheckService {
         affectedPackages: [],
       }
     } catch (error) {
-      UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, error as Error, {
+      UserFriendlyErrorHandler.handlePackageQueryFailure(packageName, toError(error), {
         operation: 'update-check',
       })
       return null
@@ -419,7 +421,10 @@ export class CatalogCheckService {
   ): Promise<Version> {
     const currentVersion = currentRange.getMinVersion()
     if (!currentVersion) {
-      throw new Error(`Cannot determine current version for ${packageName}`)
+      throw new InvalidVersionError(
+        currentRange.toString(),
+        `Cannot determine current version for ${packageName}`
+      )
     }
 
     const versionInfo = await this.registryService.getPackageVersions(packageName)
@@ -446,7 +451,11 @@ export class CatalogCheckService {
     }
 
     if (!compatibleVersions[0]) {
-      throw new Error(`No compatible versions found for ${packageName}`)
+      throw new PackageNotFoundError(
+        packageName,
+        undefined,
+        new Error('No compatible versions found')
+      )
     }
     return Version.fromString(compatibleVersions[0])
   }

@@ -8,6 +8,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { logger } from '@pcu/utils'
+import { parse as parseYaml } from 'yaml'
 
 export interface BackupInfo {
   /** Full path to the backup file */
@@ -25,6 +26,21 @@ export interface BackupServiceOptions {
   maxBackups?: number
   /** Directory to store backups (defaults to same directory as original file) */
   backupDir?: string
+}
+
+export interface RollbackVerificationResult {
+  /** Whether the verification passed */
+  success: boolean
+  /** Whether the restored file is valid YAML */
+  isValidYaml: boolean
+  /** Whether the file contains valid catalog structure */
+  hasCatalogStructure: boolean
+  /** List of detected catalogs in the restored file */
+  catalogs: string[]
+  /** Number of dependencies in catalogs */
+  dependencyCount: number
+  /** Error message if verification failed */
+  errorMessage?: string
 }
 
 export class BackupService {
@@ -194,6 +210,95 @@ export class BackupService {
     }
 
     return deleted
+  }
+
+  /**
+   * Verify that a restored file is valid
+   * Checks YAML syntax and catalog structure
+   */
+  async verifyRestoredFile(filePath: string): Promise<RollbackVerificationResult> {
+    try {
+      // Read the file
+      const content = await fs.readFile(filePath, 'utf-8')
+
+      // Parse YAML
+      let parsedData: unknown
+      try {
+        parsedData = parseYaml(content)
+      } catch (parseError) {
+        return {
+          success: false,
+          isValidYaml: false,
+          hasCatalogStructure: false,
+          catalogs: [],
+          dependencyCount: 0,
+          errorMessage: `Invalid YAML: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`,
+        }
+      }
+
+      // Check for catalog structure
+      const data = parsedData as Record<string, unknown> | null
+      if (!data || typeof data !== 'object') {
+        return {
+          success: false,
+          isValidYaml: true,
+          hasCatalogStructure: false,
+          catalogs: [],
+          dependencyCount: 0,
+          errorMessage: 'File does not contain valid workspace data',
+        }
+      }
+
+      // Check for catalog or catalogs key
+      const hasCatalog = 'catalog' in data || 'catalogs' in data
+      const catalogs: string[] = []
+      let dependencyCount = 0
+
+      if ('catalog' in data && data.catalog && typeof data.catalog === 'object') {
+        catalogs.push('default')
+        dependencyCount += Object.keys(data.catalog as Record<string, unknown>).length
+      }
+
+      if ('catalogs' in data && data.catalogs && typeof data.catalogs === 'object') {
+        const catalogsData = data.catalogs as Record<string, unknown>
+        for (const [name, catalogDeps] of Object.entries(catalogsData)) {
+          catalogs.push(name)
+          if (catalogDeps && typeof catalogDeps === 'object') {
+            dependencyCount += Object.keys(catalogDeps as Record<string, unknown>).length
+          }
+        }
+      }
+
+      logger.debug('Rollback verification completed', {
+        filePath,
+        isValidYaml: true,
+        hasCatalogStructure: hasCatalog,
+        catalogCount: catalogs.length,
+        dependencyCount,
+      })
+
+      return {
+        success: hasCatalog,
+        isValidYaml: true,
+        hasCatalogStructure: hasCatalog,
+        catalogs,
+        dependencyCount,
+        errorMessage: hasCatalog ? undefined : 'No catalog or catalogs section found',
+      }
+    } catch (error) {
+      logger.error('Failed to verify restored file', error instanceof Error ? error : undefined, {
+        filePath,
+      })
+
+      return {
+        success: false,
+        isValidYaml: false,
+        hasCatalogStructure: false,
+        catalogs: [],
+        dependencyCount: 0,
+        errorMessage: error instanceof Error ? error.message : 'Unknown verification error',
+      }
+    }
   }
 
   /**

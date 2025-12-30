@@ -16,7 +16,7 @@ import type {
 import { describe, expect, it, vi } from 'vitest'
 import { OutputFormatter } from '../outputFormatter.js'
 
-// Mock @pcu/utils t() function
+// Mock @pcu/utils functions
 vi.mock('@pcu/utils', () => ({
   t: (key: string, params?: Record<string, unknown>) => {
     if (params) {
@@ -28,6 +28,10 @@ vi.mock('@pcu/utils', () => ({
     }
     return key
   },
+  // Include async utilities that may be used by the code
+  timeout: vi.fn().mockImplementation((promise: Promise<unknown>) => promise),
+  delay: vi.fn().mockResolvedValue(undefined),
+  retry: vi.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
 }))
 
 // Test fixtures

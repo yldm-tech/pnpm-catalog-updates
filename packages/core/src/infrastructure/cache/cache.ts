@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto'
 import { promises as fsPromises } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { CacheError, getErrorCode, getErrorMessage, logger } from '@pcu/utils'
 
 export interface CacheEntry<T = unknown> {
   key: string
@@ -139,12 +140,13 @@ export class Cache<T = unknown> {
    */
   private ensureNotDestroyed(): void {
     if (this._destroyed) {
-      throw new Error('Cache has been destroyed and cannot be used')
+      throw new CacheError('access', 'Cache has been destroyed and cannot be used')
     }
   }
 
   /**
-   * Get value from cache
+   * Get value from cache.
+   * LRU: Moves accessed entry to end of Map to mark as recently used.
    */
   get(key: string): T | undefined {
     this.ensureNotDestroyed()
@@ -161,6 +163,11 @@ export class Cache<T = unknown> {
       this.stats.misses++
       return undefined
     }
+
+    // LRU: Move entry to end of Map by deleting and re-inserting
+    // This ensures least recently used entries are at the front for eviction
+    this.entries.delete(key)
+    this.entries.set(key, entry)
 
     this.stats.hits++
     return entry.value
@@ -217,7 +224,8 @@ export class Cache<T = unknown> {
 
     while (low < high) {
       const mid = (low + high) >>> 1
-      if (this.expirationIndex[mid]![0] < expirationTime) {
+      const entry = this.expirationIndex[mid]
+      if (entry && entry[0] < expirationTime) {
         low = mid + 1
       } else {
         high = mid
@@ -284,6 +292,23 @@ export class Cache<T = unknown> {
   }
 
   /**
+   * ARCH-001: Reset cache to fresh state for testing.
+   * Unlike destroy(), this keeps the cleanup interval running.
+   * Unlike clear(), this also resets initialization state.
+   * Use this in test beforeEach/afterEach for proper isolation.
+   */
+  resetForTesting(): void {
+    this.entries.clear()
+    this.stats.hits = 0
+    this.stats.misses = 0
+    this._totalSize = 0
+    this.expirationIndex = []
+    this._initialized = false
+    this._initPromise = null
+    // Note: Don't clear disk or destroy interval - just reset memory state
+  }
+
+  /**
    * Get cache statistics
    */
   getStats(): CacheStats {
@@ -297,6 +322,30 @@ export class Cache<T = unknown> {
       hits: this.stats.hits,
       misses: this.stats.misses,
     }
+  }
+
+  /**
+   * PERF-002: Get all cache keys.
+   * Allows iteration without exposing internal Map structure.
+   */
+  keys(): string[] {
+    return Array.from(this.entries.keys())
+  }
+
+  /**
+   * PERF-002: Get timestamp of a specific entry.
+   * Returns undefined if entry doesn't exist or is expired.
+   */
+  getEntryTimestamp(key: string): number | undefined {
+    const entry = this.entries.get(key)
+    if (!entry) {
+      return undefined
+    }
+    // Check if expired
+    if (Date.now() - entry.timestamp > entry.ttl) {
+      return undefined
+    }
+    return entry.timestamp
   }
 
   /**
@@ -346,36 +395,31 @@ export class Cache<T = unknown> {
   }
 
   /**
-   * Ensure cache capacity doesn't exceed limits
+   * Ensure cache capacity doesn't exceed limits using LRU eviction
    */
   private ensureCapacity(newEntrySize: number): void {
-    // Check entry count limit
+    // Check entry count limit - evict least recently used entries
     while (this.entries.size >= this.options.maxEntries) {
-      this.evictOldest()
+      this.evictLRU()
     }
 
-    // Check size limit
+    // Check size limit - evict least recently used entries
     while (this.getTotalSize() + newEntrySize > this.options.maxSize) {
-      this.evictOldest()
+      this.evictLRU()
     }
   }
 
   /**
-   * Evict oldest entry
+   * Evict least recently used entry (LRU eviction).
+   * PERF-001: O(1) eviction using Map's insertion order.
+   * JavaScript Map maintains insertion order. Combined with get() moving
+   * accessed entries to the end, the first entry is always the least recently used.
    */
-  private evictOldest(): void {
-    let oldestKey: string | undefined
-    let oldestTimestamp = Date.now()
-
-    for (const [key, entry] of this.entries) {
-      if (entry.timestamp < oldestTimestamp) {
-        oldestTimestamp = entry.timestamp
-        oldestKey = key
-      }
-    }
-
-    if (oldestKey) {
-      this.delete(oldestKey)
+  private evictLRU(): void {
+    // Map.keys().next() returns the first key in O(1) - the least recently used entry
+    const result = this.entries.keys().next()
+    if (!result.done && result.value !== undefined) {
+      this.delete(result.value)
     }
   }
 
@@ -460,18 +504,28 @@ export class Cache<T = unknown> {
           this.addToExpirationIndex(expirationTime, key)
         }
       }
-    } catch {
-      // Ignore disk loading errors
+    } catch (error) {
+      // ERR-002: Log disk loading errors for debugging (non-critical, cache starts empty)
+      logger.debug('Cache disk load failed', {
+        cacheDir: this.options.cacheDir,
+        error: error instanceof Error ? error.message : String(error),
+      })
     }
   }
 
   /**
    * Save entry to disk (PERF-002: async to avoid blocking)
-   * Fire-and-forget: errors are silently ignored, disk is just for persistence
+   * Fire-and-forget: errors are logged at debug level, disk is just for persistence
+   * ERR-002: Added debug logging for better troubleshooting
    */
   private saveToDisk(key: string, entry: CacheEntry<T>): void {
-    this.saveToDiskAsync(key, entry).catch(() => {
-      // Ignore disk saving errors - memory cache is source of truth
+    this.saveToDiskAsync(key, entry).catch((error) => {
+      // ERR-002: Log disk saving errors for debugging (non-critical, memory is source of truth)
+      logger.debug('Cache disk save failed', {
+        key,
+        cacheDir: this.options.cacheDir,
+        error: error instanceof Error ? error.message : String(error),
+      })
     })
   }
 
@@ -487,11 +541,17 @@ export class Cache<T = unknown> {
 
   /**
    * Delete entry from disk (PERF-002: async to avoid blocking)
-   * Fire-and-forget: errors are silently ignored
+   * Fire-and-forget: errors are logged at debug level
+   * ERR-002: Added debug logging for better troubleshooting
    */
   private deleteFromDisk(key: string): void {
-    this.deleteFromDiskAsync(key).catch(() => {
-      // Ignore disk deletion errors
+    this.deleteFromDiskAsync(key).catch((error) => {
+      // ERR-002: Log disk deletion errors for debugging
+      logger.debug('Cache disk delete failed', {
+        key,
+        cacheDir: this.options.cacheDir,
+        error: error instanceof Error ? error.message : String(error),
+      })
     })
   }
 
@@ -500,19 +560,33 @@ export class Cache<T = unknown> {
    */
   private async deleteFromDiskAsync(key: string): Promise<void> {
     const entryPath = join(this.options.cacheDir, this.getFilename(key))
-    await fsPromises.unlink(entryPath).catch(() => {
-      // File may not exist, ignore
+    await fsPromises.unlink(entryPath).catch((error) => {
+      // ENOENT is expected - file may not exist
+      // ERR-003: Use type-safe error code extraction
+      const code = getErrorCode(error)
+      if (code !== 'ENOENT') {
+        logger.debug('Cache file deletion failed', {
+          path: entryPath,
+          errorCode: code,
+          error: getErrorMessage(error),
+        })
+      }
     })
     await this.updateDiskIndexAsync()
   }
 
   /**
    * Clear disk cache (PERF-002: async to avoid blocking)
-   * Fire-and-forget: errors are silently ignored
+   * Fire-and-forget: errors are logged at debug level
+   * ERR-002: Added debug logging for better troubleshooting
    */
   private clearDisk(): void {
-    this.clearDiskAsync().catch(() => {
-      // Ignore disk clearing errors
+    this.clearDiskAsync().catch((error) => {
+      // ERR-002: Log disk clearing errors for debugging
+      logger.debug('Cache disk clear failed', {
+        cacheDir: this.options.cacheDir,
+        error: error instanceof Error ? error.message : String(error),
+      })
     })
   }
 
@@ -520,8 +594,17 @@ export class Cache<T = unknown> {
    * Async implementation of disk clearing
    */
   private async clearDiskAsync(): Promise<void> {
-    await fsPromises.rm(this.options.cacheDir, { recursive: true, force: true }).catch(() => {
-      // Directory may not exist, ignore
+    await fsPromises.rm(this.options.cacheDir, { recursive: true, force: true }).catch((error) => {
+      // ENOENT is expected - directory may not exist
+      // ERR-003: Use type-safe error code extraction
+      const code = getErrorCode(error)
+      if (code !== 'ENOENT') {
+        logger.debug('Cache directory removal failed', {
+          cacheDir: this.options.cacheDir,
+          errorCode: code,
+          error: getErrorMessage(error),
+        })
+      }
     })
   }
 
@@ -746,8 +829,20 @@ export async function initializeCaches(): Promise<void> {
  * @returns Promise for tracking (optional to await)
  */
 export function startCacheInitialization(): Promise<void> {
-  return initializeCaches().catch(() => {
-    // Silently ignore initialization errors
-    // Cache will work with empty state
+  return initializeCaches().catch((error) => {
+    // Cache initialization failed, will work with empty state
+    logger.debug('Cache initialization failed, starting with empty state', {
+      error: error instanceof Error ? error.message : String(error),
+    })
   })
+}
+
+/**
+ * ARCH-001: Reset all cache singletons for test isolation.
+ * Call this in test beforeEach/afterEach to ensure clean state between tests.
+ * This resets both registryCache and workspaceCache to fresh state.
+ */
+export function resetAllCaches(): void {
+  registryCache.resetForTesting()
+  workspaceCache.resetForTesting()
 }

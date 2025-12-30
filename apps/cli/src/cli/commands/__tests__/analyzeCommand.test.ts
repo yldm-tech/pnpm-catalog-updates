@@ -5,6 +5,35 @@
 import type { CatalogUpdateService, WorkspaceService } from '@pcu/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Use vi.hoisted to ensure mocks are available during vi.mock hoisting
+const mocks = vi.hoisted(() => ({
+  analyzeUpdates: vi.fn(),
+  getLatestVersion: vi.fn(),
+  // Create a chainable chalk mock that supports all color combinations
+  createChalkMock: () => {
+    const createColorFn = (text: string) => text
+    const colorFn = Object.assign(createColorFn, {
+      bold: Object.assign((text: string) => text, {
+        cyan: (text: string) => text,
+        white: (text: string) => text,
+      }),
+      dim: Object.assign((text: string) => text, {
+        white: (text: string) => text,
+      }),
+      red: Object.assign((text: string) => text, {
+        bold: (text: string) => text,
+      }),
+      green: (text: string) => text,
+      yellow: (text: string) => text,
+      blue: (text: string) => text,
+      gray: (text: string) => text,
+      cyan: (text: string) => text,
+      white: (text: string) => text,
+    })
+    return colorFn
+  },
+}))
+
 // Mock @pcu/utils
 vi.mock('@pcu/utils', () => ({
   logger: {
@@ -23,41 +52,15 @@ vi.mock('@pcu/utils', () => ({
     }
     return key
   },
+  // Include async utilities
+  timeout: vi.fn().mockImplementation((promise: Promise<unknown>) => promise),
+  delay: vi.fn().mockResolvedValue(undefined),
+  retry: vi.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
 }))
-
-// Use vi.hoisted to ensure mocks are available during vi.mock hoisting
-const mocks = vi.hoisted(() => ({
-  analyzeUpdates: vi.fn(),
-  getLatestVersion: vi.fn(),
-}))
-
-// Create a chainable chalk mock that supports all color combinations
-const createChalkMock = () => {
-  const createColorFn = (text: string) => text
-  const colorFn = Object.assign(createColorFn, {
-    bold: Object.assign((text: string) => text, {
-      cyan: (text: string) => text,
-      white: (text: string) => text,
-    }),
-    dim: Object.assign((text: string) => text, {
-      white: (text: string) => text,
-    }),
-    red: Object.assign((text: string) => text, {
-      bold: (text: string) => text,
-    }),
-    green: (text: string) => text,
-    yellow: (text: string) => text,
-    blue: (text: string) => text,
-    gray: (text: string) => text,
-    cyan: (text: string) => text,
-    white: (text: string) => text,
-  })
-  return colorFn
-}
 
 // Mock chalk with chainable functions
 vi.mock('chalk', () => ({
-  default: createChalkMock(),
+  default: mocks.createChalkMock(),
 }))
 
 // Mock @pcu/core - use class syntax for proper constructor mocking

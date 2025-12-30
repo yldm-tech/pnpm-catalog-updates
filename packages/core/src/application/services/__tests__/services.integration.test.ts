@@ -74,6 +74,7 @@ vi.mock('../../external-services/securityAdvisoryService.js', () => ({
 }))
 
 // Import real implementations after mocks
+import { FileSystemService } from '../../../infrastructure/file-system/fileSystemService.js'
 import { FileWorkspaceRepository } from '../../../infrastructure/repositories/fileWorkspaceRepository.js'
 import { WorkspaceService } from '../workspaceService.js'
 
@@ -134,23 +135,23 @@ catalog:
       )
 
       // Create real service instances (with mocked external calls)
-      const workspaceRepository = new FileWorkspaceRepository()
+      const fileSystemService = new FileSystemService()
+      const workspaceRepository = new FileWorkspaceRepository(fileSystemService)
       const workspaceService = new WorkspaceService(workspaceRepository)
 
       // Load workspace using real implementation
-      const workspace = await workspaceService.loadWorkspace(testWorkspace)
+      const workspace = await workspaceService.discoverWorkspace(testWorkspace)
 
       // Verify workspace was loaded correctly
       expect(workspace).toBeDefined()
-      expect(workspace.name).toBe('test-workspace')
-      expect(workspace.catalogs.size()).toBeGreaterThan(0)
+      expect(workspace.getCatalogs().size()).toBeGreaterThan(0)
 
       // Verify catalog was parsed
-      const defaultCatalog = workspace.catalogs.getDefault()
+      const defaultCatalog = workspace.getCatalogs().getDefault()
       expect(defaultCatalog).toBeDefined()
-      expect(defaultCatalog?.dependencies.size).toBe(2)
-      expect(defaultCatalog?.dependencies.get('lodash')).toBe('^4.17.20')
-      expect(defaultCatalog?.dependencies.get('typescript')).toBe('^5.3.0')
+      expect(defaultCatalog?.getDependencies().size).toBe(2)
+      expect(defaultCatalog?.getDependencies().get('lodash')?.toString()).toBe('^4.17.20')
+      expect(defaultCatalog?.getDependencies().get('typescript')?.toString()).toBe('^5.3.0')
     })
 
     it('should handle workspace with multiple catalogs', async () => {
@@ -175,17 +176,18 @@ catalogs:
         JSON.stringify({ name: 'multi-catalog-workspace', private: true })
       )
 
-      const workspaceRepository = new FileWorkspaceRepository()
+      const fileSystemService = new FileSystemService()
+      const workspaceRepository = new FileWorkspaceRepository(fileSystemService)
       const workspaceService = new WorkspaceService(workspaceRepository)
 
-      const workspace = await workspaceService.loadWorkspace(testWorkspace)
+      const workspace = await workspaceService.discoverWorkspace(testWorkspace)
 
       // Should have default catalog + named catalogs
-      expect(workspace.catalogs.size()).toBeGreaterThanOrEqual(2)
+      expect(workspace.getCatalogs().size()).toBeGreaterThanOrEqual(2)
 
       // Verify default catalog
-      const defaultCatalog = workspace.catalogs.getDefault()
-      expect(defaultCatalog?.dependencies.get('lodash')).toBe('^4.17.20')
+      const defaultCatalog = workspace.getCatalogs().getDefault()
+      expect(defaultCatalog?.getDependencies().get('lodash')?.toString()).toBe('^4.17.20')
     })
 
     it('should throw error for invalid workspace', async () => {
@@ -195,10 +197,11 @@ catalogs:
         JSON.stringify({ name: 'invalid-workspace' })
       )
 
-      const workspaceRepository = new FileWorkspaceRepository()
+      const fileSystemService = new FileSystemService()
+      const workspaceRepository = new FileWorkspaceRepository(fileSystemService)
       const workspaceService = new WorkspaceService(workspaceRepository)
 
-      await expect(workspaceService.loadWorkspace(testWorkspace)).rejects.toThrow()
+      await expect(workspaceService.discoverWorkspace(testWorkspace)).rejects.toThrow()
     })
 
     it('should handle empty catalog gracefully', async () => {
@@ -212,14 +215,15 @@ catalogs:
         JSON.stringify({ name: 'empty-catalog-workspace', private: true })
       )
 
-      const workspaceRepository = new FileWorkspaceRepository()
+      const fileSystemService = new FileSystemService()
+      const workspaceRepository = new FileWorkspaceRepository(fileSystemService)
       const workspaceService = new WorkspaceService(workspaceRepository)
 
-      const workspace = await workspaceService.loadWorkspace(testWorkspace)
+      const workspace = await workspaceService.discoverWorkspace(testWorkspace)
 
       expect(workspace).toBeDefined()
       // Workspace should load even without catalogs
-      expect(workspace.name).toBe('empty-catalog-workspace')
+      expect(workspace.getPath()).toBeDefined()
     })
   })
 
@@ -227,10 +231,11 @@ catalogs:
     it('should propagate file system errors correctly', async () => {
       const nonExistentPath = join(testWorkspace, 'does-not-exist')
 
-      const workspaceRepository = new FileWorkspaceRepository()
+      const fileSystemService = new FileSystemService()
+      const workspaceRepository = new FileWorkspaceRepository(fileSystemService)
       const workspaceService = new WorkspaceService(workspaceRepository)
 
-      await expect(workspaceService.loadWorkspace(nonExistentPath)).rejects.toThrow()
+      await expect(workspaceService.discoverWorkspace(nonExistentPath)).rejects.toThrow()
     })
 
     it('should handle concurrent workspace loads', async () => {
@@ -247,20 +252,21 @@ catalog:
         JSON.stringify({ name: 'concurrent-test', private: true })
       )
 
-      const workspaceRepository = new FileWorkspaceRepository()
+      const fileSystemService = new FileSystemService()
+      const workspaceRepository = new FileWorkspaceRepository(fileSystemService)
       const workspaceService = new WorkspaceService(workspaceRepository)
 
       // Load workspace concurrently
       const [result1, result2, result3] = await Promise.all([
-        workspaceService.loadWorkspace(testWorkspace),
-        workspaceService.loadWorkspace(testWorkspace),
-        workspaceService.loadWorkspace(testWorkspace),
+        workspaceService.discoverWorkspace(testWorkspace),
+        workspaceService.discoverWorkspace(testWorkspace),
+        workspaceService.discoverWorkspace(testWorkspace),
       ])
 
       // All should succeed with same data
-      expect(result1.name).toBe('concurrent-test')
-      expect(result2.name).toBe('concurrent-test')
-      expect(result3.name).toBe('concurrent-test')
+      expect(result1.getPath().toString()).toBe(testWorkspace)
+      expect(result2.getPath().toString()).toBe(testWorkspace)
+      expect(result3.getPath().toString()).toBe(testWorkspace)
     })
   })
 
@@ -283,12 +289,14 @@ catalog:
         JSON.stringify({ name: '@test/app', version: '1.0.0' })
       )
 
-      const workspaceRepository = new FileWorkspaceRepository()
+      const fileSystemService = new FileSystemService()
+      const workspaceRepository = new FileWorkspaceRepository(fileSystemService)
       const workspaceService = new WorkspaceService(workspaceRepository)
 
       const info = await workspaceService.getWorkspaceInfo(testWorkspace)
 
-      expect(info.name).toBe('info-test-workspace')
+      // name is directory name from path.getDirectoryName(), not package.json name
+      expect(info.name).toMatch(/^pcu-integration-test-\d+$/)
       expect(info.path).toBe(testWorkspace)
       expect(info.catalogCount).toBeGreaterThan(0)
       expect(info.packageCount).toBeGreaterThanOrEqual(0) // May be 0 or 1 depending on detection

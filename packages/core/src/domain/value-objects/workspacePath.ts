@@ -69,8 +69,12 @@ export class WorkspacePath {
     const joined = path.resolve(this.value, ...segments)
 
     // SEC-006: Prevent path traversal attacks
-    // Ensure the joined path is still within or equal to the base workspace path
-    if (!joined.startsWith(this.value) && joined !== this.value) {
+    // Use path.relative() to check if the joined path stays within the workspace
+    // This prevents prefix collision attacks (e.g., /tmp/ws vs /tmp/ws2)
+    const relativePath = path.relative(this.value, joined)
+
+    // If relative path starts with '..' or is absolute, it's outside the workspace
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
       throw new WorkspaceValidationError('WorkspacePath', [
         `Path traversal detected: joining [${segments.join(', ')}] would escape workspace boundary`,
       ])

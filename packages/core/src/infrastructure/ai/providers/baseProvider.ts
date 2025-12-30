@@ -12,8 +12,10 @@ import {
   buildSafeCommand,
   ExternalServiceError,
   getCommandVersion,
+  getErrorMessage,
   logger,
   NetworkError,
+  toError,
   whichCommand,
 } from '@pcu/utils'
 import type {
@@ -195,7 +197,7 @@ export abstract class BaseAIProvider implements AIProvider {
 
       return result
     } catch (error) {
-      return this.createDegradedResult(context, error as Error, startTime)
+      return this.createDegradedResult(context, toError(error), startTime)
     }
   }
 
@@ -250,10 +252,10 @@ export abstract class BaseAIProvider implements AIProvider {
         const result = await this.spawnCliProcess(prompt)
         return result
       } catch (error) {
-        lastError = error as Error
+        lastError = toError(error)
 
         // Don't retry timeout errors
-        if ((error as Error).message.includes('timed out')) {
+        if (lastError.message.includes('timed out')) {
           throw error
         }
 
@@ -352,7 +354,7 @@ export abstract class BaseAIProvider implements AIProvider {
 
         return result
       } catch (error) {
-        lastError = error as Error
+        lastError = toError(error)
 
         if (attempt < this.maxRetries) {
           // Exponential backoff
@@ -612,7 +614,7 @@ Respond in JSON format with prioritized recommendations.`,
       // Log the parsing error for debugging
       logger.warn('Failed to parse AI response, using fallback result', {
         provider: this.name,
-        error: (error as Error).message,
+        error: getErrorMessage(error),
         responseLength: response.length,
       })
       return this.createFallbackResult(context, response)
@@ -643,7 +645,37 @@ Respond in JSON format with prioritized recommendations.`,
   }
 
   /**
+   * QUAL-001: Validate that parsed JSON conforms to expected structure
+   * Returns validated object or null if validation fails
+   */
+  private validateParsedResponse(parsed: unknown): ParsedAIResponse | null {
+    if (typeof parsed !== 'object' || parsed === null) {
+      return null
+    }
+
+    const obj = parsed as Record<string, unknown>
+
+    // Validate recommendations is an array if present
+    if ('recommendations' in obj && !Array.isArray(obj.recommendations)) {
+      return null
+    }
+
+    // Validate warnings is an array if present
+    if ('warnings' in obj && !Array.isArray(obj.warnings)) {
+      return null
+    }
+
+    // Validate summary is a string if present
+    if ('summary' in obj && typeof obj.summary !== 'string') {
+      return null
+    }
+
+    return obj as ParsedAIResponse
+  }
+
+  /**
    * MAINT-001: Extract valid JSON from AI response with multiple fallback strategies
+   * QUAL-001: Added schema validation to prevent runtime errors
    *
    * Strategies tried in order:
    * 1. Parse response directly as JSON
@@ -656,7 +688,8 @@ Respond in JSON format with prioritized recommendations.`,
 
     // Strategy 1: Try parsing the whole response as JSON
     try {
-      return JSON.parse(trimmed) as ParsedAIResponse
+      const parsed = JSON.parse(trimmed)
+      return this.validateParsedResponse(parsed)
     } catch {
       // Not direct JSON, try other strategies
     }
@@ -665,7 +698,9 @@ Respond in JSON format with prioritized recommendations.`,
     const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/)
     if (codeBlockMatch?.[1]) {
       try {
-        return JSON.parse(codeBlockMatch[1].trim()) as ParsedAIResponse
+        const parsed = JSON.parse(codeBlockMatch[1].trim())
+        const validated = this.validateParsedResponse(parsed)
+        if (validated) return validated
       } catch {
         // Code block content is not valid JSON
       }
@@ -703,11 +738,13 @@ Respond in JSON format with prioritized recommendations.`,
             if (depth === 0) {
               const jsonStr = trimmed.slice(jsonStart, i + 1)
               try {
-                return JSON.parse(jsonStr) as ParsedAIResponse
+                const parsed = JSON.parse(jsonStr)
+                const validated = this.validateParsedResponse(parsed)
+                if (validated) return validated
               } catch {
                 // Balanced brackets but invalid JSON, continue searching
-                break
               }
+              break
             }
           }
         }
@@ -718,7 +755,8 @@ Respond in JSON format with prioritized recommendations.`,
     const greedyMatch = trimmed.match(/\{[\s\S]*\}/)
     if (greedyMatch) {
       try {
-        return JSON.parse(greedyMatch[0]) as ParsedAIResponse
+        const parsed = JSON.parse(greedyMatch[0])
+        return this.validateParsedResponse(parsed)
       } catch {
         // Greedy match failed
       }

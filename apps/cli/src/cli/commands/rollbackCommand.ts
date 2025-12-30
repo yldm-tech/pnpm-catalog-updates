@@ -7,10 +7,11 @@
 
 import path from 'node:path'
 import { type BackupInfo, BackupService } from '@pcu/core'
-import { logger, t } from '@pcu/utils'
+import { t } from '@pcu/utils'
 import chalk from 'chalk'
 import inquirer from 'inquirer'
 import { StyledText } from '../themes/colorTheme.js'
+import { handleCommandError } from '../utils/commandHelpers.js'
 
 export interface RollbackCommandOptions {
   workspace?: string
@@ -58,15 +59,12 @@ export class RollbackCommand {
       // Interactive selection (default behavior if no flags)
       await this.interactiveRestore(workspaceConfigPath)
     } catch (error) {
-      logger.error('Rollback command failed', error instanceof Error ? error : undefined, {
-        options,
+      // QUAL-007: Use unified error handling
+      handleCommandError(error, {
+        verbose: options.verbose,
+        errorMessage: 'Rollback command failed',
+        context: { options },
       })
-
-      if (error instanceof Error) {
-        console.error(StyledText.iconError(`${t('cli.error')} ${error.message}`))
-      } else {
-        console.error(StyledText.iconError(t('error.unknown')))
-      }
       throw error
     }
   }
@@ -144,7 +142,61 @@ export class RollbackCommand {
       workspaceConfigPath,
       latestBackup.path
     )
-    console.log(StyledText.iconSuccess(t('command.rollback.success')))
+
+    // Verify the restored file
+    const verification = await this.backupService.verifyRestoredFile(workspaceConfigPath)
+    await this.displayVerificationResult(verification, preRestoreBackupPath)
+  }
+
+  /**
+   * Display rollback verification results
+   */
+  private async displayVerificationResult(
+    verification: Awaited<ReturnType<BackupService['verifyRestoredFile']>> | undefined,
+    preRestoreBackupPath: string
+  ): Promise<void> {
+    if (!verification) {
+      console.log(StyledText.iconWarning(t('command.rollback.verification.skipped')))
+      console.log(
+        chalk.gray(t('command.rollback.preRestoreBackupCreated', { path: preRestoreBackupPath }))
+      )
+      console.log(chalk.gray(t('command.rollback.runPnpmInstall')))
+      return
+    }
+
+    if (verification.success) {
+      console.log(StyledText.iconSuccess(t('command.rollback.success')))
+      console.log(chalk.green(`   ✓ ${t('command.rollback.verification.validYaml')}`))
+      console.log(
+        chalk.green(
+          `   ✓ ${t('command.rollback.verification.catalogsFound', { count: verification.catalogs.length })}`
+        )
+      )
+      if (verification.catalogs.length > 0) {
+        console.log(
+          chalk.gray(
+            `     ${t('command.rollback.verification.catalogs')}: ${verification.catalogs.join(', ')}`
+          )
+        )
+      }
+      console.log(
+        chalk.gray(
+          `     ${t('command.rollback.verification.dependencies', { count: verification.dependencyCount })}`
+        )
+      )
+    } else {
+      console.log(StyledText.iconWarning(t('command.rollback.verification.warning')))
+      if (!verification.isValidYaml) {
+        console.log(chalk.red(`   ✗ ${t('command.rollback.verification.invalidYaml')}`))
+      }
+      if (!verification.hasCatalogStructure) {
+        console.log(chalk.yellow(`   ⚠ ${t('command.rollback.verification.noCatalogs')}`))
+      }
+      if (verification.errorMessage) {
+        console.log(chalk.gray(`     ${verification.errorMessage}`))
+      }
+    }
+
     console.log(
       chalk.gray(t('command.rollback.preRestoreBackupCreated', { path: preRestoreBackupPath }))
     )
@@ -200,12 +252,10 @@ export class RollbackCommand {
       workspaceConfigPath,
       selectedBackup.path
     )
-    console.log(StyledText.iconSuccess(t('command.rollback.success')))
-    console.log(
-      chalk.gray(t('command.rollback.preRestoreBackupCreated', { path: preRestoreBackupPath }))
-    )
-    console.log(chalk.gray(t('command.rollback.safetyNote')))
-    console.log(chalk.gray(t('command.rollback.runPnpmInstall')))
+
+    // Verify the restored file
+    const verification = await this.backupService.verifyRestoredFile(workspaceConfigPath)
+    await this.displayVerificationResult(verification, preRestoreBackupPath)
   }
 
   /**

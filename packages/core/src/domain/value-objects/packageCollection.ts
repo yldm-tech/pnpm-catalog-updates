@@ -246,10 +246,12 @@ export class PackageCollection {
 
     for (const pkg of this.packages.values()) {
       const pathKey = pkg.getPath().toString()
-      if (!grouped.has(pathKey)) {
-        grouped.set(pathKey, [])
+      const packages = grouped.get(pathKey)
+      if (packages) {
+        packages.push(pkg)
+      } else {
+        grouped.set(pathKey, [pkg])
       }
-      grouped.get(pathKey)!.push(pkg)
     }
 
     return grouped

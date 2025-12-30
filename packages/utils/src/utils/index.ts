@@ -6,7 +6,6 @@
 
 export * from './async.js'
 export * from './format.js'
-export * from './git.js'
 export * from './processExit.js'
 export * from './string.js'
 export * from './validation.js'

@@ -6,7 +6,7 @@
  */
 
 import path from 'node:path'
-import { ConfigLoader, logger, parallelLimit, UserFriendlyErrorHandler } from '@pcu/utils'
+import { ConfigLoader, logger, parallelLimit, toError, UserFriendlyErrorHandler } from '@pcu/utils'
 import type { WorkspaceRepository } from '../../domain/repositories/workspaceRepository.js'
 import { WorkspacePath } from '../../domain/value-objects/workspacePath.js'
 import type { NpmRegistryService } from '../../infrastructure/external-services/npmRegistryService.js'
@@ -77,6 +77,9 @@ export class UpdateExecutorService {
     // Track security updates for notification
     const securityUpdates: string[] = []
 
+    // PERF-004: Pre-build Set of conflicting package names for O(1) lookup
+    const conflictingPackages = new Set(plan.conflicts.map((c) => c.packageName))
+
     // PERF-001: Run security checks in parallel before processing updates
     const securityCheckResults = new Map<string, boolean>()
     if (config.security?.notifyOnSecurityUpdate) {
@@ -94,7 +97,7 @@ export class UpdateExecutorService {
           } catch (error) {
             UserFriendlyErrorHandler.handleSecurityCheckFailure(
               update.packageName,
-              error as Error,
+              toError(error),
               { operation: 'update' }
             )
             securityCheckResults.set(key, false)
@@ -108,17 +111,15 @@ export class UpdateExecutorService {
     for (const update of plan.updates) {
       try {
         // Skip if conflicts exist and force is not enabled
-        if (plan.hasConflicts && !options.force) {
-          const hasConflict = plan.conflicts.some((c) => c.packageName === update.packageName)
-          if (hasConflict) {
-            skippedDependencies.push({
-              catalogName: update.catalogName,
-              packageName: update.packageName,
-              currentVersion: update.currentVersion,
-              reason: 'Version conflict - use --force to override',
-            })
-            continue
-          }
+        // PERF-004: Use Set for O(1) lookup instead of array.some() O(n)
+        if (plan.hasConflicts && !options.force && conflictingPackages.has(update.packageName)) {
+          skippedDependencies.push({
+            catalogName: update.catalogName,
+            packageName: update.packageName,
+            currentVersion: update.currentVersion,
+            reason: 'Version conflict - use --force to override',
+          })
+          continue
         }
 
         // Check if this is a security update using pre-computed results
@@ -238,10 +239,12 @@ export class UpdateExecutorService {
       // Group by package name
       const syncByPackage = new Map<string, typeof syncUpdates>()
       syncUpdates.forEach((update) => {
-        if (!syncByPackage.has(update.packageName)) {
-          syncByPackage.set(update.packageName, [])
+        const updates = syncByPackage.get(update.packageName)
+        if (updates) {
+          updates.push(update)
+        } else {
+          syncByPackage.set(update.packageName, [update])
         }
-        syncByPackage.get(update.packageName)!.push(update)
       })
 
       syncByPackage.forEach((updates, packageName) => {

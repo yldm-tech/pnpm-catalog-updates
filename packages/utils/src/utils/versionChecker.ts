@@ -7,7 +7,9 @@
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
 import chalk from 'chalk'
+import { escapeShellArg } from '../executor/commandExecutor.js'
 import { logger } from '../logger/logger.js'
+import { isValidPackageName } from './validation.js'
 
 // InteractivePrompts removed - prompting should be handled by CLI layer
 
@@ -76,16 +78,17 @@ export class VersionChecker {
       return
     }
 
-    console.log()
-    console.log(chalk.cyan('📦 Update Available!'))
-    console.log(
+    // QUAL-003: Use logger instead of console for consistent output
+    logger.info('')
+    logger.info(chalk.cyan('📦 Update Available!'))
+    logger.info(
       chalk.gray(
         `Current version: ${versionResult.currentVersion} → Latest: ${versionResult.latestVersion}`
       )
     )
-    console.log(chalk.gray('Run `pcu self-update` to update to the latest version.'))
-    console.log(chalk.gray('Or update manually: npm install -g pcu@latest'))
-    console.log()
+    logger.info(chalk.gray('Run `pcu self-update` to update to the latest version.'))
+    logger.info(chalk.gray('Or update manually: npm install -g pcu@latest'))
+    logger.info('')
   }
 
   /**
@@ -107,23 +110,32 @@ export class VersionChecker {
    * Perform update without prompting
    */
   static async performUpdateAction(): Promise<boolean> {
-    console.log(chalk.blue('🔄 Updating pcu...'))
+    // QUAL-003: Use logger instead of console for consistent output
+    logger.info(chalk.blue('🔄 Updating pcu...'))
     try {
       await VersionChecker.performUpdate()
-      console.log(chalk.green('✅ Successfully updated! Please restart the command.'))
+      logger.info(chalk.green('✅ Successfully updated! Please restart the command.'))
       return true
     } catch (error) {
-      console.error(chalk.red('❌ Update failed:'), error)
-      console.log(chalk.gray('You can manually update with: npm install -g pcu@latest'))
+      logger.error(chalk.red('❌ Update failed:'), error instanceof Error ? error : undefined)
+      logger.info(chalk.gray('You can manually update with: npm install -g pcu@latest'))
       return false
     }
   }
 
   /**
    * Get latest version from npm registry
+   * SEC-001: Uses escapeShellArg to prevent command injection
    */
   private static async getLatestVersion(packageName: string, timeout: number): Promise<string> {
-    const command = `npm view ${packageName} version`
+    // Validate package name to prevent injection attacks
+    if (!isValidPackageName(packageName)) {
+      throw new Error(`Invalid package name: ${packageName}`)
+    }
+
+    // Escape the package name for safe shell execution
+    const safePackageName = escapeShellArg(packageName)
+    const command = `npm view ${safePackageName} version`
 
     try {
       const { stdout } = await VersionChecker.executeWithTimeout(command, timeout)
@@ -132,7 +144,7 @@ export class VersionChecker {
       // Fallback: try with different npm commands
       try {
         const { stdout } = await VersionChecker.executeWithTimeout(
-          `npm info ${packageName} version`,
+          `npm info ${safePackageName} version`,
           timeout
         )
         return stdout.trim()
@@ -156,11 +168,12 @@ export class VersionChecker {
 
     for (const command of commands) {
       try {
-        console.log(chalk.gray(`Executing: ${command}`))
+        // QUAL-003: Use logger instead of console for consistent output
+        logger.debug(`Executing: ${command}`)
         await execAsync(command, { timeout: 30000 })
         return // Success
       } catch (error) {
-        console.warn(chalk.yellow(`Command failed: ${command}`))
+        logger.warn(chalk.yellow(`Command failed: ${command}`))
         // Continue to next command
       }
     }

@@ -340,19 +340,16 @@ export class OutputFormatter {
     )
 
     // Calculate max version widths (need to strip color codes for accurate width calculation)
-    const stripAnsi = (str: string) => str.replace(ansiRegex, '')
-    const maxCurrentWidth = Math.max(...allDeps.map((dep) => stripAnsi(dep.currentColored).length))
+    const maxCurrentWidth = Math.max(
+      ...allDeps.map((dep) => this.stripAnsi(dep.currentColored).length)
+    )
 
     // Format lines with proper alignment
     const lines: string[] = []
     for (const dep of allDeps) {
       const nameWithIcon = dep.securityIcon + dep.packageName
       const paddedName = nameWithIcon.padEnd(maxNameWidth)
-
-      // For current version alignment, we need to pad the visible text, not the colored version
-      const currentVisible = stripAnsi(dep.currentColored)
-      const currentPadding = maxCurrentWidth - currentVisible.length
-      const paddedCurrent = dep.currentColored + ' '.repeat(currentPadding)
+      const paddedCurrent = this.padAnsi(dep.currentColored, maxCurrentWidth)
 
       lines.push(`${paddedName}  ${paddedCurrent} → ${dep.latestColored}`)
     }
@@ -480,19 +477,13 @@ export class OutputFormatter {
 
       // Calculate max widths for alignment
       const maxNameWidth = Math.max(...depsWithVersions.map((dep) => dep.packageName.length))
-
-      const stripAnsi = (str: string) => str.replace(ansiRegex, '')
       const maxCurrentWidth = Math.max(
-        ...depsWithVersions.map((dep) => stripAnsi(dep.currentColored).length)
+        ...depsWithVersions.map((dep) => this.stripAnsi(dep.currentColored).length)
       )
 
       for (const dep of depsWithVersions) {
         const paddedName = dep.packageName.padEnd(maxNameWidth)
-
-        // Pad current version for alignment
-        const currentVisible = stripAnsi(dep.currentColored)
-        const currentPadding = maxCurrentWidth - currentVisible.length
-        const paddedCurrent = dep.currentColored + ' '.repeat(currentPadding)
+        const paddedCurrent = this.padAnsi(dep.currentColored, maxCurrentWidth)
 
         lines.push(`${paddedName}  ${paddedCurrent} → ${dep.latestColored}`)
       }
@@ -639,20 +630,14 @@ export class OutputFormatter {
 
     // Calculate max widths for alignment
     const maxNameWidth = Math.max(...updatesWithVersions.map((u) => u.packageName.length))
-
-    const stripAnsi = (str: string) => str.replace(ansiRegex, '')
     const maxCurrentWidth = Math.max(
-      ...updatesWithVersions.map((u) => stripAnsi(u.currentColored).length)
+      ...updatesWithVersions.map((u) => this.stripAnsi(u.currentColored).length)
     )
 
     const lines: string[] = []
     for (const update of updatesWithVersions) {
       const paddedName = update.packageName.padEnd(maxNameWidth)
-
-      // Pad current version for alignment
-      const currentVisible = stripAnsi(update.currentColored)
-      const currentPadding = maxCurrentWidth - currentVisible.length
-      const paddedCurrent = update.currentColored + ' '.repeat(currentPadding)
+      const paddedCurrent = this.padAnsi(update.currentColored, maxCurrentWidth)
 
       lines.push(`${paddedName}  ${paddedCurrent} → ${update.latestColored}`)
     }
@@ -1131,6 +1116,23 @@ export class OutputFormatter {
    */
   private colorize(colorFn: typeof chalk, text: string): string {
     return this.useColor ? colorFn(text) : text
+  }
+
+  /**
+   * Strip ANSI escape codes from a string (for accurate width calculation)
+   */
+  private stripAnsi(str: string): string {
+    return str.replace(ansiRegex, '')
+  }
+
+  /**
+   * Pad a string containing ANSI codes to a target visible width
+   * Returns the original string with trailing spaces to match target width
+   */
+  private padAnsi(str: string, targetWidth: number): string {
+    const visibleWidth = this.stripAnsi(str).length
+    const padding = Math.max(0, targetWidth - visibleWidth)
+    return str + ' '.repeat(padding)
   }
 
   /**

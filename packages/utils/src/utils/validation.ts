@@ -2,6 +2,13 @@
  * Validation Utilities
  */
 
+import { parse as parseYaml } from 'yaml'
+
+// PERF-003: Pre-built Sets for O(1) validation lookups instead of Array.includes() O(n)
+const VALID_LOG_LEVELS = new Set(['error', 'warn', 'info', 'debug'])
+const VALID_UPDATE_TARGETS = new Set(['latest', 'greatest', 'minor', 'patch', 'newest'])
+const VALID_OUTPUT_FORMATS = new Set(['table', 'json', 'yaml', 'minimal'])
+
 /**
  * Validation result interface
  */
@@ -146,34 +153,24 @@ export function isValidJson(jsonString: string): boolean {
 }
 
 /**
- * Validate YAML string
+ * Validate YAML string using actual YAML parser
+ * QUAL-017: Replaced naive string-based validation with proper YAML parsing
  */
 export function isValidYaml(yamlString: string): boolean {
   try {
-    // Simple YAML validation - check for basic structure
-    const lines = yamlString.split('\n')
-    // let indentLevel = 0; // Reserved for future use
-
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (trimmed === '' || trimmed.startsWith('#')) {
-        continue // Skip empty lines and comments
-      }
-
-      const currentIndent = line.length - line.trimStart().length
-      if (currentIndent % 2 !== 0) {
-        return false // YAML uses 2-space indentation
-      }
-
-      if (trimmed.includes(':') && !trimmed.startsWith('-')) {
-        // Key-value pair
-        const [key] = trimmed.split(':')
-        if (key?.trim() === '') {
-          return false
-        }
-      }
+    // Empty string is valid YAML (represents null/empty document)
+    if (yamlString.trim() === '') {
+      return true
     }
 
+    // Use actual YAML parser for proper validation
+    // This catches all syntax errors including:
+    // - Invalid indentation
+    // - Malformed key-value pairs
+    // - Invalid characters
+    // - Unclosed quotes
+    // - Invalid escape sequences
+    parseYaml(yamlString, { strict: true })
     return true
   } catch {
     return false
@@ -232,23 +229,26 @@ export function isValidTimeout(timeout: number): boolean {
 
 /**
  * Validate log level
+ * PERF-003: Uses Set.has() for O(1) lookup
  */
 export function isValidLogLevel(level: string): boolean {
-  return ['error', 'warn', 'info', 'debug'].includes(level.toLowerCase())
+  return VALID_LOG_LEVELS.has(level.toLowerCase())
 }
 
 /**
  * Validate update target
+ * PERF-003: Uses Set.has() for O(1) lookup
  */
 export function isValidUpdateTarget(target: string): boolean {
-  return ['latest', 'greatest', 'minor', 'patch', 'newest'].includes(target.toLowerCase())
+  return VALID_UPDATE_TARGETS.has(target.toLowerCase())
 }
 
 /**
  * Validate output format
+ * PERF-003: Uses Set.has() for O(1) lookup
  */
 export function isValidOutputFormat(format: string): boolean {
-  return ['table', 'json', 'yaml', 'minimal'].includes(format.toLowerCase())
+  return VALID_OUTPUT_FORMATS.has(format.toLowerCase())
 }
 
 /**
@@ -450,4 +450,245 @@ export function sanitizePackageName(name: string): string {
     maxLength: 214,
     allowedChars: /[a-z0-9@/._~*-]/,
   }).toLowerCase()
+}
+
+// ============================================================
+// QUAL-015: PackageFilterConfig Runtime Validation
+// ============================================================
+
+// Pre-built Sets for O(1) validation lookups
+const VALID_LOCALES = new Set(['en', 'zh', 'ja', 'ko', 'de', 'fr', 'es'])
+const VALID_TARGETS = new Set(['latest', 'greatest', 'minor', 'patch', 'newest'])
+const VALID_FORMATS = new Set(['table', 'json', 'yaml', 'minimal'])
+
+/**
+ * Configuration validation result with typed config
+ */
+export interface ConfigValidationResult {
+  isValid: boolean
+  errors: string[]
+  warnings: string[]
+}
+
+/**
+ * Type guard to check if value is an object (not null, not array)
+ */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
+ * Type guard to check if value is a string array
+ */
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
+
+/**
+ * Validate DefaultsConfig structure
+ */
+function validateDefaultsConfig(defaults: unknown, errors: string[], warnings: string[]): void {
+  if (!isPlainObject(defaults)) {
+    errors.push('defaults must be an object')
+    return
+  }
+
+  if (defaults.target !== undefined) {
+    if (typeof defaults.target !== 'string' || !VALID_TARGETS.has(defaults.target)) {
+      errors.push(`defaults.target must be one of: ${[...VALID_TARGETS].join(', ')}`)
+    }
+  }
+
+  if (defaults.format !== undefined) {
+    if (typeof defaults.format !== 'string' || !VALID_FORMATS.has(defaults.format)) {
+      errors.push(`defaults.format must be one of: ${[...VALID_FORMATS].join(', ')}`)
+    }
+  }
+
+  const booleanFields = ['includePrerelease', 'interactive', 'dryRun', 'createBackup']
+  for (const field of booleanFields) {
+    if (defaults[field] !== undefined && typeof defaults[field] !== 'boolean') {
+      warnings.push(`defaults.${field} should be a boolean`)
+    }
+  }
+}
+
+/**
+ * Validate PackageRule structure
+ */
+function validatePackageRule(
+  rule: unknown,
+  index: number,
+  errors: string[],
+  warnings: string[]
+): void {
+  if (!isPlainObject(rule)) {
+    errors.push(`packageRules[${index}] must be an object`)
+    return
+  }
+
+  if (!Array.isArray(rule.patterns) || !isStringArray(rule.patterns)) {
+    errors.push(`packageRules[${index}].patterns must be an array of strings`)
+  }
+
+  if (rule.target !== undefined) {
+    if (typeof rule.target !== 'string' || !VALID_TARGETS.has(rule.target)) {
+      errors.push(`packageRules[${index}].target must be one of: ${[...VALID_TARGETS].join(', ')}`)
+    }
+  }
+
+  if (rule.relatedPackages !== undefined && !isStringArray(rule.relatedPackages)) {
+    errors.push(`packageRules[${index}].relatedPackages must be an array of strings`)
+  }
+
+  const booleanFields = ['autoUpdate', 'requireConfirmation', 'groupUpdate']
+  for (const field of booleanFields) {
+    if (rule[field] !== undefined && typeof rule[field] !== 'boolean') {
+      warnings.push(`packageRules[${index}].${field} should be a boolean`)
+    }
+  }
+}
+
+/**
+ * Validate SecurityConfig structure
+ */
+function validateSecurityConfig(security: unknown, errors: string[], warnings: string[]): void {
+  if (!isPlainObject(security)) {
+    errors.push('security must be an object')
+    return
+  }
+
+  const booleanFields = [
+    'autoFixVulnerabilities',
+    'allowMajorForSecurity',
+    'notifyOnSecurityUpdate',
+    'enableCheck',
+  ]
+  for (const field of booleanFields) {
+    if (security[field] !== undefined && typeof security[field] !== 'boolean') {
+      warnings.push(`security.${field} should be a boolean`)
+    }
+  }
+
+  if (security.cacheMinutes !== undefined && typeof security.cacheMinutes !== 'number') {
+    warnings.push('security.cacheMinutes should be a number')
+  }
+}
+
+/**
+ * Validate AdvancedConfig structure
+ */
+function validateAdvancedConfig(advanced: unknown, errors: string[], warnings: string[]): void {
+  if (!isPlainObject(advanced)) {
+    errors.push('advanced must be an object')
+    return
+  }
+
+  const numberFields = ['concurrency', 'timeout', 'retries', 'cacheValidityMinutes', 'rateLimit']
+  for (const field of numberFields) {
+    if (advanced[field] !== undefined && typeof advanced[field] !== 'number') {
+      warnings.push(`advanced.${field} should be a number`)
+    }
+  }
+
+  if (advanced.checkForUpdates !== undefined && typeof advanced.checkForUpdates !== 'boolean') {
+    warnings.push('advanced.checkForUpdates should be a boolean')
+  }
+
+  const stringFields = ['registry', 'npmDownloadsApiUrl']
+  for (const field of stringFields) {
+    if (advanced[field] !== undefined && typeof advanced[field] !== 'string') {
+      warnings.push(`advanced.${field} should be a string`)
+    }
+  }
+}
+
+/**
+ * Validate MonorepoConfig structure
+ */
+function validateMonorepoConfig(monorepo: unknown, errors: string[], _warnings: string[]): void {
+  if (!isPlainObject(monorepo)) {
+    errors.push('monorepo must be an object')
+    return
+  }
+
+  if (monorepo.syncVersions !== undefined && !isStringArray(monorepo.syncVersions)) {
+    errors.push('monorepo.syncVersions must be an array of strings')
+  }
+
+  if (monorepo.catalogPriority !== undefined && !isStringArray(monorepo.catalogPriority)) {
+    errors.push('monorepo.catalogPriority must be an array of strings')
+  }
+}
+
+/**
+ * QUAL-015: Validate PackageFilterConfig structure at runtime
+ *
+ * Performs comprehensive validation of configuration objects to ensure
+ * type safety without relying on unsafe type assertions.
+ *
+ * @param config - The configuration object to validate
+ * @returns Validation result with errors and warnings
+ */
+export function validatePackageFilterConfig(config: unknown): ConfigValidationResult {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  // Must be an object
+  if (!isPlainObject(config)) {
+    return {
+      isValid: false,
+      errors: ['Configuration must be an object'],
+      warnings: [],
+    }
+  }
+
+  // Validate locale
+  if (config.locale !== undefined) {
+    if (typeof config.locale !== 'string' || !VALID_LOCALES.has(config.locale)) {
+      errors.push(`locale must be one of: ${[...VALID_LOCALES].join(', ')}`)
+    }
+  }
+
+  // Validate exclude/include arrays
+  if (config.exclude !== undefined && !isStringArray(config.exclude)) {
+    errors.push('exclude must be an array of strings')
+  }
+
+  if (config.include !== undefined && !isStringArray(config.include)) {
+    errors.push('include must be an array of strings')
+  }
+
+  // Validate nested configs
+  if (config.defaults !== undefined) {
+    validateDefaultsConfig(config.defaults, errors, warnings)
+  }
+
+  if (config.packageRules !== undefined) {
+    if (!Array.isArray(config.packageRules)) {
+      errors.push('packageRules must be an array')
+    } else {
+      config.packageRules.forEach((rule, index) => {
+        validatePackageRule(rule, index, errors, warnings)
+      })
+    }
+  }
+
+  if (config.security !== undefined) {
+    validateSecurityConfig(config.security, errors, warnings)
+  }
+
+  if (config.advanced !== undefined) {
+    validateAdvancedConfig(config.advanced, errors, warnings)
+  }
+
+  if (config.monorepo !== undefined) {
+    validateMonorepoConfig(config.monorepo, errors, warnings)
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+  }
 }

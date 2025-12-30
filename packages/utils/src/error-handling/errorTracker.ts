@@ -55,6 +55,7 @@ export class ErrorTracker {
 
   /**
    * Get skipped packages by reason
+   * PERF-002: Single-pass grouping instead of 4 separate filter+map operations
    */
   static getSkippedPackages(): {
     notFound: string[]
@@ -63,16 +64,27 @@ export class ErrorTracker {
     other: string[]
   } {
     const grouped = {
-      notFound: ErrorTracker.skippedPackages
-        .filter((p) => p.reason === 'not-found')
-        .map((p) => p.name),
-      network: ErrorTracker.skippedPackages
-        .filter((p) => p.reason === 'network')
-        .map((p) => p.name),
-      emptyVersion: ErrorTracker.skippedPackages
-        .filter((p) => p.reason === 'empty-version')
-        .map((p) => p.name),
-      other: ErrorTracker.skippedPackages.filter((p) => p.reason === 'other').map((p) => p.name),
+      notFound: [] as string[],
+      network: [] as string[],
+      emptyVersion: [] as string[],
+      other: [] as string[],
+    }
+
+    // Single pass through the array
+    for (const pkg of ErrorTracker.skippedPackages) {
+      switch (pkg.reason) {
+        case 'not-found':
+          grouped.notFound.push(pkg.name)
+          break
+        case 'network':
+          grouped.network.push(pkg.name)
+          break
+        case 'empty-version':
+          grouped.emptyVersion.push(pkg.name)
+          break
+        default:
+          grouped.other.push(pkg.name)
+      }
     }
 
     return grouped

@@ -326,8 +326,9 @@ describe('CheckCommand', () => {
 
       expect(consoleSpy).toHaveBeenCalled()
       // Verbose mode shows additional information
+      // The mock t() returns the translation key, not the actual translated value
       const calls = consoleSpy.mock.calls.flat().join(' ')
-      expect(calls).toContain('Workspace')
+      expect(calls).toContain('command.workspace.title')
     })
 
     it('should handle error and exit with code 1', async () => {

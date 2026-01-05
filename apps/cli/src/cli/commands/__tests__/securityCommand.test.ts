@@ -271,7 +271,8 @@ describe('SecurityCommand', () => {
 
       expect(consoleSpy).toHaveBeenCalled()
       const calls = consoleSpy.mock.calls.flat().join(' ')
-      expect(calls).toContain('Workspace')
+      // The mock t() returns the translation key, not the actual translated value
+      expect(calls).toContain('command.workspace.title')
     })
 
     it('should exit with code 1 when critical vulnerabilities found', async () => {

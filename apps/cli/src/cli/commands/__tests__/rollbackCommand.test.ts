@@ -74,6 +74,7 @@ vi.mock('../../themes/colorTheme.js', () => ({
     warning: (text: string) => `[warning]${text}`,
     success: (text: string) => `[success]${text}`,
     highlight: (text: string) => `[highlight]${text}`,
+    accent: (text: string) => `[accent]${text}`,
   },
 }))
 

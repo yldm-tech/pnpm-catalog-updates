@@ -355,7 +355,8 @@ export const ja: TranslationDictionary = {
   // CLI messages
   'cli.runAgain': '更新されたバージョンを使用するには、コマンドを再実行してください。',
   'cli.checkingUpdates': '更新を確認しています...',
-  'cli.latestVersion': '最新バージョンを使用しています！',
+  'cli.latestVersion': '最新版です',
+  'cli.available': '利用可能',
   'cli.unknownCommand': '不明なコマンド: {{command}}',
   'cli.couldNotCheckUpdates': '更新を確認できませんでした:',
   'cli.error': 'エラー:',

@@ -363,7 +363,8 @@ export const de: TranslationDictionary = {
   'cli.runAgain':
     'Bitte führen Sie den Befehl erneut aus, um die aktualisierte Version zu verwenden.',
   'cli.checkingUpdates': 'Suche nach Updates...',
-  'cli.latestVersion': 'Sie verwenden die neueste Version!',
+  'cli.latestVersion': 'ist die neueste',
+  'cli.available': 'verfügbar',
   'cli.unknownCommand': 'Unbekannter Befehl: {{command}}',
   'cli.couldNotCheckUpdates': 'Updates konnten nicht geprüft werden:',
   'cli.error': 'Fehler:',

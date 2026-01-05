@@ -336,7 +336,8 @@ export const zh: TranslationDictionary = {
   // CLI messages
   'cli.runAgain': '请重新运行命令以使用更新后的版本。',
   'cli.checkingUpdates': '正在检查更新...',
-  'cli.latestVersion': '您正在使用最新版本！',
+  'cli.latestVersion': '已是最新',
+  'cli.available': '可用',
   'cli.unknownCommand': '未知命令：{{command}}',
   'cli.couldNotCheckUpdates': '无法检查更新：',
   'cli.error': '错误：',

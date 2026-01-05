@@ -357,7 +357,8 @@ export const es: TranslationDictionary = {
   // CLI messages
   'cli.runAgain': 'Por favor, ejecute el comando nuevamente para usar la versión actualizada.',
   'cli.checkingUpdates': 'Buscando actualizaciones...',
-  'cli.latestVersion': '¡Está usando la última versión!',
+  'cli.latestVersion': 'es la última',
+  'cli.available': 'disponible',
   'cli.unknownCommand': 'Comando desconocido: {{command}}',
   'cli.couldNotCheckUpdates': 'No se pudo verificar actualizaciones:',
   'cli.error': 'Error:',

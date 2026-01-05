@@ -118,35 +118,54 @@ async function handleVersionFlag(
 ): Promise<void> {
   if (!args.includes('--version')) return
 
-  cliOutput.print(getPackageJson().version)
+  const pkg = getPackageJson()
+  const version = pkg.version
 
   // Check for updates if not in CI and enabled in config
   if (VersionChecker.shouldCheckForUpdates() && config.advanced?.checkForUpdates !== false) {
     try {
-      cliOutput.print(chalk.gray(t('cli.checkingUpdates')))
-      const versionResult = await VersionChecker.checkVersion(getPackageJson().version, {
+      // Show version with checking status on same line
+      process.stdout.write(
+        `${chalk.cyan('pcu')} ${chalk.bold(`v${version}`)} ${chalk.gray(t('cli.checkingUpdates'))}`
+      )
+
+      const versionResult = await VersionChecker.checkVersion(version, {
         skipPrompt: false,
-        timeout: 5000, // Longer timeout for explicit version check
+        timeout: 5000,
       })
 
-      if (versionResult.shouldPrompt) {
+      // Clear the checking message and show final result
+      process.stdout.write('\r\x1b[K') // Clear current line
+
+      if (versionResult.shouldPrompt && versionResult.latestVersion) {
+        cliOutput.print(
+          `${chalk.cyan('pcu')} ${chalk.bold(`v${version}`)} ${chalk.yellow(`-> v${versionResult.latestVersion} ${t('cli.available')}`)}`
+        )
         const didUpdate = await VersionChecker.promptAndUpdate(versionResult)
         if (didUpdate) {
           cliOutput.print(chalk.blue(t('cli.runAgain')))
           exitWithCleanup(0)
         }
-      } else if (versionResult.isLatest) {
-        cliOutput.print(chalk.green(t('cli.latestVersion')))
+      } else {
+        cliOutput.print(
+          `${chalk.cyan('pcu')} ${chalk.bold(`v${version}`)} ${chalk.green(t('cli.latestVersion'))}`
+        )
       }
     } catch (error) {
-      // Silently fail update check for version command
+      // Clear line and show version without update status
+      process.stdout.write('\r\x1b[K')
+      cliOutput.print(`${chalk.cyan('pcu')} ${chalk.bold(`v${version}`)}`)
+
       logger.debug('Version flag update check failed', {
         error: error instanceof Error ? error.message : error,
       })
       if (args.includes('-v') || args.includes('--verbose')) {
-        cliOutput.warn(chalk.yellow(`⚠️  ${t('cli.couldNotCheckUpdates')}`), error)
+        cliOutput.warn(chalk.yellow(`  ${t('cli.couldNotCheckUpdates')}`), error)
       }
     }
+  } else {
+    // No update check, just show version
+    cliOutput.print(`${chalk.cyan('pcu')} ${chalk.bold(`v${version}`)}`)
   }
 
   exitWithCleanup(0)

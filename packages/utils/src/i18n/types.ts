@@ -235,6 +235,7 @@ export type TranslationKey =
   | 'cli.runAgain'
   | 'cli.checkingUpdates'
   | 'cli.latestVersion'
+  | 'cli.available'
   | 'cli.unknownCommand'
   | 'cli.couldNotCheckUpdates'
   | 'cli.error'

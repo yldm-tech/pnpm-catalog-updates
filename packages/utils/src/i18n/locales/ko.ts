@@ -343,7 +343,8 @@ export const ko: TranslationDictionary = {
   // CLI messages
   'cli.runAgain': '업데이트된 버전을 사용하려면 명령을 다시 실행하세요.',
   'cli.checkingUpdates': '업데이트 확인 중...',
-  'cli.latestVersion': '최신 버전을 사용 중입니다!',
+  'cli.latestVersion': '최신 버전',
+  'cli.available': '사용 가능',
   'cli.unknownCommand': '알 수 없는 명령: {{command}}',
   'cli.couldNotCheckUpdates': '업데이트를 확인할 수 없습니다:',
   'cli.error': '오류:',

@@ -215,6 +215,7 @@ export const ja: TranslationDictionary = {
   'command.selfUpdate.latestAlready': '既に最新バージョン ({{version}}) を使用しています',
   'command.selfUpdate.restartHint':
     '新しいバージョンを使用するには、ターミナルを再起動してください。',
+  'command.selfUpdate.manualHint': '手動で更新するには: npm install -g pcu@latest',
 
   // AI command
   'command.ai.cacheCleared': 'AI 分析キャッシュをクリアしました',

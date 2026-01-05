@@ -203,6 +203,7 @@ export const en: TranslationDictionary = {
   'command.selfUpdate.failed': 'Failed to update pcu',
   'command.selfUpdate.latestAlready': 'You are already using the latest version ({{version}})',
   'command.selfUpdate.restartHint': 'Please restart your terminal to use the new version.',
+  'command.selfUpdate.manualHint': 'You can manually update with: npm install -g pcu@latest',
 
   // AI command
   'command.ai.cacheCleared': 'AI analysis cache cleared',

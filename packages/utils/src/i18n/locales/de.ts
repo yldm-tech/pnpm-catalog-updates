@@ -222,6 +222,8 @@ export const de: TranslationDictionary = {
   'command.selfUpdate.latestAlready': 'Sie verwenden bereits die neueste Version ({{version}})',
   'command.selfUpdate.restartHint':
     'Bitte starten Sie Ihr Terminal neu, um die neue Version zu verwenden.',
+  'command.selfUpdate.manualHint':
+    'Sie können manuell aktualisieren mit: npm install -g pcu@latest',
 
   // AI command
   'command.ai.cacheCleared': 'KI-Analyse-Cache geleert',

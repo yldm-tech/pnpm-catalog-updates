@@ -207,6 +207,7 @@ export const ko: TranslationDictionary = {
   'command.selfUpdate.failed': 'pcu 업데이트 실패',
   'command.selfUpdate.latestAlready': '이미 최신 버전 ({{version}})을 사용 중입니다',
   'command.selfUpdate.restartHint': '새 버전을 사용하려면 터미널을 다시 시작하세요.',
+  'command.selfUpdate.manualHint': '수동으로 업데이트하려면: npm install -g pcu@latest',
 
   // AI command
   'command.ai.cacheCleared': 'AI 분석 캐시 삭제됨',

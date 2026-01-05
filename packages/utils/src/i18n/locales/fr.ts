@@ -218,6 +218,8 @@ export const fr: TranslationDictionary = {
   'command.selfUpdate.latestAlready': 'Vous utilisez déjà la dernière version ({{version}})',
   'command.selfUpdate.restartHint':
     'Veuillez redémarrer votre terminal pour utiliser la nouvelle version.',
+  'command.selfUpdate.manualHint':
+    'Vous pouvez mettre à jour manuellement avec : npm install -g pcu@latest',
 
   // AI command
   'command.ai.cacheCleared': "Cache d'analyse IA vidé",

@@ -764,7 +764,7 @@ ${t('cli.help.tipLabel')} ${t('cli.help.tipContent', { locale: I18n.getLocale() 
               cliOutput.print(chalk.gray(t('command.selfUpdate.restartHint')))
             } else {
               cliOutput.error(chalk.red(t('command.selfUpdate.failed')))
-              cliOutput.print(chalk.gray('You can manually update with: npm install -g pcu@latest'))
+              cliOutput.print(chalk.gray(t('command.selfUpdate.manualHint')))
               exitProcess(1)
             }
           } catch (error) {
@@ -772,7 +772,7 @@ ${t('cli.help.tipLabel')} ${t('cli.help.tipContent', { locale: I18n.getLocale() 
             if (globalOptions.verbose) {
               cliOutput.error(error)
             }
-            cliOutput.print(chalk.gray('You can manually update with: npm install -g pcu@latest'))
+            cliOutput.print(chalk.gray(t('command.selfUpdate.manualHint')))
             exitProcess(1)
           }
         }

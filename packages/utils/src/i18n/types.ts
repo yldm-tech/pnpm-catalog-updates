@@ -193,6 +193,7 @@ export type TranslationKey =
   | 'command.selfUpdate.failed'
   | 'command.selfUpdate.latestAlready'
   | 'command.selfUpdate.restartHint'
+  | 'command.selfUpdate.manualHint'
   // AI command
   | 'command.ai.cacheCleared'
   | 'command.ai.cacheStats'

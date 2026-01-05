@@ -200,6 +200,7 @@ export const zh: TranslationDictionary = {
   'command.selfUpdate.failed': '更新 pcu 失败',
   'command.selfUpdate.latestAlready': '您已使用最新版本 ({{version}})',
   'command.selfUpdate.restartHint': '请重新启动终端以使用新版本。',
+  'command.selfUpdate.manualHint': '您可以手动更新：npm install -g pcu@latest',
 
   // AI command
   'command.ai.cacheCleared': 'AI 分析缓存已清除',

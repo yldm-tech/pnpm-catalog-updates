@@ -108,17 +108,14 @@ export class VersionChecker {
 
   /**
    * Perform update without prompting
+   * Note: Logging is handled by the CLI layer with i18n support
    */
   static async performUpdateAction(): Promise<boolean> {
-    // QUAL-003: Use logger instead of console for consistent output
-    logger.info(chalk.blue('🔄 Updating pcu...'))
     try {
       await VersionChecker.performUpdate()
-      logger.info(chalk.green('✅ Successfully updated! Please restart the command.'))
       return true
     } catch (error) {
-      logger.error(chalk.red('❌ Update failed:'), error instanceof Error ? error : undefined)
-      logger.info(chalk.gray('You can manually update with: npm install -g pcu@latest'))
+      logger.debug('Update failed', error instanceof Error ? error : undefined)
       return false
     }
   }

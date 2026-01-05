@@ -217,6 +217,7 @@ export const es: TranslationDictionary = {
   'command.selfUpdate.failed': 'Error al actualizar pcu',
   'command.selfUpdate.latestAlready': 'Ya está utilizando la última versión ({{version}})',
   'command.selfUpdate.restartHint': 'Reinicie su terminal para usar la nueva versión.',
+  'command.selfUpdate.manualHint': 'Puede actualizar manualmente con: npm install -g pcu@latest',
 
   // AI command
   'command.ai.cacheCleared': 'Caché de análisis de IA limpiada',

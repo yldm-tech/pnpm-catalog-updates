@@ -8,6 +8,7 @@
 import type { WorkspaceService } from '@pcu/core'
 import { CommandExitError } from '@pcu/utils'
 import chalk from 'chalk'
+import { cliOutput } from '../utils/cliOutput.js'
 import { errorsOnly, validateGraphOptions } from '../validators/index.js'
 
 export type GraphFormat = 'text' | 'mermaid' | 'dot' | 'json'
@@ -57,7 +58,7 @@ export class GraphCommand {
 
     // Output in requested format
     const output = this.formatGraph(graph, format, useColor)
-    console.log(output)
+    cliOutput.print(output)
 
     throw CommandExitError.success()
   }
@@ -73,8 +74,11 @@ export class GraphCommand {
     const nodes: GraphNode[] = []
     const edges: GraphEdge[] = []
 
-    const catalogs = await this.workspaceService.getCatalogs(workspacePath)
-    const packages = await this.workspaceService.getPackages(workspacePath)
+    // PERF-001: Parallel fetch for independent async operations
+    const [catalogs, packages] = await Promise.all([
+      this.workspaceService.getCatalogs(workspacePath),
+      this.workspaceService.getPackages(workspacePath),
+    ])
 
     // Filter catalogs if specified
     const filteredCatalogs = catalogFilter

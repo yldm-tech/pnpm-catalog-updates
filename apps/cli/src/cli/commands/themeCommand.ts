@@ -7,6 +7,7 @@
 import { logger, t } from '@pcu/utils'
 import { InteractivePrompts } from '../interactive/interactivePrompts.js'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
+import { cliOutput } from '../utils/cliOutput.js'
 
 export interface ThemeCommandOptions {
   set?: string
@@ -21,9 +22,9 @@ export class ThemeCommand {
   async execute(options: ThemeCommandOptions = {}): Promise<void> {
     if (options.list) {
       const themes = ThemeManager.listThemes()
-      console.log(StyledText.iconInfo(t('command.theme.availableThemes')))
+      cliOutput.print(StyledText.iconInfo(t('command.theme.availableThemes')))
       themes.forEach((theme) => {
-        console.log(`  • ${theme}`)
+        cliOutput.print(`  • ${theme}`)
       })
       return
     }
@@ -35,13 +36,17 @@ export class ThemeCommand {
           theme: options.set,
           availableThemes: themes,
         })
-        console.error(StyledText.iconError(t('command.theme.invalidTheme', { theme: options.set })))
-        console.log(StyledText.muted(`${t('command.theme.availableThemes')} ${themes.join(', ')}`))
+        cliOutput.error(
+          StyledText.iconError(t('command.theme.invalidTheme', { theme: options.set }))
+        )
+        cliOutput.print(
+          StyledText.muted(`${t('command.theme.availableThemes')} ${themes.join(', ')}`)
+        )
         throw new Error(t('command.theme.invalidTheme', { theme: options.set }))
       }
 
       ThemeManager.setTheme(options.set as keyof typeof ThemeManager.themes)
-      console.log(StyledText.iconSuccess(t('command.theme.setTo', { theme: options.set })))
+      cliOutput.print(StyledText.iconSuccess(t('command.theme.setTo', { theme: options.set })))
 
       // Show a preview
       this.showThemePreview()
@@ -54,66 +59,68 @@ export class ThemeCommand {
 
       if (selectedTheme) {
         ThemeManager.setTheme(selectedTheme as keyof typeof ThemeManager.themes)
-        console.log(StyledText.iconSuccess(t('command.theme.setTo', { theme: selectedTheme })))
+        cliOutput.print(StyledText.iconSuccess(t('command.theme.setTo', { theme: selectedTheme })))
         this.showThemePreview()
       } else {
-        console.log(StyledText.muted(t('command.theme.cancelled')))
+        cliOutput.print(StyledText.muted(t('command.theme.cancelled')))
       }
       return
     }
 
     // Default: show current theme and list
     const currentTheme = ThemeManager.getTheme()
-    console.log(StyledText.iconInfo(t('command.theme.currentSettings')))
-    console.log(
+    cliOutput.print(StyledText.iconInfo(t('command.theme.currentSettings')))
+    cliOutput.print(
       `  ${t('command.theme.themeLabel')} ${currentTheme ? t('command.theme.custom') : t('command.theme.default')}`
     )
-    console.log(`\n${t('command.theme.availableThemes')}`)
+    cliOutput.print(`\n${t('command.theme.availableThemes')}`)
     ThemeManager.listThemes().forEach((theme) => {
-      console.log(`  • ${theme}`)
+      cliOutput.print(`  • ${theme}`)
     })
-    console.log(StyledText.muted(`\n${t('command.theme.useHint')}`))
+    cliOutput.print(StyledText.muted(`\n${t('command.theme.useHint')}`))
   }
 
   /**
    * Show a preview of the current theme with realistic examples
    */
   private showThemePreview(): void {
-    console.log(`\n${t('command.theme.preview')}`)
+    cliOutput.print(`\n${t('command.theme.preview')}`)
     const theme = ThemeManager.getTheme()
 
     // Package updates section
-    console.log(`\n  ${theme.primary(`📦 ${t('command.theme.previewPackageUpdates')}`)}`)
-    console.log(
+    cliOutput.print(`\n  ${theme.primary(`📦 ${t('command.theme.previewPackageUpdates')}`)}`)
+    cliOutput.print(
       `     ${theme.text('react'.padEnd(14))} ${theme.muted('18.2.0')}  →  ${theme.major('19.0.0')}   ${theme.muted(`(${t('command.theme.previewMajor')})`)}`
     )
-    console.log(
+    cliOutput.print(
       `     ${theme.text('typescript'.padEnd(14))} ${theme.muted('5.3.0')}  →  ${theme.minor('5.4.0')}    ${theme.muted(`(${t('command.theme.previewMinor')})`)}`
     )
-    console.log(
+    cliOutput.print(
       `     ${theme.text('lodash'.padEnd(14))} ${theme.muted('4.17.1')} →  ${theme.patch('4.17.2')}  ${theme.muted(`(${t('command.theme.previewPatch')})`)}`
     )
-    console.log(
+    cliOutput.print(
       `     ${theme.text('next'.padEnd(14))} ${theme.muted('14.2.0')}  →  ${theme.prerelease('15.0.0-rc.1')} ${theme.muted(`(${t('command.theme.previewPrerelease')})`)}`
     )
 
     // Status messages section
-    console.log(`\n  ${theme.primary(`💬 ${t('command.theme.previewStatusMessages')}`)}`)
-    console.log(`     ${theme.success(`✓ ${t('command.theme.previewUpdateComplete')}`)}`)
-    console.log(`     ${theme.warning(`⚠ ${t('command.theme.previewPotentialIssue')}`)}`)
-    console.log(`     ${theme.error(`✗ ${t('command.theme.previewOperationFailed')}`)}`)
-    console.log(`     ${theme.info(`ℹ ${t('command.theme.previewUpdatesFound', { count: 3 })}`)}`)
+    cliOutput.print(`\n  ${theme.primary(`💬 ${t('command.theme.previewStatusMessages')}`)}`)
+    cliOutput.print(`     ${theme.success(`✓ ${t('command.theme.previewUpdateComplete')}`)}`)
+    cliOutput.print(`     ${theme.warning(`⚠ ${t('command.theme.previewPotentialIssue')}`)}`)
+    cliOutput.print(`     ${theme.error(`✗ ${t('command.theme.previewOperationFailed')}`)}`)
+    cliOutput.print(
+      `     ${theme.info(`ℹ ${t('command.theme.previewUpdatesFound', { count: 3 })}`)}`
+    )
 
     // Progress bar section
-    console.log(`\n  ${theme.primary(`📊 ${t('command.theme.previewProgressBar')}`)}`)
+    cliOutput.print(`\n  ${theme.primary(`📊 ${t('command.theme.previewProgressBar')}`)}`)
     const progressFilled = 24
     const progressEmpty = 16
     const progressBar =
       theme.success('█'.repeat(progressFilled)) + theme.muted('░'.repeat(progressEmpty))
-    console.log(
+    cliOutput.print(
       `     [${progressBar}] ${theme.info('60%')} ${theme.muted(t('command.theme.previewCheckingDeps'))}`
     )
-    console.log('')
+    cliOutput.print('')
   }
 
   /**

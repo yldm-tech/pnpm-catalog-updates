@@ -87,22 +87,57 @@ interface NpmVersionManifest {
 }
 
 /**
+ * MAINT-002: Type definitions for package manifest author extraction
+ */
+interface PackageAuthor {
+  name: string
+  email?: string
+}
+
+interface ManifestWithAuthor {
+  author?: string | PackageAuthor
+}
+
+/**
+ * Type guard to check if object has author property
+ * MAINT-002: Replaces unsafe Record<string, unknown> assertion with type predicate
+ */
+function isManifestWithAuthor(obj: object): obj is ManifestWithAuthor {
+  return 'author' in obj
+}
+
+/**
+ * Type guard to check if author is a PackageAuthor object
+ */
+function isPackageAuthor(author: unknown): author is PackageAuthor {
+  return (
+    author !== null &&
+    typeof author === 'object' &&
+    'name' in author &&
+    typeof (author as PackageAuthor).name === 'string'
+  )
+}
+
+/**
  * Type guard to safely extract author from pacote manifest.
  * Pacote's manifest type is complex, this helper provides type-safe access.
+ * MAINT-002: Uses type predicates instead of Record<string, unknown> assertion
  */
-function extractAuthorFromManifest(
-  manifest: unknown
-): string | { name: string; email?: string } | undefined {
+function extractAuthorFromManifest(manifest: unknown): string | PackageAuthor | undefined {
   if (!manifest || typeof manifest !== 'object') {
     return undefined
   }
-  const obj = manifest as Record<string, unknown>
-  const author = obj.author
+
+  if (!isManifestWithAuthor(manifest)) {
+    return undefined
+  }
+
+  const { author } = manifest
   if (typeof author === 'string') {
     return author
   }
-  if (author && typeof author === 'object' && 'name' in author) {
-    return author as { name: string; email?: string }
+  if (isPackageAuthor(author)) {
+    return author
   }
   return undefined
 }
@@ -137,11 +172,6 @@ interface NpmDownloadStats {
   start?: string
   end?: string
 }
-
-/**
- * Author type used in package manifests
- */
-type PackageAuthor = string | { name: string; email?: string } | undefined
 
 /**
  * Package versions cache structure
@@ -871,12 +901,16 @@ export class NpmRegistryService {
 
   /**
    * Normalize author for comparison
+   * MAINT-002: Updated to accept the full range of author types
    */
-  private normalizeAuthor(author: PackageAuthor): string {
+  private normalizeAuthor(author: string | PackageAuthor | undefined): string {
+    if (!author) {
+      return ''
+    }
     if (typeof author === 'string') {
       return author.toLowerCase().trim()
     }
-    if (typeof author === 'object' && author?.name) {
+    if (typeof author === 'object' && author.name) {
       return author.name.toLowerCase().trim()
     }
     return ''

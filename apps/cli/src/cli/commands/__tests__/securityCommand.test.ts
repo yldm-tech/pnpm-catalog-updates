@@ -128,7 +128,7 @@ vi.mock('../../formatters/progressBar.js', () => ({
   },
 }))
 
-// Mock ThemeManager and StyledText
+// Mock ThemeManager and StyledText - QUAL-011: Updated for unified output helpers
 vi.mock('../../themes/colorTheme.js', () => ({
   ThemeManager: {
     setTheme: vi.fn(),
@@ -139,15 +139,24 @@ vi.mock('../../themes/colorTheme.js', () => ({
     }),
   },
   StyledText: {
-    iconAnalysis: (text: string) => `[analysis]${text}`,
-    iconSuccess: (text: string) => `[success]${text}`,
-    iconInfo: (text: string) => `[info]${text}`,
-    iconError: (text: string) => `[error]${text}`,
-    iconSecurity: (text: string) => `[security]${text}`,
-    iconUpdate: (text: string) => `[update]${text}`,
-    iconWarning: (text?: string) => (text ? `[warning]${text}` : '[warning]'),
+    iconAnalysis: (text?: string) => `[analysis]${text ?? ''}`,
+    iconSuccess: (text?: string) => `[success]${text ?? ''}`,
+    iconInfo: (text?: string) => `[info]${text ?? ''}`,
+    iconError: (text?: string) => `[error]${text ?? ''}`,
+    iconSecurity: (text?: string) => `[security]${text ?? ''}`,
+    iconUpdate: (text?: string) => `[update]${text ?? ''}`,
+    iconWarning: (text?: string) => `[warning]${text ?? ''}`,
     muted: (text: string) => `[muted]${text}`,
     error: (text: string) => `[error]${text}`,
+  },
+}))
+
+// Mock cliOutput - QUAL-011: Added for unified output helpers
+vi.mock('../../utils/cliOutput.js', () => ({
+  cliOutput: {
+    print: vi.fn((...args: unknown[]) => console.log(...args)),
+    error: vi.fn((...args: unknown[]) => console.error(...args)),
+    warn: vi.fn((...args: unknown[]) => console.warn(...args)),
   },
 }))
 

@@ -23,6 +23,8 @@ import Table from 'cli-table3'
 import YAML from 'yaml'
 import type { SecurityReport } from '../commands/securityCommand.js'
 import { CIFormatter, type CIOutputFormat } from './ciFormatter.js'
+import { ColorUtils } from './colorUtils.js'
+import { VersionFormatter } from './versionFormatter.js'
 
 export type OutputFormat =
   | 'table'
@@ -40,17 +42,18 @@ export function isCIFormat(format: OutputFormat): format is CIFormat {
   return ['github', 'gitlab', 'junit', 'sarif'].includes(format)
 }
 
-// Build ANSI escape regex without literal control characters
-const ANSI_ESCAPE = String.fromCharCode(27)
-const ansiRegex: RegExp = new RegExp(`${ANSI_ESCAPE}\\[[0-9;]*m`, 'g')
-
 export class OutputFormatter {
   private ciFormatter: CIFormatter | null = null
+  private readonly colorUtils: ColorUtils
+  private readonly versionFormatter: VersionFormatter
 
   constructor(
     private readonly format: OutputFormat = 'table',
     private readonly useColor: boolean = true
-  ) {}
+  ) {
+    this.colorUtils = new ColorUtils(useColor)
+    this.versionFormatter = new VersionFormatter(this.colorUtils, useColor)
+  }
 
   /**
    * Get or create CIFormatter instance for CI output formats
@@ -242,16 +245,20 @@ export class OutputFormatter {
     const lines: string[] = []
 
     // Header
-    lines.push(this.colorize(chalk.bold, `\n${t('format.workspace')}: ${report.workspace.name}`))
-    lines.push(this.colorize(chalk.gray, `${t('format.path')}: ${report.workspace.path}`))
+    lines.push(
+      this.colorUtils.colorize(chalk.bold, `\n${t('format.workspace')}: ${report.workspace.name}`)
+    )
+    lines.push(
+      this.colorUtils.colorize(chalk.gray, `${t('format.path')}: ${report.workspace.path}`)
+    )
 
     if (!report.hasUpdates) {
-      lines.push(this.colorize(chalk.green, `\n✅ ${t('format.allUpToDate')}`))
+      lines.push(this.colorUtils.colorize(chalk.green, `\n✅ ${t('format.allUpToDate')}`))
       return lines.join('\n')
     }
 
     lines.push(
-      this.colorize(
+      this.colorUtils.colorize(
         chalk.yellow,
         `\n${t('format.foundOutdated', { count: String(report.totalOutdated) })}\n`
       )
@@ -260,10 +267,12 @@ export class OutputFormatter {
     for (const catalogInfo of report.catalogs) {
       if (catalogInfo.outdatedCount === 0) continue
 
-      lines.push(this.colorize(chalk.bold, `${t('format.catalog')}: ${catalogInfo.catalogName}`))
+      lines.push(
+        this.colorUtils.colorize(chalk.bold, `${t('format.catalog')}: ${catalogInfo.catalogName}`)
+      )
 
       const table = new Table({
-        head: this.colorizeHeaders([
+        head: this.colorUtils.colorizeHeaders([
           t('table.header.package'),
           t('table.header.current'),
           t('table.header.latest'),
@@ -275,11 +284,11 @@ export class OutputFormatter {
       })
 
       for (const dep of catalogInfo.outdatedDependencies) {
-        const typeColor = this.getUpdateTypeColor(dep.updateType)
+        const typeColor = this.colorUtils.getUpdateTypeColor(dep.updateType)
         const securityIcon = dep.isSecurityUpdate ? '[SEC] ' : ''
 
         // Colorize version differences
-        const { currentColored, latestColored } = this.colorizeVersionDiff(
+        const { currentColored, latestColored } = this.versionFormatter.colorizeVersionDiff(
           dep.currentVersion,
           dep.latestVersion,
           dep.updateType
@@ -289,7 +298,7 @@ export class OutputFormatter {
           `${securityIcon}${dep.packageName}`,
           currentColored,
           latestColored,
-          this.colorize(typeColor, dep.updateType),
+          this.colorUtils.colorize(typeColor, dep.updateType),
           t('common.packagesCount', { count: String(dep.affectedPackages.length) }),
         ])
       }
@@ -320,7 +329,7 @@ export class OutputFormatter {
     for (const catalogInfo of report.catalogs) {
       for (const dep of catalogInfo.outdatedDependencies) {
         const securityIcon = dep.isSecurityUpdate ? '[SEC] ' : ''
-        const { currentColored, latestColored } = this.colorizeVersionDiff(
+        const { currentColored, latestColored } = this.versionFormatter.colorizeVersionDiff(
           dep.currentVersion,
           dep.latestVersion,
           dep.updateType
@@ -341,7 +350,7 @@ export class OutputFormatter {
 
     // Calculate max version widths (need to strip color codes for accurate width calculation)
     const maxCurrentWidth = Math.max(
-      ...allDeps.map((dep) => this.stripAnsi(dep.currentColored).length)
+      ...allDeps.map((dep) => this.colorUtils.stripAnsi(dep.currentColored).length)
     )
 
     // Format lines with proper alignment
@@ -349,7 +358,7 @@ export class OutputFormatter {
     for (const dep of allDeps) {
       const nameWithIcon = dep.securityIcon + dep.packageName
       const paddedName = nameWithIcon.padEnd(maxNameWidth)
-      const paddedCurrent = this.padAnsi(dep.currentColored, maxCurrentWidth)
+      const paddedCurrent = this.colorUtils.padAnsi(dep.currentColored, maxCurrentWidth)
 
       lines.push(`${paddedName}  ${paddedCurrent} → ${dep.latestColored}`)
     }
@@ -364,12 +373,14 @@ export class OutputFormatter {
     const lines: string[] = []
 
     // Header
-    lines.push(this.colorize(chalk.bold, `\n${t('format.workspace')}: ${result.workspace.name}`))
+    lines.push(
+      this.colorUtils.colorize(chalk.bold, `\n${t('format.workspace')}: ${result.workspace.name}`)
+    )
 
     if (result.success) {
-      lines.push(this.colorize(chalk.green, `✅ ${t('format.updateCompleted')}`))
+      lines.push(this.colorUtils.colorize(chalk.green, `✅ ${t('format.updateCompleted')}`))
     } else {
-      lines.push(this.colorize(chalk.red, `❌ ${t('format.updateFailed')}`))
+      lines.push(this.colorUtils.colorize(chalk.red, `❌ ${t('format.updateFailed')}`))
     }
 
     lines.push('')
@@ -377,14 +388,14 @@ export class OutputFormatter {
     // Updated dependencies
     if (result.updatedDependencies.length > 0) {
       lines.push(
-        this.colorize(
+        this.colorUtils.colorize(
           chalk.green,
           `${t('format.updatedCount', { count: String(result.totalUpdated) })}:`
         )
       )
 
       const table = new Table({
-        head: this.colorizeHeaders([
+        head: this.colorUtils.colorizeHeaders([
           t('table.header.catalog'),
           t('table.header.package'),
           t('table.header.from'),
@@ -396,10 +407,10 @@ export class OutputFormatter {
       })
 
       for (const dep of result.updatedDependencies) {
-        const typeColor = this.getUpdateTypeColor(dep.updateType)
+        const typeColor = this.colorUtils.getUpdateTypeColor(dep.updateType)
 
         // Colorize version differences
-        const { currentColored, latestColored } = this.colorizeVersionDiff(
+        const { currentColored, latestColored } = this.versionFormatter.colorizeVersionDiff(
           dep.fromVersion,
           dep.toVersion,
           dep.updateType
@@ -410,7 +421,7 @@ export class OutputFormatter {
           dep.packageName,
           currentColored,
           latestColored,
-          this.colorize(typeColor, dep.updateType),
+          this.colorUtils.colorize(typeColor, dep.updateType),
         ])
       }
 
@@ -421,7 +432,10 @@ export class OutputFormatter {
     // Skipped dependencies
     if (result.skippedDependencies.length > 0) {
       lines.push(
-        this.colorize(chalk.yellow, `⚠️ ${t('format.skippedDeps')} (${result.totalSkipped}):`)
+        this.colorUtils.colorize(
+          chalk.yellow,
+          `⚠️ ${t('format.skippedDeps')} (${result.totalSkipped}):`
+        )
       )
 
       for (const dep of result.skippedDependencies) {
@@ -433,7 +447,7 @@ export class OutputFormatter {
     // Errors
     if (result.errors.length > 0) {
       lines.push(
-        this.colorize(
+        this.colorUtils.colorize(
           chalk.red,
           `❌ ${t('format.errorCount', { count: String(result.totalErrors) })}:`
         )
@@ -463,7 +477,7 @@ export class OutputFormatter {
     if (result.updatedDependencies.length > 0) {
       // Collect version info for alignment calculation
       const depsWithVersions = result.updatedDependencies.map((dep) => {
-        const { currentColored, latestColored } = this.colorizeVersionDiff(
+        const { currentColored, latestColored } = this.versionFormatter.colorizeVersionDiff(
           dep.fromVersion,
           dep.toVersion,
           dep.updateType
@@ -478,12 +492,12 @@ export class OutputFormatter {
       // Calculate max widths for alignment
       const maxNameWidth = Math.max(...depsWithVersions.map((dep) => dep.packageName.length))
       const maxCurrentWidth = Math.max(
-        ...depsWithVersions.map((dep) => this.stripAnsi(dep.currentColored).length)
+        ...depsWithVersions.map((dep) => this.colorUtils.stripAnsi(dep.currentColored).length)
       )
 
       for (const dep of depsWithVersions) {
         const paddedName = dep.packageName.padEnd(maxNameWidth)
-        const paddedCurrent = this.padAnsi(dep.currentColored, maxCurrentWidth)
+        const paddedCurrent = this.colorUtils.padAnsi(dep.currentColored, maxCurrentWidth)
 
         lines.push(`${paddedName}  ${paddedCurrent} → ${dep.latestColored}`)
       }
@@ -499,16 +513,18 @@ export class OutputFormatter {
     const lines: string[] = []
 
     // Header
-    lines.push(this.colorize(chalk.bold, `\n${t('format.workspace')}: ${plan.workspace.name}`))
-    lines.push(this.colorize(chalk.gray, `${t('format.path')}: ${plan.workspace.path}`))
+    lines.push(
+      this.colorUtils.colorize(chalk.bold, `\n${t('format.workspace')}: ${plan.workspace.name}`)
+    )
+    lines.push(this.colorUtils.colorize(chalk.gray, `${t('format.path')}: ${plan.workspace.path}`))
 
     if (plan.totalUpdates === 0) {
-      lines.push(this.colorize(chalk.green, `\n✅ ${t('format.noUpdatesPlanned')}`))
+      lines.push(this.colorUtils.colorize(chalk.green, `\n✅ ${t('format.noUpdatesPlanned')}`))
       return lines.join('\n')
     }
 
     lines.push(
-      this.colorize(
+      this.colorUtils.colorize(
         chalk.cyan,
         `\n${t('format.plannedUpdates', { count: String(plan.totalUpdates) })}`
       )
@@ -518,7 +534,7 @@ export class OutputFormatter {
     // Updates table
     if (plan.updates.length > 0) {
       const table = new Table({
-        head: this.colorizeHeaders([
+        head: this.colorUtils.colorizeHeaders([
           t('table.header.catalog'),
           t('table.header.package'),
           t('table.header.current'),
@@ -530,8 +546,8 @@ export class OutputFormatter {
       })
 
       for (const update of plan.updates) {
-        const typeColor = this.getUpdateTypeColor(update.updateType)
-        const { currentColored, latestColored } = this.colorizeVersionDiff(
+        const typeColor = this.colorUtils.getUpdateTypeColor(update.updateType)
+        const { currentColored, latestColored } = this.versionFormatter.colorizeVersionDiff(
           update.currentVersion,
           update.newVersion,
           update.updateType
@@ -542,7 +558,7 @@ export class OutputFormatter {
           update.packageName,
           currentColored,
           latestColored,
-          this.colorize(typeColor, update.updateType),
+          this.colorUtils.colorize(typeColor, update.updateType),
         ])
       }
 
@@ -552,11 +568,11 @@ export class OutputFormatter {
 
     // Conflicts warning
     if (plan.hasConflicts && plan.conflicts.length > 0) {
-      lines.push(this.colorize(chalk.yellow, `⚠️ ${t('format.versionConflicts')}:`))
+      lines.push(this.colorUtils.colorize(chalk.yellow, `⚠️ ${t('format.versionConflicts')}:`))
       lines.push('')
 
       for (const conflict of plan.conflicts) {
-        lines.push(this.colorize(chalk.bold, `  ${conflict.packageName}:`))
+        lines.push(this.colorUtils.colorize(chalk.bold, `  ${conflict.packageName}:`))
         for (const catalog of conflict.catalogs) {
           lines.push(
             `    ${catalog.catalogName}: ${catalog.currentVersion} → ${catalog.proposedVersion}`
@@ -564,7 +580,7 @@ export class OutputFormatter {
         }
         if (conflict.recommendation) {
           lines.push(
-            this.colorize(
+            this.colorUtils.colorize(
               chalk.gray,
               `    ${t('format.recommendation')}: ${conflict.recommendation}`
             )
@@ -577,10 +593,10 @@ export class OutputFormatter {
     // Summary breakdown
     const updateTypes = countUpdateTypes(plan.updates)
 
-    lines.push(this.colorize(chalk.bold, `${t('format.summary')}:`))
+    lines.push(this.colorUtils.colorize(chalk.bold, `${t('format.summary')}:`))
     if (updateTypes.major > 0) {
       lines.push(
-        this.colorize(
+        this.colorUtils.colorize(
           chalk.red,
           `  • ${t('command.check.majorUpdates', { count: String(updateTypes.major) })}`
         )
@@ -588,7 +604,7 @@ export class OutputFormatter {
     }
     if (updateTypes.minor > 0) {
       lines.push(
-        this.colorize(
+        this.colorUtils.colorize(
           chalk.yellow,
           `  • ${t('command.check.minorUpdates', { count: String(updateTypes.minor) })}`
         )
@@ -596,7 +612,7 @@ export class OutputFormatter {
     }
     if (updateTypes.patch > 0) {
       lines.push(
-        this.colorize(
+        this.colorUtils.colorize(
           chalk.green,
           `  • ${t('command.check.patchUpdates', { count: String(updateTypes.patch) })}`
         )
@@ -616,7 +632,7 @@ export class OutputFormatter {
 
     // Collect update info for alignment calculation
     const updatesWithVersions = plan.updates.map((update) => {
-      const { currentColored, latestColored } = this.colorizeVersionDiff(
+      const { currentColored, latestColored } = this.versionFormatter.colorizeVersionDiff(
         update.currentVersion,
         update.newVersion,
         update.updateType
@@ -631,13 +647,13 @@ export class OutputFormatter {
     // Calculate max widths for alignment
     const maxNameWidth = Math.max(...updatesWithVersions.map((u) => u.packageName.length))
     const maxCurrentWidth = Math.max(
-      ...updatesWithVersions.map((u) => this.stripAnsi(u.currentColored).length)
+      ...updatesWithVersions.map((u) => this.colorUtils.stripAnsi(u.currentColored).length)
     )
 
     const lines: string[] = []
     for (const update of updatesWithVersions) {
       const paddedName = update.packageName.padEnd(maxNameWidth)
-      const paddedCurrent = this.padAnsi(update.currentColored, maxCurrentWidth)
+      const paddedCurrent = this.colorUtils.padAnsi(update.currentColored, maxCurrentWidth)
 
       lines.push(`${paddedName}  ${paddedCurrent} → ${update.latestColored}`)
     }
@@ -659,30 +675,40 @@ export class OutputFormatter {
 
     // Header
     lines.push(
-      this.colorize(chalk.bold, `\n${t('format.impactAnalysis')}: ${analysis.packageName}`)
+      this.colorUtils.colorize(
+        chalk.bold,
+        `\n${t('format.impactAnalysis')}: ${analysis.packageName}`
+      )
     )
-    lines.push(this.colorize(chalk.gray, `${t('format.catalog')}: ${analysis.catalogName}`))
     lines.push(
-      this.colorize(
+      this.colorUtils.colorize(chalk.gray, `${t('format.catalog')}: ${analysis.catalogName}`)
+    )
+    lines.push(
+      this.colorUtils.colorize(
         chalk.gray,
         `${t('format.updateInfo')}: ${analysis.currentVersion} → ${analysis.proposedVersion}`
       )
     )
-    lines.push(this.colorize(chalk.gray, `${t('table.header.type')}: ${analysis.updateType}`))
+    lines.push(
+      this.colorUtils.colorize(chalk.gray, `${t('table.header.type')}: ${analysis.updateType}`)
+    )
 
     // Risk level
-    const riskColor = this.getRiskColor(analysis.riskLevel)
+    const riskColor = this.colorUtils.getRiskColor(analysis.riskLevel)
     lines.push(
-      this.colorize(riskColor, `${t('format.riskLevel')}: ${analysis.riskLevel.toUpperCase()}`)
+      this.colorUtils.colorize(
+        riskColor,
+        `${t('format.riskLevel')}: ${analysis.riskLevel.toUpperCase()}`
+      )
     )
     lines.push('')
 
     // Affected packages
     if (analysis.affectedPackages.length > 0) {
-      lines.push(this.colorize(chalk.bold, `${t('format.affectedPackages')}:`))
+      lines.push(this.colorUtils.colorize(chalk.bold, `${t('format.affectedPackages')}:`))
 
       const table = new Table({
-        head: this.colorizeHeaders([
+        head: this.colorUtils.colorizeHeaders([
           t('table.header.package'),
           t('table.header.path'),
           t('table.header.dependencyType'),
@@ -693,12 +719,12 @@ export class OutputFormatter {
       })
 
       for (const pkg of analysis.affectedPackages) {
-        const riskColor = this.getRiskColor(pkg.compatibilityRisk)
+        const riskColor = this.colorUtils.getRiskColor(pkg.compatibilityRisk)
         table.push([
           pkg.packageName,
           pkg.packagePath,
           pkg.dependencyType,
-          this.colorize(riskColor, pkg.compatibilityRisk),
+          this.colorUtils.colorize(riskColor, pkg.compatibilityRisk),
         ])
       }
 
@@ -708,11 +734,11 @@ export class OutputFormatter {
 
     // Security impact
     if (analysis.securityImpact.hasVulnerabilities) {
-      lines.push(this.colorize(chalk.bold, `${t('format.securityImpact')}:`))
+      lines.push(this.colorUtils.colorize(chalk.bold, `${t('format.securityImpact')}:`))
 
       if (analysis.securityImpact.fixedVulnerabilities > 0) {
         lines.push(
-          this.colorize(
+          this.colorUtils.colorize(
             chalk.green,
             `  ✅ ${t('format.fixesVulns', { count: String(analysis.securityImpact.fixedVulnerabilities) })}`
           )
@@ -721,7 +747,7 @@ export class OutputFormatter {
 
       if (analysis.securityImpact.newVulnerabilities > 0) {
         lines.push(
-          this.colorize(
+          this.colorUtils.colorize(
             chalk.red,
             `  ⚠️ ${t('format.introducesVulns', { count: String(analysis.securityImpact.newVulnerabilities) })}`
           )
@@ -733,7 +759,7 @@ export class OutputFormatter {
 
     // Recommendations
     if (analysis.recommendations.length > 0) {
-      lines.push(this.colorize(chalk.bold, `${t('format.recommendations')}:`))
+      lines.push(this.colorUtils.colorize(chalk.bold, `${t('format.recommendations')}:`))
       for (const rec of analysis.recommendations) {
         lines.push(`  ${rec}`)
       }
@@ -763,9 +789,11 @@ export class OutputFormatter {
     const statusIcon = report.isValid ? '✅' : '❌'
     const statusColor = report.isValid ? chalk.green : chalk.red
 
-    lines.push(this.colorize(chalk.bold, `\n${statusIcon} ${t('format.workspaceValidation')}`))
     lines.push(
-      this.colorize(
+      this.colorUtils.colorize(chalk.bold, `\n${statusIcon} ${t('format.workspaceValidation')}`)
+    )
+    lines.push(
+      this.colorUtils.colorize(
         statusColor,
         `${t('format.status')}: ${report.isValid ? t('format.valid') : t('format.invalid')}`
       )
@@ -773,7 +801,7 @@ export class OutputFormatter {
     lines.push('')
 
     // Workspace info
-    lines.push(this.colorize(chalk.bold, `${t('format.workspaceInfo')}:`))
+    lines.push(this.colorUtils.colorize(chalk.bold, `${t('format.workspaceInfo')}:`))
     lines.push(`  ${t('format.path')}: ${report.workspace.path}`)
     lines.push(`  ${t('format.name')}: ${report.workspace.name}`)
     lines.push(`  ${t('format.packages')}: ${report.workspace.packageCount}`)
@@ -782,7 +810,7 @@ export class OutputFormatter {
 
     // Errors
     if (report.errors.length > 0) {
-      lines.push(this.colorize(chalk.red, `❌ ${t('format.errors')}:`))
+      lines.push(this.colorUtils.colorize(chalk.red, `❌ ${t('format.errors')}:`))
       for (const error of report.errors) {
         lines.push(`  • ${error}`)
       }
@@ -791,7 +819,7 @@ export class OutputFormatter {
 
     // Warnings
     if (report.warnings.length > 0) {
-      lines.push(this.colorize(chalk.yellow, `⚠️ ${t('format.warnings')}:`))
+      lines.push(this.colorUtils.colorize(chalk.yellow, `⚠️ ${t('format.warnings')}:`))
       for (const warning of report.warnings) {
         lines.push(`  • ${warning}`)
       }
@@ -800,7 +828,7 @@ export class OutputFormatter {
 
     // Recommendations
     if (report.recommendations.length > 0) {
-      lines.push(this.colorize(chalk.blue, `${t('format.recommendations')}:`))
+      lines.push(this.colorUtils.colorize(chalk.blue, `${t('format.recommendations')}:`))
       for (const rec of report.recommendations) {
         lines.push(`  • ${rec}`)
       }
@@ -859,42 +887,56 @@ export class OutputFormatter {
     table.push([
       {
         colSpan: 2,
-        content: this.colorize(chalk.bold.cyan, 'WORKSPACE'),
+        content: this.colorUtils.colorize(chalk.bold.cyan, 'WORKSPACE'),
         hAlign: 'center',
       },
     ])
 
     // Status icon (default to valid if not specified)
     const isValid = info.isValid ?? true
-    const statusIcon = isValid ? this.colorize(chalk.green, '✓') : this.colorize(chalk.red, '✗')
+    const statusIcon = isValid
+      ? this.colorUtils.colorize(chalk.green, '✓')
+      : this.colorUtils.colorize(chalk.red, '✗')
     const statusText = isValid
-      ? this.colorize(chalk.green, 'Valid')
-      : this.colorize(chalk.red, 'Invalid')
+      ? this.colorUtils.colorize(chalk.green, 'Valid')
+      : this.colorUtils.colorize(chalk.red, 'Invalid')
 
     // Data rows - clean, no emojis
-    table.push([this.colorize(chalk.gray, 'Name'), this.colorize(chalk.bold.white, info.name)])
-
-    table.push([this.colorize(chalk.gray, 'Path'), this.colorize(chalk.dim, info.path)])
-
-    table.push([this.colorize(chalk.gray, 'Status'), `${statusIcon} ${statusText}`])
-
     table.push([
-      this.colorize(chalk.gray, 'Packages'),
-      this.colorize(info.packageCount > 0 ? chalk.green : chalk.yellow, String(info.packageCount)),
+      this.colorUtils.colorize(chalk.gray, 'Name'),
+      this.colorUtils.colorize(chalk.bold.white, info.name),
     ])
 
     table.push([
-      this.colorize(chalk.gray, 'Catalogs'),
-      this.colorize(info.catalogCount > 0 ? chalk.green : chalk.yellow, String(info.catalogCount)),
+      this.colorUtils.colorize(chalk.gray, 'Path'),
+      this.colorUtils.colorize(chalk.dim, info.path),
+    ])
+
+    table.push([this.colorUtils.colorize(chalk.gray, 'Status'), `${statusIcon} ${statusText}`])
+
+    table.push([
+      this.colorUtils.colorize(chalk.gray, 'Packages'),
+      this.colorUtils.colorize(
+        info.packageCount > 0 ? chalk.green : chalk.yellow,
+        String(info.packageCount)
+      ),
+    ])
+
+    table.push([
+      this.colorUtils.colorize(chalk.gray, 'Catalogs'),
+      this.colorUtils.colorize(
+        info.catalogCount > 0 ? chalk.green : chalk.yellow,
+        String(info.catalogCount)
+      ),
     ])
 
     const catalogNames = info.catalogNames ?? []
     if (catalogNames.length > 0) {
       const catalogTags = catalogNames
-        .map((name: string) => this.colorize(chalk.cyan, name))
-        .join(this.colorize(chalk.gray, ', '))
+        .map((name: string) => this.colorUtils.colorize(chalk.cyan, name))
+        .join(this.colorUtils.colorize(chalk.gray, ', '))
 
-      table.push([this.colorize(chalk.gray, 'Catalog Names'), catalogTags])
+      table.push([this.colorUtils.colorize(chalk.gray, 'Catalog Names'), catalogTags])
     }
 
     lines.push('')
@@ -925,12 +967,14 @@ export class OutputFormatter {
   private formatStatsTable(stats: WorkspaceStats): string {
     const lines: string[] = []
 
-    lines.push(this.colorize(chalk.bold, `\n${t('format.workspaceStatistics')}`))
-    lines.push(this.colorize(chalk.gray, `${t('format.workspace')}: ${stats.workspace.name}`))
+    lines.push(this.colorUtils.colorize(chalk.bold, `\n${t('format.workspaceStatistics')}`))
+    lines.push(
+      this.colorUtils.colorize(chalk.gray, `${t('format.workspace')}: ${stats.workspace.name}`)
+    )
     lines.push('')
 
     const table = new Table({
-      head: this.colorizeHeaders([t('table.header.metric'), t('table.header.count')]),
+      head: this.colorUtils.colorizeHeaders([t('table.header.metric'), t('table.header.count')]),
       style: { head: [], border: [] },
       colWidths: [30, 10],
     })
@@ -975,53 +1019,59 @@ export class OutputFormatter {
     const lines: string[] = []
 
     // Header
-    lines.push(this.colorize(chalk.bold, `\n${t('format.securityReport')}`))
+    lines.push(this.colorUtils.colorize(chalk.bold, `\n${t('format.securityReport')}`))
     lines.push(
-      this.colorize(chalk.gray, `${t('format.workspace')}: ${report.metadata.workspacePath}`)
+      this.colorUtils.colorize(
+        chalk.gray,
+        `${t('format.workspace')}: ${report.metadata.workspacePath}`
+      )
     )
     lines.push(
-      this.colorize(
+      this.colorUtils.colorize(
         chalk.gray,
         `${t('format.scanDate')}: ${new Date(report.metadata.scanDate).toLocaleString()}`
       )
     )
     lines.push(
-      this.colorize(chalk.gray, `${t('format.tools')}: ${report.metadata.scanTools.join(', ')}`)
+      this.colorUtils.colorize(
+        chalk.gray,
+        `${t('format.tools')}: ${report.metadata.scanTools.join(', ')}`
+      )
     )
 
     // Summary
     lines.push('')
-    lines.push(this.colorize(chalk.bold, `${t('format.summary')}:`))
+    lines.push(this.colorUtils.colorize(chalk.bold, `${t('format.summary')}:`))
 
     const summaryTable = new Table({
-      head: this.colorizeHeaders([t('table.header.severity'), t('table.header.count')]),
+      head: this.colorUtils.colorizeHeaders([t('table.header.severity'), t('table.header.count')]),
       style: { head: [], border: [] },
       colWidths: [15, 10],
     })
 
     summaryTable.push([
       t('severity.critical'),
-      this.colorize(chalk.red, report.summary.critical.toString()),
+      this.colorUtils.colorize(chalk.red, report.summary.critical.toString()),
     ])
     summaryTable.push([
       t('severity.high'),
-      this.colorize(chalk.yellow, report.summary.high.toString()),
+      this.colorUtils.colorize(chalk.yellow, report.summary.high.toString()),
     ])
     summaryTable.push([
       t('severity.moderate'),
-      this.colorize(chalk.blue, report.summary.moderate.toString()),
+      this.colorUtils.colorize(chalk.blue, report.summary.moderate.toString()),
     ])
     summaryTable.push([
       t('severity.low'),
-      this.colorize(chalk.green, report.summary.low.toString()),
+      this.colorUtils.colorize(chalk.green, report.summary.low.toString()),
     ])
     summaryTable.push([
       t('severity.info'),
-      this.colorize(chalk.gray, report.summary.info.toString()),
+      this.colorUtils.colorize(chalk.gray, report.summary.info.toString()),
     ])
     summaryTable.push([
       t('severity.total'),
-      this.colorize(chalk.bold, report.summary.totalVulnerabilities.toString()),
+      this.colorUtils.colorize(chalk.bold, report.summary.totalVulnerabilities.toString()),
     ])
 
     lines.push(summaryTable.toString())
@@ -1029,10 +1079,10 @@ export class OutputFormatter {
     // Vulnerabilities
     if (report.vulnerabilities.length > 0) {
       lines.push('')
-      lines.push(this.colorize(chalk.bold, `${t('format.vulnerabilities')}:`))
+      lines.push(this.colorUtils.colorize(chalk.bold, `${t('format.vulnerabilities')}:`))
 
       const vulnTable = new Table({
-        head: this.colorizeHeaders([
+        head: this.colorUtils.colorizeHeaders([
           t('table.header.package'),
           t('table.header.severity'),
           t('table.header.title'),
@@ -1043,7 +1093,7 @@ export class OutputFormatter {
       })
 
       for (const vuln of report.vulnerabilities) {
-        const severityColor = this.getSeverityColor(vuln.severity)
+        const severityColor = this.colorUtils.getSeverityColor(vuln.severity)
         const fixStatus = vuln.fixAvailable
           ? typeof vuln.fixAvailable === 'string'
             ? vuln.fixAvailable
@@ -1052,7 +1102,7 @@ export class OutputFormatter {
 
         vulnTable.push([
           vuln.package,
-          this.colorize(severityColor, vuln.severity.toUpperCase()),
+          this.colorUtils.colorize(severityColor, vuln.severity.toUpperCase()),
           vuln.title.length > 35 ? `${vuln.title.substring(0, 35)}...` : vuln.title,
           fixStatus,
         ])
@@ -1064,7 +1114,7 @@ export class OutputFormatter {
     // Recommendations
     if (report.recommendations.length > 0) {
       lines.push('')
-      lines.push(this.colorize(chalk.bold, `${t('format.recommendations')}:`))
+      lines.push(this.colorUtils.colorize(chalk.bold, `${t('format.recommendations')}:`))
 
       for (const rec of report.recommendations) {
         lines.push(`  ${rec.package}: ${rec.currentVersion} → ${rec.recommendedVersion}`)
@@ -1091,152 +1141,6 @@ export class OutputFormatter {
       `  ${t('severity.moderate')}: ${report.summary.moderate}`,
       `  ${t('severity.low')}: ${report.summary.low}`,
     ].join('\n')
-  }
-
-  /**
-   * Get color for severity level
-   */
-  private getSeverityColor(severity: string): typeof chalk {
-    switch (severity.toLowerCase()) {
-      case 'critical':
-        return chalk.red
-      case 'high':
-        return chalk.yellow
-      case 'moderate':
-        return chalk.blue
-      case 'low':
-        return chalk.green
-      default:
-        return chalk.gray
-    }
-  }
-
-  /**
-   * Apply color if color is enabled
-   */
-  private colorize(colorFn: typeof chalk, text: string): string {
-    return this.useColor ? colorFn(text) : text
-  }
-
-  /**
-   * Strip ANSI escape codes from a string (for accurate width calculation)
-   */
-  private stripAnsi(str: string): string {
-    return str.replace(ansiRegex, '')
-  }
-
-  /**
-   * Pad a string containing ANSI codes to a target visible width
-   * Returns the original string with trailing spaces to match target width
-   */
-  private padAnsi(str: string, targetWidth: number): string {
-    const visibleWidth = this.stripAnsi(str).length
-    const padding = Math.max(0, targetWidth - visibleWidth)
-    return str + ' '.repeat(padding)
-  }
-
-  /**
-   * Colorize table headers
-   */
-  private colorizeHeaders(headers: string[]): string[] {
-    return this.useColor ? headers.map((h) => chalk.bold.cyan(h)) : headers
-  }
-
-  /**
-   * Get color for update type
-   */
-  private getUpdateTypeColor(updateType: string): typeof chalk {
-    switch (updateType) {
-      case 'major':
-        return chalk.red
-      case 'minor':
-        return chalk.yellow
-      case 'patch':
-        return chalk.green
-      default:
-        return chalk.gray
-    }
-  }
-
-  /**
-   * Colorize version differences between current and latest
-   */
-  private colorizeVersionDiff(
-    current: string,
-    latest: string,
-    updateType: string
-  ): {
-    currentColored: string
-    latestColored: string
-  } {
-    if (!this.useColor) {
-      return { currentColored: current, latestColored: latest }
-    }
-
-    // Parse version numbers to identify different parts
-    const parseVersion = (version: string) => {
-      // Remove leading ^ or ~ or other prefix characters
-      const cleanVersion = version.replace(/^[\^~>=<]+/, '')
-      const parts = cleanVersion.split('.')
-      return {
-        major: parts[0] || '0',
-        minor: parts[1] || '0',
-        patch: parts[2] || '0',
-        extra: parts.slice(3).join('.'),
-        prefix: version.substring(0, version.length - cleanVersion.length),
-      }
-    }
-
-    const currentParts = parseVersion(current)
-    const latestParts = parseVersion(latest)
-
-    // Determine color based on update type for highlighting differences
-    const diffColor = this.getUpdateTypeColor(updateType)
-
-    // Build colored version strings by comparing each part
-    const colorCurrentPart = (part: string, latestPart: string, isChanged: boolean) => {
-      if (isChanged && part !== latestPart) {
-        return chalk.dim.white(part) // Dim white for old version part
-      }
-      return chalk.white(part) // Unchanged parts in white
-    }
-
-    const colorLatestPart = (part: string, currentPart: string, isChanged: boolean) => {
-      if (isChanged && part !== currentPart) {
-        return diffColor(part) // Highlight the new version part with update type color
-      }
-      return chalk.white(part) // Unchanged parts in white
-    }
-
-    // Check which parts are different
-    const majorChanged = currentParts.major !== latestParts.major
-    const minorChanged = currentParts.minor !== latestParts.minor
-    const patchChanged = currentParts.patch !== latestParts.patch
-    const extraChanged = currentParts.extra !== latestParts.extra
-
-    // Build colored current version
-    let currentColored = currentParts.prefix
-    currentColored += colorCurrentPart(currentParts.major, latestParts.major, majorChanged)
-    currentColored += '.'
-    currentColored += colorCurrentPart(currentParts.minor, latestParts.minor, minorChanged)
-    currentColored += '.'
-    currentColored += colorCurrentPart(currentParts.patch, latestParts.patch, patchChanged)
-    if (currentParts.extra) {
-      currentColored += `.${colorCurrentPart(currentParts.extra, latestParts.extra, extraChanged)}`
-    }
-
-    // Build colored latest version
-    let latestColored = latestParts.prefix
-    latestColored += colorLatestPart(latestParts.major, currentParts.major, majorChanged)
-    latestColored += '.'
-    latestColored += colorLatestPart(latestParts.minor, currentParts.minor, minorChanged)
-    latestColored += '.'
-    latestColored += colorLatestPart(latestParts.patch, currentParts.patch, patchChanged)
-    if (latestParts.extra) {
-      latestColored += `.${colorLatestPart(latestParts.extra, currentParts.extra, extraChanged)}`
-    }
-
-    return { currentColored, latestColored }
   }
 
   /**
@@ -1280,7 +1184,7 @@ export class OutputFormatter {
     lines.push(`${infoColor(t('aiReport.provider'))}      ${providerColor(aiResult.provider)}`)
     lines.push(`${infoColor(t('aiReport.analysisType'))} ${aiResult.analysisType}`)
     lines.push(
-      `${infoColor(t('aiReport.confidence'))}    ${this.formatConfidence(aiResult.confidence)}`
+      `${infoColor(t('aiReport.confidence'))}    ${this.colorUtils.formatConfidence(aiResult.confidence)}`
     )
     lines.push('')
 
@@ -1309,8 +1213,8 @@ export class OutputFormatter {
       })
 
       for (const rec of aiResult.recommendations) {
-        const riskColor = this.getRiskColor(rec.riskLevel)
-        const actionColor = this.getActionColor(rec.action)
+        const riskColor = this.colorUtils.getRiskColor(rec.riskLevel)
+        const actionColor = this.colorUtils.getActionColor(rec.action)
 
         table.push([
           rec.package,
@@ -1430,66 +1334,5 @@ export class OutputFormatter {
     }
 
     return lines.join('\n')
-  }
-
-  /**
-   * Format confidence score with color
-   */
-  private formatConfidence(confidence: number): string {
-    const percentage = Math.round(confidence * 100)
-    const bar =
-      '█'.repeat(Math.floor(percentage / 10)) + '░'.repeat(10 - Math.floor(percentage / 10))
-
-    if (!this.useColor) {
-      return `${bar} ${percentage}%`
-    }
-
-    if (confidence >= 0.8) {
-      return chalk.green(`${bar} ${percentage}%`)
-    } else if (confidence >= 0.5) {
-      return chalk.yellow(`${bar} ${percentage}%`)
-    } else {
-      return chalk.red(`${bar} ${percentage}%`)
-    }
-  }
-
-  /**
-   * Get color for risk level
-   */
-  private getRiskColor(riskLevel: string): typeof chalk {
-    if (!this.useColor) return chalk
-
-    switch (riskLevel) {
-      case 'critical':
-        return chalk.red.bold
-      case 'high':
-        return chalk.red
-      case 'medium':
-        return chalk.yellow
-      case 'low':
-        return chalk.green
-      default:
-        return chalk.gray
-    }
-  }
-
-  /**
-   * Get color for action
-   */
-  private getActionColor(action: string): typeof chalk {
-    if (!this.useColor) return chalk
-
-    switch (action) {
-      case 'update':
-        return chalk.green
-      case 'wait':
-        return chalk.yellow
-      case 'skip':
-        return chalk.red
-      case 'review':
-        return chalk.cyan
-      default:
-        return chalk.white
-    }
   }
 }

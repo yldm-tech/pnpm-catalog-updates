@@ -62,14 +62,27 @@ vi.mock('chalk', () => ({
   },
 }))
 
-// Mock StyledText
+// Mock StyledText - QUAL-006/QUAL-016: Updated to include all methods used
 vi.mock('../../themes/colorTheme.js', () => ({
   StyledText: {
-    iconWarning: (text: string) => `[warning]${text}`,
-    iconSuccess: (text: string) => `[success]${text}`,
-    iconError: (text: string) => `[error]${text}`,
+    iconWarning: (text?: string) => `[warning]${text ?? ''}`,
+    iconSuccess: (text?: string) => `[success]${text ?? ''}`,
+    iconError: (text?: string) => `[error]${text ?? ''}`,
     error: (text: string) => `[error]${text}`,
     muted: (text: string) => `[muted]${text}`,
+    info: (text: string) => `[info]${text}`,
+    warning: (text: string) => `[warning]${text}`,
+    success: (text: string) => `[success]${text}`,
+    highlight: (text: string) => `[highlight]${text}`,
+  },
+}))
+
+// Mock cliOutput - QUAL-006: Added for unified output helpers
+vi.mock('../../utils/cliOutput.js', () => ({
+  cliOutput: {
+    print: vi.fn((...args: unknown[]) => console.log(...args)),
+    error: vi.fn((...args: unknown[]) => console.error(...args)),
+    warn: vi.fn((...args: unknown[]) => console.warn(...args)),
   },
 }))
 

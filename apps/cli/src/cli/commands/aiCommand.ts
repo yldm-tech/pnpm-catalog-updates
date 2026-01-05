@@ -7,6 +7,7 @@
 import { AIAnalysisService, AIDetector, analysisCache } from '@pcu/core'
 import { t } from '@pcu/utils'
 import chalk from 'chalk'
+import { cliOutput } from '../utils/cliOutput.js'
 
 export interface AiCommandOptions {
   status?: boolean
@@ -22,18 +23,18 @@ export class AiCommand {
   async execute(options: AiCommandOptions = {}): Promise<void> {
     if (options.clearCache) {
       analysisCache.clear()
-      console.log(chalk.green(`✅ ${t('command.ai.cacheCleared')}`))
+      cliOutput.print(chalk.green(`✅ ${t('command.ai.cacheCleared')}`))
       return
     }
 
     if (options.cacheStats) {
       const stats = analysisCache.getStats()
-      console.log(chalk.blue(`📊 ${t('command.ai.cacheStats')}`))
-      console.log(chalk.gray('─────────────────────────────────'))
-      console.log(`  ${t('command.ai.totalEntries')}: ${chalk.cyan(stats.totalEntries)}`)
-      console.log(`  ${t('command.ai.cacheHits')}:    ${chalk.green(stats.hits)}`)
-      console.log(`  ${t('command.ai.cacheMisses')}:  ${chalk.yellow(stats.misses)}`)
-      console.log(
+      cliOutput.print(chalk.blue(`📊 ${t('command.ai.cacheStats')}`))
+      cliOutput.print(chalk.gray('─────────────────────────────────'))
+      cliOutput.print(`  ${t('command.ai.totalEntries')}: ${chalk.cyan(stats.totalEntries)}`)
+      cliOutput.print(`  ${t('command.ai.cacheHits')}:    ${chalk.green(stats.hits)}`)
+      cliOutput.print(`  ${t('command.ai.cacheMisses')}:  ${chalk.yellow(stats.misses)}`)
+      cliOutput.print(
         `  ${t('command.ai.hitRate')}:      ${chalk.cyan(`${(stats.hitRate * 100).toFixed(1)}%`)}`
       )
       return
@@ -52,7 +53,7 @@ export class AiCommand {
    * Run AI analysis test
    */
   private async runTest(): Promise<void> {
-    console.log(chalk.blue(`🧪 ${t('command.ai.testingAnalysis')}`))
+    cliOutput.print(chalk.blue(`🧪 ${t('command.ai.testingAnalysis')}`))
 
     const aiService = new AIAnalysisService({
       config: {
@@ -80,16 +81,16 @@ export class AiCommand {
       const result = await aiService.analyzeUpdates(testPackages, testWorkspaceInfo, {
         analysisType: 'impact',
       })
-      console.log(chalk.green(`✅ ${t('command.ai.testSuccess')}`))
-      console.log(chalk.gray('─────────────────────────────────'))
-      console.log(`  ${t('command.ai.providerLabel')} ${chalk.cyan(result.provider)}`)
-      console.log(
+      cliOutput.print(chalk.green(`✅ ${t('command.ai.testSuccess')}`))
+      cliOutput.print(chalk.gray('─────────────────────────────────'))
+      cliOutput.print(`  ${t('command.ai.providerLabel')} ${chalk.cyan(result.provider)}`)
+      cliOutput.print(
         `  ${t('command.ai.confidenceLabel')} ${chalk.cyan(`${(result.confidence * 100).toFixed(0)}%`)}`
       )
-      console.log(`  ${t('command.ai.summaryLabel')} ${result.summary}`)
+      cliOutput.print(`  ${t('command.ai.summaryLabel')} ${result.summary}`)
     } catch (error) {
-      console.log(chalk.yellow(`⚠️  ${t('command.ai.testFailed')}`))
-      console.log(chalk.gray(String(error)))
+      cliOutput.print(chalk.yellow(`⚠️  ${t('command.ai.testFailed')}`))
+      cliOutput.print(chalk.gray(String(error)))
     }
   }
 
@@ -99,16 +100,16 @@ export class AiCommand {
   private async showStatus(): Promise<void> {
     const aiDetector = new AIDetector()
 
-    console.log(chalk.blue(`🤖 ${t('command.ai.providerStatus')}`))
-    console.log(chalk.gray('─────────────────────────────────'))
+    cliOutput.print(chalk.blue(`🤖 ${t('command.ai.providerStatus')}`))
+    cliOutput.print(chalk.gray('─────────────────────────────────'))
 
     const summary = await aiDetector.getDetectionSummary()
-    console.log(summary)
+    cliOutput.print(summary)
 
     const providers = await aiDetector.detectAvailableProviders()
-    console.log('')
-    console.log(chalk.blue(`📋 ${t('command.ai.providerDetails')}`))
-    console.log(chalk.gray('─────────────────────────────────'))
+    cliOutput.print('')
+    cliOutput.print(chalk.blue(`📋 ${t('command.ai.providerDetails')}`))
+    cliOutput.print(chalk.gray('─────────────────────────────────'))
 
     for (const provider of providers) {
       const statusIcon = provider.available ? chalk.green('✓') : chalk.red('✗')
@@ -117,20 +118,22 @@ export class AiCommand {
         : chalk.gray(t('command.ai.notFound'))
       const priorityText = chalk.gray(`(priority: ${provider.priority})`)
 
-      console.log(`  ${statusIcon} ${chalk.cyan(provider.name)} - ${statusText} ${priorityText}`)
+      cliOutput.print(
+        `  ${statusIcon} ${chalk.cyan(provider.name)} - ${statusText} ${priorityText}`
+      )
 
       if (provider.available && provider.path) {
-        console.log(chalk.gray(`      ${t('command.ai.pathLabel')} ${provider.path}`))
+        cliOutput.print(chalk.gray(`      ${t('command.ai.pathLabel')} ${provider.path}`))
       }
       if (provider.available && provider.version) {
-        console.log(chalk.gray(`      ${t('command.ai.versionLabel')} ${provider.version}`))
+        cliOutput.print(chalk.gray(`      ${t('command.ai.versionLabel')} ${provider.version}`))
       }
     }
 
     const best = await aiDetector.getBestProvider()
     if (best) {
-      console.log('')
-      console.log(chalk.green(`✨ ${t('command.ai.bestProvider', { provider: best.name })}`))
+      cliOutput.print('')
+      cliOutput.print(chalk.green(`✨ ${t('command.ai.bestProvider', { provider: best.name })}`))
     }
   }
 

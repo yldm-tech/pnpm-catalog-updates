@@ -111,25 +111,26 @@ export async function initializeCommand(
 
 /**
  * Show verbose initialization information
+ * QUAL-012: Use unified output helpers (cliOutput, StyledText)
  */
 function showVerboseInfo(
   options: CommonCommandOptions,
   additionalInfo?: Record<string, string | undefined>
 ): void {
-  console.log(StyledText.iconAnalysis(t('info.checkingUpdates')))
-  console.log(
+  cliOutput.print(StyledText.iconAnalysis(t('info.checkingUpdates')))
+  cliOutput.print(
     StyledText.muted(`${t('command.workspace.title')}: ${options.workspace || process.cwd()}`)
   )
 
   if (additionalInfo) {
     for (const [key, value] of Object.entries(additionalInfo)) {
       if (value !== undefined) {
-        console.log(StyledText.muted(`${key}: ${value}`))
+        cliOutput.print(StyledText.muted(`${key}: ${value}`))
       }
     }
   }
 
-  console.log('')
+  cliOutput.print('')
 }
 
 /**

@@ -16,6 +16,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { ConfigurationError } from '../error-handling/index.js'
@@ -338,7 +339,8 @@ export class ConfigLoader implements IConfigLoader {
    */
   private static async loadConfigFile(configPath: string): Promise<PackageFilterConfig> {
     if (configPath.endsWith('.json')) {
-      const content = readFileSync(configPath, 'utf-8')
+      // PERF-002: Use async readFile for async method instead of sync readFileSync
+      const content = await readFile(configPath, 'utf-8')
       const parsed: unknown = JSON.parse(content)
       // QUAL-015: Validate config structure at runtime instead of unsafe type assertion
       const validation = validatePackageFilterConfig(parsed)

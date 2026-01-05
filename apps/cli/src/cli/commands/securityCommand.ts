@@ -12,6 +12,7 @@ import * as fs from 'fs-extra'
 import type { OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
 import { ProgressBar } from '../formatters/progressBar.js'
 import { StyledText } from '../themes/colorTheme.js'
+import { cliOutput } from '../utils/cliOutput.js'
 import { handleCommandError, initializeTheme } from '../utils/commandHelpers.js'
 import { errorsOnly, validateSecurityOptions } from '../validators/index.js'
 
@@ -140,16 +141,16 @@ export class SecurityCommand {
       progressBar.start()
 
       if (options.verbose) {
-        console.log(StyledText.iconAnalysis(t('command.security.scanning')))
-        console.log(
+        cliOutput.print(StyledText.iconAnalysis(t('command.security.scanning')))
+        cliOutput.print(
           StyledText.muted(`${t('command.workspace.title')}: ${options.workspace || process.cwd()}`)
         )
-        console.log(
+        cliOutput.print(
           StyledText.muted(
             t('command.security.severityFilter', { severity: options.severity || 'all' })
           )
         )
-        console.log('')
+        cliOutput.print('')
       }
 
       // Execute security scan
@@ -159,7 +160,7 @@ export class SecurityCommand {
 
       // Format and display results
       const formattedOutput = this.outputFormatter.formatSecurityReport(report)
-      console.log(formattedOutput)
+      cliOutput.print(formattedOutput)
 
       // Show recommendations if available
       if (report.recommendations.length > 0) {
@@ -329,7 +330,7 @@ export class SecurityCommand {
       const errorCode = getErrorCode(error)
       if (errorCode === 'ENOENT') {
         logger.debug('Snyk not found', { code: errorCode })
-        console.warn(StyledText.iconWarning(t('command.security.snykNotFound')))
+        cliOutput.warn(StyledText.iconWarning(t('command.security.snykNotFound')))
         return []
       }
       const err = toError(error)
@@ -498,45 +499,47 @@ export class SecurityCommand {
 
   /**
    * Show security recommendations
+   * QUAL-011: Use unified output helpers (cliOutput, StyledText)
    */
   private showRecommendations(report: SecurityReport): void {
     if (report.recommendations.length === 0) {
       return
     }
 
-    console.log(`\n${StyledText.iconInfo(t('command.security.recommendations'))}`)
+    cliOutput.print(`\n${StyledText.iconInfo(t('command.security.recommendations'))}`)
 
     for (const rec of report.recommendations) {
-      console.log(
+      cliOutput.print(
         `  ${StyledText.iconWarning()} ${rec.package}: ${rec.currentVersion} → ${rec.recommendedVersion}`
       )
-      console.log(`    ${StyledText.muted(rec.reason)}`)
-      console.log(`    ${StyledText.muted(rec.impact)}`)
+      cliOutput.print(`    ${StyledText.muted(rec.reason)}`)
+      cliOutput.print(`    ${StyledText.muted(rec.impact)}`)
     }
 
-    console.log('')
-    console.log(StyledText.iconUpdate(t('command.security.runWithFix')))
+    cliOutput.print('')
+    cliOutput.print(StyledText.iconUpdate(t('command.security.runWithFix')))
   }
 
   /**
    * Auto-fix vulnerabilities
+   * QUAL-011: Use unified output helpers (cliOutput, StyledText)
    */
   private async autoFixVulnerabilities(
     report: SecurityReport,
     options: SecurityCommandOptions
   ): Promise<void> {
     if (report.recommendations.length === 0) {
-      console.log(StyledText.iconSuccess(t('command.security.noFixesAvailable')))
+      cliOutput.print(StyledText.iconSuccess(t('command.security.noFixesAvailable')))
       return
     }
 
-    console.log(`\n${StyledText.iconUpdate(t('command.security.applyingFixes'))}`)
+    cliOutput.print(`\n${StyledText.iconUpdate(t('command.security.applyingFixes'))}`)
 
     const workspacePath = options.workspace || process.cwd()
     const fixableVulns = report.recommendations.filter((r) => r.type === 'update')
 
     if (fixableVulns.length === 0) {
-      console.log(StyledText.iconInfo(t('command.security.noAutoFixes')))
+      cliOutput.print(StyledText.iconInfo(t('command.security.noAutoFixes')))
       return
     }
 
@@ -563,16 +566,16 @@ export class SecurityCommand {
         )
       }
 
-      console.log(StyledText.iconSuccess(t('command.security.fixesApplied')))
+      cliOutput.print(StyledText.iconSuccess(t('command.security.fixesApplied')))
 
       // Re-run scan to verify fixes
-      console.log(StyledText.iconInfo(t('command.security.verifyingFixes')))
+      cliOutput.print(StyledText.iconInfo(t('command.security.verifyingFixes')))
       const newReport = await this.performSecurityScan({ ...options, fixVulns: false })
 
       if (newReport.summary.critical === 0 && newReport.summary.high === 0) {
-        console.log(StyledText.iconSuccess(t('command.security.allFixed')))
+        cliOutput.print(StyledText.iconSuccess(t('command.security.allFixed')))
       } else {
-        console.log(
+        cliOutput.print(
           StyledText.iconWarning(
             `${newReport.summary.critical} critical and ${newReport.summary.high} high severity vulnerabilities remain`
           )
@@ -581,8 +584,8 @@ export class SecurityCommand {
     } catch (error) {
       const err = toError(error)
       logger.error('Failed to apply security fixes', err, { workspacePath, options })
-      console.error(StyledText.iconError(t('command.security.fixesFailed')))
-      console.error(StyledText.error(err.message))
+      cliOutput.error(StyledText.iconError(t('command.security.fixesFailed')))
+      cliOutput.error(StyledText.error(err.message))
     }
   }
 

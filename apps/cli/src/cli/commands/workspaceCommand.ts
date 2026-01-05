@@ -7,6 +7,7 @@
 import type { WorkspaceService } from '@pcu/core'
 import { CommandExitError } from '@pcu/utils'
 import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
+import { cliOutput } from '../utils/cliOutput.js'
 
 export interface WorkspaceCommandOptions {
   workspace?: string
@@ -29,19 +30,19 @@ export class WorkspaceCommand {
     if (options.validate) {
       const report = await this.workspaceService.validateWorkspace(options.workspace)
       const formattedOutput = formatter.formatValidationReport(report)
-      console.log(formattedOutput)
+      cliOutput.print(formattedOutput)
       throw report.isValid
         ? CommandExitError.success()
         : CommandExitError.failure('Validation failed')
     } else if (options.stats) {
       const stats = await this.workspaceService.getWorkspaceStats(options.workspace)
       const formattedOutput = formatter.formatWorkspaceStats(stats)
-      console.log(formattedOutput)
+      cliOutput.print(formattedOutput)
       throw CommandExitError.success()
     } else {
       const info = await this.workspaceService.getWorkspaceInfo(options.workspace)
       const formattedOutput = formatter.formatWorkspaceInfo(info)
-      console.log(formattedOutput)
+      cliOutput.print(formattedOutput)
       throw CommandExitError.success()
     }
   }

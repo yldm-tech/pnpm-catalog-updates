@@ -3,14 +3,17 @@
  *
  * CLI command to rollback catalog updates to a previous state.
  * Supports listing backups and restoring from a specific backup.
+ *
+ * QUAL-006/QUAL-016: Refactored to use unified output helpers (cliOutput, StyledText).
+ * QUAL-007: Extracted common restore logic to reduce code duplication.
  */
 
 import path from 'node:path'
 import { type BackupInfo, BackupService } from '@pcu/core'
 import { t } from '@pcu/utils'
-import chalk from 'chalk'
 import inquirer from 'inquirer'
 import { StyledText } from '../themes/colorTheme.js'
+import { cliOutput } from '../utils/cliOutput.js'
 import { handleCommandError } from '../utils/commandHelpers.js'
 
 export interface RollbackCommandOptions {
@@ -59,7 +62,6 @@ export class RollbackCommand {
       // Interactive selection (default behavior if no flags)
       await this.interactiveRestore(workspaceConfigPath)
     } catch (error) {
-      // QUAL-007: Use unified error handling
       handleCommandError(error, {
         verbose: options.verbose,
         errorMessage: 'Rollback command failed',
@@ -76,33 +78,66 @@ export class RollbackCommand {
     const backups = await this.backupService.listBackups(workspaceConfigPath)
 
     if (backups.length === 0) {
-      console.log(StyledText.iconWarning(t('command.rollback.noBackups')))
-      console.log(chalk.gray(t('command.rollback.createBackupHint')))
+      cliOutput.print(StyledText.iconWarning(t('command.rollback.noBackups')))
+      cliOutput.print(StyledText.muted(t('command.rollback.createBackupHint')))
       return
     }
 
-    console.log(
-      chalk.blue(`\n📋 ${t('command.rollback.availableBackups', { count: backups.length })}`)
+    cliOutput.print(
+      StyledText.info(`\n📋 ${t('command.rollback.availableBackups', { count: backups.length })}`)
     )
-    console.log(chalk.gray('─'.repeat(60)))
+    cliOutput.print(StyledText.muted('─'.repeat(60)))
 
     for (let i = 0; i < backups.length; i++) {
       const backup = backups[i]
       if (!backup) continue
 
       const sizeKB = (backup.size / 1024).toFixed(2)
-      const isLatest = i === 0 ? chalk.green(' (latest)') : ''
+      const isLatest = i === 0 ? StyledText.success(' (latest)') : ''
 
-      console.log(`  ${chalk.cyan(`[${i + 1}]`)} ${backup.formattedTime}${isLatest}`)
+      cliOutput.print(`  ${StyledText.accent(`[${i + 1}]`)} ${backup.formattedTime}${isLatest}`)
 
       if (verbose) {
-        console.log(chalk.gray(`      Path: ${backup.path}`))
-        console.log(chalk.gray(`      Size: ${sizeKB} KB`))
+        cliOutput.print(StyledText.muted(`      Path: ${backup.path}`))
+        cliOutput.print(StyledText.muted(`      Size: ${sizeKB} KB`))
       }
     }
 
-    console.log(chalk.gray('─'.repeat(60)))
-    console.log(chalk.gray(t('command.rollback.restoreHint')))
+    cliOutput.print(StyledText.muted('─'.repeat(60)))
+    cliOutput.print(StyledText.muted(t('command.rollback.restoreHint')))
+  }
+
+  /**
+   * QUAL-007: Common restore execution logic
+   * Performs the actual restore operation after user confirmation
+   */
+  private async executeRestore(
+    workspaceConfigPath: string,
+    backup: BackupInfo,
+    promptMessage: string
+  ): Promise<void> {
+    cliOutput.print(StyledText.success(`   ✓ ${t('command.rollback.autoBackupNote')}`))
+
+    const { confirmed } = await inquirer.prompt<{ confirmed: boolean }>({
+      type: 'confirm',
+      name: 'confirmed',
+      message: promptMessage,
+      default: false,
+    })
+
+    if (!confirmed) {
+      cliOutput.print(StyledText.iconWarning(t('command.rollback.cancelled')))
+      return
+    }
+
+    const preRestoreBackupPath = await this.backupService.restoreFromBackup(
+      workspaceConfigPath,
+      backup.path
+    )
+
+    // Verify the restored file
+    const verification = await this.backupService.verifyRestoredFile(workspaceConfigPath)
+    await this.displayVerificationResult(verification, preRestoreBackupPath)
   }
 
   /**
@@ -112,40 +147,26 @@ export class RollbackCommand {
     const backups = await this.backupService.listBackups(workspaceConfigPath)
 
     if (backups.length === 0) {
-      console.log(StyledText.iconWarning(t('command.rollback.noBackups')))
+      cliOutput.print(StyledText.iconWarning(t('command.rollback.noBackups')))
       return
     }
 
     const latestBackup = backups[0]
     if (!latestBackup) {
-      console.log(StyledText.iconWarning(t('command.rollback.noBackups')))
+      cliOutput.print(StyledText.iconWarning(t('command.rollback.noBackups')))
       return
     }
 
-    console.log(chalk.blue(`\n🔄 ${t('command.rollback.restoringLatest')}`))
-    console.log(chalk.gray(`   ${t('command.rollback.from')}: ${latestBackup.formattedTime}`))
-    console.log(chalk.green(`   ✓ ${t('command.rollback.autoBackupNote')}`))
-
-    const { confirmed } = await inquirer.prompt<{ confirmed: boolean }>({
-      type: 'confirm',
-      name: 'confirmed',
-      message: t('command.rollback.confirmRestore'),
-      default: false,
-    })
-
-    if (!confirmed) {
-      console.log(StyledText.iconWarning(t('command.rollback.cancelled')))
-      return
-    }
-
-    const preRestoreBackupPath = await this.backupService.restoreFromBackup(
-      workspaceConfigPath,
-      latestBackup.path
+    cliOutput.print(StyledText.info(`\n🔄 ${t('command.rollback.restoringLatest')}`))
+    cliOutput.print(
+      StyledText.muted(`   ${t('command.rollback.from')}: ${latestBackup.formattedTime}`)
     )
 
-    // Verify the restored file
-    const verification = await this.backupService.verifyRestoredFile(workspaceConfigPath)
-    await this.displayVerificationResult(verification, preRestoreBackupPath)
+    await this.executeRestore(
+      workspaceConfigPath,
+      latestBackup,
+      t('command.rollback.confirmRestore')
+    )
   }
 
   /**
@@ -156,52 +177,56 @@ export class RollbackCommand {
     preRestoreBackupPath: string
   ): Promise<void> {
     if (!verification) {
-      console.log(StyledText.iconWarning(t('command.rollback.verification.skipped')))
-      console.log(
-        chalk.gray(t('command.rollback.preRestoreBackupCreated', { path: preRestoreBackupPath }))
+      cliOutput.print(StyledText.iconWarning(t('command.rollback.verification.skipped')))
+      cliOutput.print(
+        StyledText.muted(
+          t('command.rollback.preRestoreBackupCreated', { path: preRestoreBackupPath })
+        )
       )
-      console.log(chalk.gray(t('command.rollback.runPnpmInstall')))
+      cliOutput.print(StyledText.muted(t('command.rollback.runPnpmInstall')))
       return
     }
 
     if (verification.success) {
-      console.log(StyledText.iconSuccess(t('command.rollback.success')))
-      console.log(chalk.green(`   ✓ ${t('command.rollback.verification.validYaml')}`))
-      console.log(
-        chalk.green(
+      cliOutput.print(StyledText.iconSuccess(t('command.rollback.success')))
+      cliOutput.print(StyledText.success(`   ✓ ${t('command.rollback.verification.validYaml')}`))
+      cliOutput.print(
+        StyledText.success(
           `   ✓ ${t('command.rollback.verification.catalogsFound', { count: verification.catalogs.length })}`
         )
       )
       if (verification.catalogs.length > 0) {
-        console.log(
-          chalk.gray(
+        cliOutput.print(
+          StyledText.muted(
             `     ${t('command.rollback.verification.catalogs')}: ${verification.catalogs.join(', ')}`
           )
         )
       }
-      console.log(
-        chalk.gray(
+      cliOutput.print(
+        StyledText.muted(
           `     ${t('command.rollback.verification.dependencies', { count: verification.dependencyCount })}`
         )
       )
     } else {
-      console.log(StyledText.iconWarning(t('command.rollback.verification.warning')))
+      cliOutput.print(StyledText.iconWarning(t('command.rollback.verification.warning')))
       if (!verification.isValidYaml) {
-        console.log(chalk.red(`   ✗ ${t('command.rollback.verification.invalidYaml')}`))
+        cliOutput.print(StyledText.error(`   ✗ ${t('command.rollback.verification.invalidYaml')}`))
       }
       if (!verification.hasCatalogStructure) {
-        console.log(chalk.yellow(`   ⚠ ${t('command.rollback.verification.noCatalogs')}`))
+        cliOutput.print(StyledText.warning(`   ⚠ ${t('command.rollback.verification.noCatalogs')}`))
       }
       if (verification.errorMessage) {
-        console.log(chalk.gray(`     ${verification.errorMessage}`))
+        cliOutput.print(StyledText.muted(`     ${verification.errorMessage}`))
       }
     }
 
-    console.log(
-      chalk.gray(t('command.rollback.preRestoreBackupCreated', { path: preRestoreBackupPath }))
+    cliOutput.print(
+      StyledText.muted(
+        t('command.rollback.preRestoreBackupCreated', { path: preRestoreBackupPath })
+      )
     )
-    console.log(chalk.gray(t('command.rollback.safetyNote')))
-    console.log(chalk.gray(t('command.rollback.runPnpmInstall')))
+    cliOutput.print(StyledText.muted(t('command.rollback.safetyNote')))
+    cliOutput.print(StyledText.muted(t('command.rollback.runPnpmInstall')))
   }
 
   /**
@@ -211,15 +236,15 @@ export class RollbackCommand {
     const backups = await this.backupService.listBackups(workspaceConfigPath)
 
     if (backups.length === 0) {
-      console.log(StyledText.iconWarning(t('command.rollback.noBackups')))
-      console.log(chalk.gray(t('command.rollback.createBackupHint')))
+      cliOutput.print(StyledText.iconWarning(t('command.rollback.noBackups')))
+      cliOutput.print(StyledText.muted(t('command.rollback.createBackupHint')))
       return
     }
 
-    console.log(chalk.blue(`\n🔄 ${t('command.rollback.selectBackup')}`))
+    cliOutput.print(StyledText.info(`\n🔄 ${t('command.rollback.selectBackup')}`))
 
     const choices = backups.map((backup, index) => ({
-      name: `${backup.formattedTime}${index === 0 ? chalk.green(' (latest)') : ''} - ${(backup.size / 1024).toFixed(2)} KB`,
+      name: `${backup.formattedTime}${index === 0 ? ' (latest)' : ''} - ${(backup.size / 1024).toFixed(2)} KB`,
       value: backup,
     }))
 
@@ -230,32 +255,18 @@ export class RollbackCommand {
       choices,
     })
 
-    console.log(chalk.yellow(`\n⚠️  ${t('command.rollback.warning')}`))
-    console.log(
-      chalk.gray(`   ${t('command.rollback.willRestore', { time: selectedBackup.formattedTime })}`)
+    cliOutput.print(StyledText.warning(`\n⚠️  ${t('command.rollback.warning')}`))
+    cliOutput.print(
+      StyledText.muted(
+        `   ${t('command.rollback.willRestore', { time: selectedBackup.formattedTime })}`
+      )
     )
-    console.log(chalk.green(`   ✓ ${t('command.rollback.autoBackupNote')}`))
 
-    const { confirmed } = await inquirer.prompt<{ confirmed: boolean }>({
-      type: 'confirm',
-      name: 'confirmed',
-      message: t('command.rollback.confirmRestore'),
-      default: false,
-    })
-
-    if (!confirmed) {
-      console.log(StyledText.iconWarning(t('command.rollback.cancelled')))
-      return
-    }
-
-    const preRestoreBackupPath = await this.backupService.restoreFromBackup(
+    await this.executeRestore(
       workspaceConfigPath,
-      selectedBackup.path
+      selectedBackup,
+      t('command.rollback.confirmRestore')
     )
-
-    // Verify the restored file
-    const verification = await this.backupService.verifyRestoredFile(workspaceConfigPath)
-    await this.displayVerificationResult(verification, preRestoreBackupPath)
   }
 
   /**
@@ -265,12 +276,12 @@ export class RollbackCommand {
     const backups = await this.backupService.listBackups(workspaceConfigPath)
 
     if (backups.length === 0) {
-      console.log(StyledText.iconWarning(t('command.rollback.noBackups')))
+      cliOutput.print(StyledText.iconWarning(t('command.rollback.noBackups')))
       return
     }
 
-    console.log(
-      chalk.yellow(`\n⚠️  ${t('command.rollback.deleteWarning', { count: backups.length })}`)
+    cliOutput.print(
+      StyledText.warning(`\n⚠️  ${t('command.rollback.deleteWarning', { count: backups.length })}`)
     )
 
     const { confirmed } = await inquirer.prompt<{ confirmed: boolean }>({
@@ -281,12 +292,14 @@ export class RollbackCommand {
     })
 
     if (!confirmed) {
-      console.log(StyledText.iconWarning(t('command.rollback.cancelled')))
+      cliOutput.print(StyledText.iconWarning(t('command.rollback.cancelled')))
       return
     }
 
     const deleted = await this.backupService.deleteAllBackups(workspaceConfigPath)
-    console.log(StyledText.iconSuccess(t('command.rollback.deletedBackups', { count: deleted })))
+    cliOutput.print(
+      StyledText.iconSuccess(t('command.rollback.deletedBackups', { count: deleted }))
+    )
   }
 
   /**

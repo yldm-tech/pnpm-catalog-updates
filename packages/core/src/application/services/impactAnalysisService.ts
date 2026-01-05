@@ -15,7 +15,14 @@ export const UPDATE_TYPES = {
   PATCH: 'patch',
   MINOR: 'minor',
   MAJOR: 'major',
+  PRERELEASE: 'prerelease',
+  SAME: 'same',
 } as const
+
+/**
+ * TYPE-001: Strict type for update types (includes all version difference types)
+ */
+export type UpdateType = (typeof UPDATE_TYPES)[keyof typeof UPDATE_TYPES]
 
 /**
  * ARCH-003: Constants for risk assessment thresholds
@@ -108,7 +115,7 @@ export class ImpactAnalysisService {
   /**
    * Assess compatibility risk for update type
    */
-  assessCompatibilityRisk(updateType: string): RiskLevel {
+  assessCompatibilityRisk(updateType: UpdateType): RiskLevel {
     switch (updateType) {
       case UPDATE_TYPES.PATCH:
         return 'low'
@@ -126,7 +133,7 @@ export class ImpactAnalysisService {
    * QUAL-001: Now properly considers analysisIncomplete flag to avoid underestimating risk
    */
   assessOverallRisk(
-    updateType: string,
+    updateType: UpdateType,
     packageImpacts: PackageImpact[],
     securityImpact: SecurityImpact
   ): RiskLevel {
@@ -164,7 +171,7 @@ export class ImpactAnalysisService {
    * Generate recommendations based on analysis
    */
   generateRecommendations(
-    updateType: string,
+    updateType: UpdateType,
     securityImpact: SecurityImpact,
     packageImpacts: PackageImpact[]
   ): string[] {

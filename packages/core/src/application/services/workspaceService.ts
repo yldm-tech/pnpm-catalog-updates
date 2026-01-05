@@ -57,8 +57,83 @@ export interface DependencyInfo {
   isCatalogReference: boolean
 }
 
+/**
+ * MAGIC-001: Health score calculation constants
+ * Extracted from calculateHealthScore to improve maintainability
+ */
+const HEALTH_SCORE = {
+  BASE: 100,
+  MIN: 0,
+  MAX: 100,
+  PENALTIES: {
+    PER_ERROR: 20,
+    PER_WARNING: 5,
+    NO_WORKSPACE: 30,
+    NO_PACKAGES: 20,
+    NO_CATALOGS: 10,
+  },
+  BONUSES: {
+    HAS_CATALOG_REFS: 5,
+  },
+  THRESHOLDS: {
+    EXCELLENT: 90,
+    GOOD: 70,
+    FAIR: 50,
+  },
+} as const
+
 export class WorkspaceService {
   constructor(private readonly workspaceRepository: WorkspaceRepository) {}
+
+  /**
+   * DUP-001: Helper method to convert a Package entity to PackageInfo DTO.
+   * Extracted from getPackages and getPackagesUsingCatalog to eliminate duplication.
+   *
+   * @param pkg - The package entity to convert
+   * @param catalogFilter - Optional catalog name to filter references by
+   * @returns PackageInfo DTO with all package information
+   */
+  private packageToInfo(
+    pkg: ReturnType<ReturnType<Workspace['getPackages']>['getAll']>[0],
+    catalogFilter?: string
+  ): PackageInfo {
+    const catalogReferences = catalogFilter
+      ? pkg.getCatalogReferences().filter((ref) => ref.getCatalogName() === catalogFilter)
+      : pkg.getCatalogReferences()
+
+    const dependencies = pkg.getDependencies()
+    const allDependencies: DependencyInfo[] = []
+    const depTypes = [
+      'dependencies',
+      'devDependencies',
+      'peerDependencies',
+      'optionalDependencies',
+    ] as const
+
+    for (const depType of depTypes) {
+      const deps = dependencies.getDependenciesByType(depType)
+      for (const [name, version] of deps) {
+        allDependencies.push({
+          name,
+          version,
+          type: depType,
+          isCatalogReference: version.startsWith('catalog:'),
+        })
+      }
+    }
+
+    return {
+      name: pkg.getName(),
+      path: pkg.getPath().toString(),
+      hasPackageJson: true, // If package was loaded, it has package.json
+      catalogReferences: catalogReferences.map((ref) => ({
+        catalogName: ref.getCatalogName(),
+        packageName: ref.getPackageName(),
+        dependencyType: ref.getDependencyType(),
+      })),
+      dependencies: allDependencies,
+    }
+  }
 
   /**
    * Discover workspace from current directory or specified path
@@ -194,43 +269,8 @@ export class WorkspaceService {
     const workspace = await this.discoverWorkspace(workspacePath)
     const packages = workspace.getPackages()
 
-    return packages.getAll().map((pkg) => {
-      const catalogReferences = pkg.getCatalogReferences()
-      const dependencies = pkg.getDependencies()
-
-      // Collect all dependencies from all types
-      const allDependencies: DependencyInfo[] = []
-      const depTypes = [
-        'dependencies',
-        'devDependencies',
-        'peerDependencies',
-        'optionalDependencies',
-      ] as const
-
-      for (const depType of depTypes) {
-        const deps = dependencies.getDependenciesByType(depType)
-        for (const [name, version] of deps) {
-          allDependencies.push({
-            name,
-            version,
-            type: depType,
-            isCatalogReference: version.startsWith('catalog:'),
-          })
-        }
-      }
-
-      return {
-        name: pkg.getName(),
-        path: pkg.getPath().toString(),
-        hasPackageJson: true, // If package was loaded, it has package.json
-        catalogReferences: catalogReferences.map((ref) => ({
-          catalogName: ref.getCatalogName(),
-          packageName: ref.getPackageName(),
-          dependencyType: ref.getDependencyType(),
-        })),
-        dependencies: allDependencies,
-      }
-    })
+    // DUP-001: Use packageToInfo helper to eliminate duplication
+    return packages.getAll().map((pkg) => this.packageToInfo(pkg))
   }
 
   /**
@@ -255,44 +295,8 @@ export class WorkspaceService {
     const workspace = await this.discoverWorkspace(workspacePath)
     const packagesUsingCatalog = workspace.getPackages().findPackagesUsingCatalog(catalogName)
 
-    return packagesUsingCatalog.map((pkg) => {
-      const catalogReferences = pkg
-        .getCatalogReferences()
-        .filter((ref) => ref.getCatalogName() === catalogName)
-
-      const dependencies = pkg.getDependencies()
-      const allDependencies: DependencyInfo[] = []
-      const depTypes = [
-        'dependencies',
-        'devDependencies',
-        'peerDependencies',
-        'optionalDependencies',
-      ] as const
-
-      for (const depType of depTypes) {
-        const deps = dependencies.getDependenciesByType(depType)
-        for (const [name, version] of deps) {
-          allDependencies.push({
-            name,
-            version,
-            type: depType,
-            isCatalogReference: version.startsWith('catalog:'),
-          })
-        }
-      }
-
-      return {
-        name: pkg.getName(),
-        path: pkg.getPath().toString(),
-        hasPackageJson: true,
-        catalogReferences: catalogReferences.map((ref) => ({
-          catalogName: ref.getCatalogName(),
-          packageName: ref.getPackageName(),
-          dependencyType: ref.getDependencyType(),
-        })),
-        dependencies: allDependencies,
-      }
-    })
+    // DUP-001: Use packageToInfo helper with catalog filter to eliminate duplication
+    return packagesUsingCatalog.map((pkg) => this.packageToInfo(pkg, catalogName))
   }
 
   /**
@@ -385,27 +389,28 @@ export class WorkspaceService {
 
   /**
    * Calculate workspace health score (0-100)
+   * MAGIC-001: Uses HEALTH_SCORE constants for maintainability
    */
   private calculateHealthScore(
     validation: WorkspaceValidationReport,
     stats: WorkspaceStats,
     issues: HealthIssue[]
   ): number {
-    let score = 100
+    let score = HEALTH_SCORE.BASE
 
     // Deduct points for errors
-    score -= validation.errors.length * 20
+    score -= validation.errors.length * HEALTH_SCORE.PENALTIES.PER_ERROR
 
     // Deduct points for warnings
-    score -= validation.warnings.length * 5
+    score -= validation.warnings.length * HEALTH_SCORE.PENALTIES.PER_WARNING
 
     // Deduct points for workspace issues
     if (!stats.workspace) {
-      score -= 30
+      score -= HEALTH_SCORE.PENALTIES.NO_WORKSPACE
     }
 
     if (stats.packages.total === 0) {
-      score -= 20
+      score -= HEALTH_SCORE.PENALTIES.NO_PACKAGES
       issues.push({
         type: 'warning',
         message: 'No packages found in workspace',
@@ -414,7 +419,7 @@ export class WorkspaceService {
     }
 
     if (stats.catalogs.total === 0) {
-      score -= 10
+      score -= HEALTH_SCORE.PENALTIES.NO_CATALOGS
       issues.push({
         type: 'info',
         message: 'No catalogs defined',
@@ -424,19 +429,20 @@ export class WorkspaceService {
 
     // Bonus for good practices
     if (stats.dependencies.catalogReferences > 0) {
-      score += 5
+      score += HEALTH_SCORE.BONUSES.HAS_CATALOG_REFS
     }
 
-    return Math.max(0, Math.min(100, score))
+    return Math.max(HEALTH_SCORE.MIN, Math.min(HEALTH_SCORE.MAX, score))
   }
 
   /**
    * Get health status from score
+   * MAGIC-001: Uses HEALTH_SCORE.THRESHOLDS constants
    */
   private getHealthStatus(score: number): 'excellent' | 'good' | 'fair' | 'poor' {
-    if (score >= 90) return 'excellent'
-    if (score >= 70) return 'good'
-    if (score >= 50) return 'fair'
+    if (score >= HEALTH_SCORE.THRESHOLDS.EXCELLENT) return 'excellent'
+    if (score >= HEALTH_SCORE.THRESHOLDS.GOOD) return 'good'
+    if (score >= HEALTH_SCORE.THRESHOLDS.FAIR) return 'fair'
     return 'poor'
   }
 }

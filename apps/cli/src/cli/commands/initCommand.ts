@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { CommandExitError, type PackageFilterConfig, t } from '@pcu/utils'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
+import { cliOutput } from '../utils/cliOutput.js'
 import { handleCommandError } from '../utils/commandHelpers.js'
 import { errorsOnly, validateInitOptions } from '../validators/index.js'
 
@@ -48,10 +49,10 @@ export class InitCommand {
       const workspaceYamlPath = join(workspacePath, 'pnpm-workspace.yaml')
 
       if (options.verbose) {
-        console.log(StyledText.iconInfo(t('command.init.creating')))
-        console.log(StyledText.muted(`${t('command.workspace.title')}: ${workspacePath}`))
-        console.log(StyledText.muted(t('command.init.configFileLabel', { path: configPath })))
-        console.log('')
+        cliOutput.print(StyledText.iconInfo(t('command.init.creating')))
+        cliOutput.print(StyledText.muted(`${t('command.workspace.title')}: ${workspacePath}`))
+        cliOutput.print(StyledText.muted(t('command.init.configFileLabel', { path: configPath })))
+        cliOutput.print('')
       }
 
       // Check if this is a pnpm workspace
@@ -61,19 +62,19 @@ export class InitCommand {
 
       if (!isWorkspace && options.createWorkspace !== false) {
         if (options.verbose) {
-          console.log(StyledText.iconWarning(t('warning.workspaceNotDetected')))
+          cliOutput.print(StyledText.iconWarning(t('warning.workspaceNotDetected')))
           if (!hasPackageJson) {
-            console.log(StyledText.muted(t('command.init.missingPackageJson')))
+            cliOutput.print(StyledText.muted(t('command.init.missingPackageJson')))
           }
           if (!hasWorkspaceYaml) {
-            console.log(StyledText.muted(t('command.init.missingWorkspaceYaml')))
+            cliOutput.print(StyledText.muted(t('command.init.missingWorkspaceYaml')))
           }
-          console.log('')
+          cliOutput.print('')
         }
 
         // Create workspace structure
         if (options.verbose) {
-          console.log(StyledText.iconInfo(t('command.init.creatingWorkspace')))
+          cliOutput.print(StyledText.iconInfo(t('command.init.creatingWorkspace')))
         }
 
         await this.createWorkspaceStructure(
@@ -84,16 +85,16 @@ export class InitCommand {
         )
 
         if (options.verbose) {
-          console.log(StyledText.iconSuccess(t('command.init.workspaceCreated')))
-          console.log('')
+          cliOutput.print(StyledText.iconSuccess(t('command.init.workspaceCreated')))
+          cliOutput.print('')
         }
       }
 
       // Check if config file already exists
       if (existsSync(configPath) && !options.force) {
-        console.log(StyledText.iconWarning(t('warning.configExists')))
-        console.log(StyledText.muted(t('command.init.foundLabel', { path: configPath })))
-        console.log(StyledText.muted(t('command.init.useForceOverwrite')))
+        cliOutput.print(StyledText.iconWarning(t('warning.configExists')))
+        cliOutput.print(StyledText.muted(t('command.init.foundLabel', { path: configPath })))
+        cliOutput.print(StyledText.muted(t('command.init.useForceOverwrite')))
         throw CommandExitError.failure('Configuration file already exists')
       }
 
@@ -110,9 +111,9 @@ export class InitCommand {
       writeFileSync(configPath, JSON.stringify(basicConfig, null, 2), 'utf-8')
 
       // Success message
-      console.log(StyledText.iconSuccess(t('command.init.success')))
-      console.log(StyledText.muted(t('command.init.createdLabel', { path: configPath })))
-      console.log('')
+      cliOutput.print(StyledText.iconSuccess(t('command.init.success')))
+      cliOutput.print(StyledText.muted(t('command.init.createdLabel', { path: configPath })))
+      cliOutput.print('')
 
       // Show next steps
       this.showNextSteps(configPath)
@@ -152,7 +153,7 @@ export class InitCommand {
       writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8')
 
       if (options.verbose) {
-        console.log(StyledText.muted(t('command.init.createdPackageJson')))
+        cliOutput.print(StyledText.muted(t('command.init.createdPackageJson')))
       }
     }
 
@@ -163,7 +164,7 @@ export class InitCommand {
       writeFileSync(workspaceYamlPath, workspaceYaml, 'utf-8')
 
       if (options.verbose) {
-        console.log(StyledText.muted(t('command.init.createdWorkspaceYaml')))
+        cliOutput.print(StyledText.muted(t('command.init.createdWorkspaceYaml')))
       }
     }
 
@@ -173,7 +174,7 @@ export class InitCommand {
       mkdirSync(packagesDir, { recursive: true })
 
       if (options.verbose) {
-        console.log(StyledText.muted(t('command.init.createdPackagesDir')))
+        cliOutput.print(StyledText.muted(t('command.init.createdPackagesDir')))
       }
     }
   }
@@ -340,7 +341,7 @@ catalogs:
     lines.push(StyledText.muted('   https://pnpm.io/workspaces'))
     lines.push(StyledText.muted('   https://github.com/houko/pnpm-catalog-updates#configuration'))
 
-    console.log(lines.join('\n'))
+    cliOutput.print(lines.join('\n'))
   }
 
   /**

@@ -16,6 +16,7 @@ import { countUpdateTypesFromCatalogs } from '@pcu/core'
 import { CommandExitError, t } from '@pcu/utils'
 import type { OutputFormat } from '../formatters/outputFormatter.js'
 import { StyledText, ThemeManager } from '../themes/colorTheme.js'
+import { cliOutput } from '../utils/cliOutput.js'
 import {
   getEffectivePatterns,
   getEffectiveTarget,
@@ -79,7 +80,7 @@ export class CheckCommand {
 
       // Format and display results
       const formattedOutput = formatter.formatOutdatedReport(report)
-      console.log(formattedOutput)
+      cliOutput.print(formattedOutput)
 
       // Show summary
       if (options.verbose || options.format === 'table') {
@@ -170,7 +171,7 @@ export class CheckCommand {
       }
     }
 
-    console.log(lines.join('\n'))
+    cliOutput.print(lines.join('\n'))
   }
 
   /**

@@ -41,6 +41,7 @@ import {
   hasProvidedOptions,
   interactiveOptionsCollector,
 } from './interactive/InteractiveOptionsCollector.js'
+import { cliOutput } from './utils/cliOutput.js'
 
 /**
  * Service type definitions
@@ -120,7 +121,7 @@ export function handleCommandError(error: unknown, commandName: string): never {
 
   // Handle user cancellation (Ctrl+C) gracefully
   if (isExitPromptError(error)) {
-    console.log(chalk.gray(`\n${t('cli.cancelled')}`))
+    cliOutput.print(chalk.gray(`\n${t('cli.cancelled')}`))
     exitProcess(0)
   }
 
@@ -128,7 +129,7 @@ export function handleCommandError(error: unknown, commandName: string): never {
   logger.error(`${commandName} command failed`, error instanceof Error ? error : undefined, {
     command: commandName,
   })
-  console.error(chalk.red(`❌ ${t('cli.error')}`), error)
+  cliOutput.error(chalk.red(`❌ ${t('cli.error')}`), error)
   exitProcess(1)
 }
 
@@ -731,7 +732,7 @@ ${t('cli.help.tipLabel')} ${t('cli.help.tipContent', { locale: I18n.getLocale() 
           needsServices: false,
         },
         async ({ globalOptions }) => {
-          console.log(chalk.cyan(t('command.selfUpdate.checking')))
+          cliOutput.print(chalk.cyan(t('command.selfUpdate.checking')))
 
           try {
             const versionResult = await VersionChecker.checkVersion(packageJson.version, {
@@ -740,7 +741,7 @@ ${t('cli.help.tipLabel')} ${t('cli.help.tipContent', { locale: I18n.getLocale() 
             })
 
             if (versionResult.isLatest) {
-              console.log(
+              cliOutput.print(
                 chalk.green(
                   t('command.selfUpdate.latestAlready', { version: versionResult.currentVersion })
                 )
@@ -749,29 +750,29 @@ ${t('cli.help.tipLabel')} ${t('cli.help.tipContent', { locale: I18n.getLocale() 
             }
 
             // User explicitly requested update, so perform it
-            console.log(
+            cliOutput.print(
               chalk.blue(t('command.selfUpdate.updating', { version: versionResult.latestVersion }))
             )
 
             const success = await VersionChecker.performUpdateAction()
             if (success) {
-              console.log(
+              cliOutput.print(
                 chalk.green(
                   t('command.selfUpdate.success', { version: versionResult.latestVersion })
                 )
               )
-              console.log(chalk.gray(t('command.selfUpdate.restartHint')))
+              cliOutput.print(chalk.gray(t('command.selfUpdate.restartHint')))
             } else {
-              console.error(chalk.red(t('command.selfUpdate.failed')))
-              console.log(chalk.gray('You can manually update with: npm install -g pcu@latest'))
+              cliOutput.error(chalk.red(t('command.selfUpdate.failed')))
+              cliOutput.print(chalk.gray('You can manually update with: npm install -g pcu@latest'))
               exitProcess(1)
             }
           } catch (error) {
-            console.error(chalk.red(t('command.selfUpdate.failed')))
+            cliOutput.error(chalk.red(t('command.selfUpdate.failed')))
             if (globalOptions.verbose) {
-              console.error(error)
+              cliOutput.error(error)
             }
-            console.log(chalk.gray('You can manually update with: npm install -g pcu@latest'))
+            cliOutput.print(chalk.gray('You can manually update with: npm install -g pcu@latest'))
             exitProcess(1)
           }
         }

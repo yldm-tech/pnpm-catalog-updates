@@ -4,11 +4,12 @@
  * Provides smart prompts and auto-completion for CLI commands
  */
 
-import { FileSystemService } from '@pcu/core'
-import { t } from '@pcu/utils'
+import { FileSystemService, FileWorkspaceRepository, WorkspaceService } from '@pcu/core'
+import { logger, t } from '@pcu/utils'
 import chalk from 'chalk'
 import inquirer from 'inquirer'
 import { StyledText } from '../themes/colorTheme.js'
+import { cliOutput } from '../utils/cliOutput.js'
 
 export interface AutoCompleteOption {
   name: string
@@ -141,9 +142,9 @@ export class InteractivePrompts {
    * Confirm dangerous operations
    */
   async confirmDangerousOperation(operation: string, details?: string): Promise<boolean> {
-    console.log('')
+    cliOutput.print('')
     if (details) {
-      console.log(chalk.yellow(`⚠️ ${t('prompt.warning')}`), details)
+      cliOutput.print(chalk.yellow(`⚠️ ${t('prompt.warning')}`), details)
     }
 
     const answers = await inquirer.prompt([
@@ -290,7 +291,7 @@ export class InteractivePrompts {
    * Multi-step configuration wizard
    */
   async configurationWizard(): Promise<ConfigurationWizardResult> {
-    console.log(chalk.bold.blue(`\n${t('prompt.configWizard')}\n`))
+    cliOutput.print(chalk.bold.blue(`\n${t('prompt.configWizard')}\n`))
 
     const themeAnswer = await inquirer.prompt({
       type: 'list',
@@ -357,20 +358,20 @@ export class InteractivePrompts {
    * Impact preview before update
    */
   async previewImpact(impact: UpdateImpact): Promise<boolean> {
-    console.log(chalk.bold.blue(`\n${t('prompt.impactPreview')}\n`))
+    cliOutput.print(chalk.bold.blue(`\n${t('prompt.impactPreview')}\n`))
 
     // Display impact summary
-    console.log(t('prompt.packagesToUpdate', { count: impact.totalUpdates }))
-    console.log(t('prompt.riskLevel', { level: impact.riskLevel }))
-    console.log(t('prompt.affectedPackages', { count: impact.affectedCount }))
+    cliOutput.print(t('prompt.packagesToUpdate', { count: impact.totalUpdates }))
+    cliOutput.print(t('prompt.riskLevel', { level: impact.riskLevel }))
+    cliOutput.print(t('prompt.affectedPackages', { count: impact.affectedCount }))
 
     if (impact.securityUpdates > 0) {
-      console.log(
+      cliOutput.print(
         StyledText.iconSecurity(t('prompt.securityUpdatesCount', { count: impact.securityUpdates }))
       )
     }
 
-    console.log('')
+    cliOutput.print('')
 
     const answers = await inquirer.prompt([
       {
@@ -443,6 +444,15 @@ export class InteractivePrompts {
  * Auto-completion utilities
  */
 export class AutoCompleteManager {
+  /**
+   * Get workspace service instance for auto-completion
+   */
+  private static getWorkspaceService(): WorkspaceService {
+    const fsService = new FileSystemService()
+    const repository = new FileWorkspaceRepository(fsService)
+    return new WorkspaceService(repository)
+  }
+
   static async suggestWorkspaces(current: string): Promise<string[]> {
     const suggestions: string[] = []
 
@@ -464,20 +474,52 @@ export class AutoCompleteManager {
             suggestions.push(dir)
           }
         })
-      } catch {
-        // Ignore errors
+      } catch (error) {
+        // ERR-002: Log glob errors for debugging instead of silently ignoring
+        logger.debug('Failed to glob workspace pattern', { pattern, error })
       }
     }
 
     return suggestions.filter((s) => s.toLowerCase().includes(current.toLowerCase()))
   }
 
+  /**
+   * STUB-001: Suggest catalog names from current workspace
+   */
   static async suggestCatalogs(): Promise<string[]> {
-    return []
+    try {
+      const workspaceService = AutoCompleteManager.getWorkspaceService()
+      const catalogs = await workspaceService.getCatalogs()
+      return catalogs.map((catalog) => catalog.name)
+    } catch (error) {
+      // Workspace not found or other error - return empty for auto-complete
+      logger.debug('Failed to get catalogs for auto-complete', { error })
+      return []
+    }
   }
 
+  /**
+   * STUB-001: Suggest package names from current workspace catalogs
+   */
   static async suggestPackages(): Promise<string[]> {
-    return []
+    try {
+      const workspaceService = AutoCompleteManager.getWorkspaceService()
+      const catalogs = await workspaceService.getCatalogs()
+
+      // Collect all unique package names from all catalogs
+      const packageNames = new Set<string>()
+      for (const catalog of catalogs) {
+        for (const pkgName of catalog.packages) {
+          packageNames.add(pkgName)
+        }
+      }
+
+      return Array.from(packageNames).sort()
+    } catch (error) {
+      // Workspace not found or other error - return empty for auto-complete
+      logger.debug('Failed to get packages for auto-complete', { error })
+      return []
+    }
   }
 }
 

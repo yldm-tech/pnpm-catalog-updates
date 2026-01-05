@@ -1,56 +1,47 @@
 [
   {
     "id": "QUAL-001",
-    "location": "packages/core/src/application/services/updateExecutorService.ts:49",
+    "location": "packages/utils/src/executor/commandExecutor.ts",
     "severity": "HIGH",
-    "evidence_level": "E2",
-    "description": "更新命令即使使用了 --create-backup 选项也不会创建备份。虽然该选项被传递给了 `UpdatePlanService`，但执行更新的 `UpdateExecutorService` 并没有使用 `BackupService`，也没有执行任何备份操作。CLI 测试仅验证了选项传递，掩盖了功能缺失。",
-    "evidence": "UpdateExecutorService.executeUpdates 方法中完全没有引用 BackupService 或处理 createBackup 选项的代码。UpdateCommand 测试仅验证了 planUpdates 的调用参数。",
-    "suggestion": "在 UpdateExecutorService.executeUpdates 中注入并调用 BackupService，或者在 UpdateCommand 中在调用 executeUpdates 之前执行备份逻辑。"
+    "evidence_level": "E3",
+    "description": "关键工具类 commandExecutor 缺少单元测试",
+    "evidence": "该文件包含复杂的 Shell 命令执行和参数转义逻辑，但在 packages/utils/src/executor/ 目录下未发现对应的 __tests__ 或 .test.ts 文件。find 命令确认 utils 包仅有 5 个测试文件。",
+    "suggestion": "为 executeCommand, escapeShellArg 等核心函数添加全面的单元测试，特别是针对 Shell 注入防护和重试机制的测试。"
   },
   {
     "id": "QUAL-002",
-    "location": "packages/core/src/infrastructure/repositories/fileWorkspaceRepository.ts:79",
+    "location": "apps/cli/src/cli/commands/analyzeCommand.ts:40",
     "severity": "MEDIUM",
-    "evidence_level": "E1",
-    "description": "Workspace 保存操作缺乏原子性。`save` 方法分别调用 `saveConfiguration` (pnpm-workspace.yaml) 和 `savePackages` (package.json)。如果前者成功但后者失败，工作区将处于不一致状态。",
-    "evidence": "FileWorkspaceRepository.save 方法顺序调用了两个独立的保存操作，没有事务或回滚机制。",
-    "suggestion": "实现事务性保存机制，或者在保存前创建临时备份，一旦失败则自动恢复。"
+    "evidence_level": "E3",
+    "description": "AnalyzeCommand 违反统一输出规范，直接使用 console.log",
+    "evidence": "项目已定义 `cliOutput` (apps/cli/src/cli/utils/cliOutput.ts) 用于统一管理 CLI 输出，但 AnalyzeCommand 中多处直接调用 `console.log` 和 `console.error` (如第 44, 53, 54 行)。",
+    "suggestion": "将所有 console 调用替换为 `cliOutput.print`, `cliOutput.error` 等方法，以确保输出风格一致并支持测试时的输出捕获。"
   },
   {
     "id": "QUAL-003",
-    "location": "packages/core/src/infrastructure/external-services/npmRegistryService.ts:316",
+    "location": "apps/cli/src/cli/commands/analyzeCommand.ts:62",
     "severity": "MEDIUM",
-    "evidence_level": "E1",
-    "description": "性能瓶颈风险：`getGreatestVersion` 获取所有版本并在内存中过滤。对于拥有大量版本的包（如 lodash, react），这可能导致显著的性能开销和内存使用。",
-    "evidence": "NpmRegistryService.getGreatestVersion 调用 getPackageVersions 获取完整版本列表，然后在应用层进行过滤。",
-    "suggestion": "如果 registry API 支持，利用服务端过滤。否则，考虑仅获取最近的 N 个版本进行检查，或者优化 Version 对象的创建和比较逻辑。"
+    "evidence_level": "E3",
+    "description": "AnalyzeCommand 存在强耦合，直接实例化服务类",
+    "evidence": "execute 方法中直接执行 `new NpmRegistryService()` 和 `new AIAnalysisService(...)`，而不是通过构造函数注入。这导致难以mock这些依赖进行单元测试。",
+    "suggestion": "通过构造函数注入 `INpmRegistryService` 和 `IAIAnalysisService` 接口，或使用依赖注入容器（如果有）来获取实例。"
   },
   {
     "id": "QUAL-004",
-    "location": "packages/core/src/infrastructure/cache/cache.ts:241",
-    "severity": "LOW",
-    "evidence_level": "E1",
-    "description": "缓存清理性能问题：`evictOldest` 方法遍历整个 Map 来寻找最旧的条目，时间复杂度为 O(N)。随着缓存项增加，清理操作会变慢。",
-    "evidence": "Cache.evictOldest 遍历 this.entries 的所有值来寻找最小 timestamp。",
-    "suggestion": "使用 LRU 缓存结构（如基于 Map + 双向链表）来实现 O(1) 的淘汰策略。"
+    "location": "packages/utils/src",
+    "severity": "HIGH",
+    "evidence_level": "E3",
+    "description": "核心工具包 packages/utils 测试覆盖率极低",
+    "evidence": "packages/utils 包含 34 个 TypeScript 源文件，但仅有 5 个测试文件 (~15% 文件覆盖率)。config, logger, executor 等关键模块均缺乏测试。",
+    "suggestion": "优先为 configLoader, logger 和 executor 模块补充测试用例，建立基础的测试防护网。"
   },
   {
     "id": "QUAL-005",
-    "location": "packages/core/src/domain/entities/workspace.ts:185",
+    "location": "apps/cli/src/cli/commands/analyzeCommand.ts",
     "severity": "LOW",
-    "evidence_level": "E1",
-    "description": "代码重复与概念重叠：`Workspace` 实体中定义了 `OutdatedDependency` 类，而 `CatalogCheckService` 中定义了 `OutdatedDependencyInfo` 接口。两者结构高度相似，造成维护冗余。",
-    "evidence": "packages/core/src/domain/entities/workspace.ts 定义了 OutdatedDependency 类，而 packages/core/src/application/services/catalogCheckService.ts 定义了 OutdatedDependencyInfo 接口。",
-    "suggestion": "统一使用一个定义（推荐在 Domain 层定义核心 Value Object），并在 Service 层复用。"
-  },
-  {
-    "id": "QUAL-006",
-    "location": "packages/core/src/domain/entities/workspace.ts:167",
-    "severity": "LOW",
-    "evidence_level": "E1",
-    "description": "特性依恋 (Feature Envy) / 未实现的方法：`Workspace.getOutdatedCatalogDependencies` 方法是一个空实现，表明这可能不属于 Domain Entity 的职责，或者是遗留代码。",
-    "evidence": "getOutdatedCatalogDependencies 方法仅返回空数组 `[]` 并包含注释说明这是一个占位符。",
-    "suggestion": "移除该方法，确认检查过时依赖的职责由 Domain Service 或 Application Service (CatalogCheckService) 承担。"
+    "evidence_level": "E3",
+    "description": "未复用公共命令初始化逻辑",
+    "evidence": "apps/cli/src/cli/utils/commandHelpers.ts 提供了 `initializeCommand` 用于统一处理配置加载、主题初始化和 Formatter 创建。AnalyzeCommand 手动实现了这些逻辑 (第 39 行)，造成代码重复和行为不一致。",
+    "suggestion": "重构 AnalyzeCommand 的 execute 方法，使用 `initializeCommand` 助手函数来替代手动的初始化代码。"
   }
 ]

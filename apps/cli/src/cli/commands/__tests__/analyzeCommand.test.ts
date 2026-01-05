@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   analyzeUpdates: vi.fn(),
   getLatestVersion: vi.fn(),
+  loadConfig: vi.fn(),
   // Create a chainable chalk mock that supports all color combinations
   createChalkMock: () => {
     const createColorFn = (text: string) => text
@@ -41,6 +42,12 @@ vi.mock('@pcu/utils', () => ({
     warn: vi.fn(),
     info: vi.fn(),
     debug: vi.fn(),
+  },
+  Logger: {
+    setGlobalLevel: vi.fn(),
+  },
+  ConfigLoader: {
+    loadConfig: mocks.loadConfig,
   },
   t: (key: string, params?: Record<string, unknown>) => {
     if (params) {
@@ -107,6 +114,9 @@ describe('AnalyzeCommand', () => {
       risks: [],
     })
     mocks.getLatestVersion.mockResolvedValue({ toString: () => '4.17.21' })
+    mocks.loadConfig.mockResolvedValue({
+      defaults: { format: 'table' },
+    })
 
     consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})

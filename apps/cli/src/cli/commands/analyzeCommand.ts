@@ -3,13 +3,17 @@
  *
  * CLI command to analyze the impact of updating a specific dependency.
  * Provides AI-powered and basic analysis options.
+ *
+ * QUAL-002/QUAL-003: Refactored to use unified output helpers and reduce coupling.
  */
 
 import type { AnalysisType, CatalogUpdateService, WorkspaceService } from '@pcu/core'
 import { AIAnalysisService, NpmRegistryService } from '@pcu/core'
 import { logger, t } from '@pcu/utils'
-import chalk from 'chalk'
-import { type OutputFormat, OutputFormatter } from '../formatters/outputFormatter.js'
+import type { OutputFormat } from '../formatters/outputFormatter.js'
+import { StyledText } from '../themes/colorTheme.js'
+import { cliOutput } from '../utils/cliOutput.js'
+import { handleCommandError, initializeCommand } from '../utils/commandHelpers.js'
 import { errorsOnly, validateAnalyzeOptions } from '../validators/index.js'
 
 export interface AnalyzeCommandOptions {
@@ -25,120 +29,140 @@ export interface AnalyzeCommandOptions {
 }
 
 export class AnalyzeCommand {
+  /**
+   * QUAL-003: Optional services can be injected for testability.
+   * If not provided, default instances are created when needed.
+   */
   constructor(
     private readonly catalogUpdateService: CatalogUpdateService,
-    private readonly workspaceService: WorkspaceService
+    private readonly workspaceService: WorkspaceService,
+    private readonly registryService?: NpmRegistryService,
+    private readonly aiService?: AIAnalysisService
   ) {}
 
   /**
    * Execute the analyze command
+   * QUAL-002/QUAL-003: Uses unified output helpers and reduced coupling
    */
   async execute(
     packageName: string,
     version: string | undefined,
     options: AnalyzeCommandOptions = {}
   ): Promise<void> {
-    const formatter = new OutputFormatter(options.format || 'table', options.color !== false)
+    // QUAL-005: Use shared command initialization
+    const { formatter } = await initializeCommand(options)
 
-    // Auto-detect catalog if not specified
-    let catalog = options.catalog
-    if (!catalog) {
-      console.log(chalk.gray(`${t('command.analyze.autoDetecting', { packageName })}`))
-      catalog =
-        (await this.catalogUpdateService.findCatalogForPackage(packageName, options.workspace)) ??
-        undefined
+    try {
+      // Auto-detect catalog if not specified
+      let catalog = options.catalog
       if (!catalog) {
-        logger.error('Package not found in any catalog', undefined, {
-          packageName,
-          workspace: options.workspace,
-        })
-        console.error(chalk.red(`❌ ${t('command.analyze.notFoundInCatalog', { packageName })}`))
-        console.log(chalk.gray(t('command.analyze.specifyManually')))
-        throw new Error(t('command.analyze.notFoundInCatalog', { packageName }))
-      }
-      console.log(chalk.gray(`   ${t('command.analyze.foundInCatalog', { catalog })}`))
-    }
-
-    // Get latest version if not specified
-    let targetVersion = version
-    if (!targetVersion) {
-      const tempRegistryService = new NpmRegistryService()
-      targetVersion = (await tempRegistryService.getLatestVersion(packageName)).toString()
-    }
-
-    // Get basic impact analysis first
-    const analysis = await this.catalogUpdateService.analyzeImpact(
-      catalog,
-      packageName,
-      targetVersion,
-      options.workspace
-    )
-
-    // AI analysis is enabled by default (use --no-ai to disable)
-    const aiEnabled = options.ai !== false
-
-    if (aiEnabled) {
-      console.log(chalk.blue(`${t('command.analyze.runningAI')}`))
-
-      const aiService = new AIAnalysisService({
-        config: {
-          preferredProvider: options.provider === 'auto' ? 'auto' : options.provider,
-          cache: { enabled: !options.skipCache, ttl: 3600 },
-          fallback: { enabled: true, useRuleEngine: true },
-        },
-      })
-
-      // Get workspace info
-      const workspaceInfo = await this.workspaceService.getWorkspaceInfo(options.workspace)
-
-      // Build packages info for AI analysis
-      const packages = [
-        {
-          name: packageName,
-          currentVersion: analysis.currentVersion,
-          targetVersion: analysis.proposedVersion,
-          updateType: analysis.updateType,
-        },
-      ]
-
-      // Build workspace info for AI
-      const wsInfo = {
-        name: workspaceInfo.name,
-        path: workspaceInfo.path,
-        packageCount: workspaceInfo.packageCount,
-        catalogCount: workspaceInfo.catalogCount,
-      }
-
-      try {
-        const aiResult = await aiService.analyzeUpdates(packages, wsInfo, {
-          analysisType: options.analysisType || 'impact',
-          skipCache: options.skipCache,
-        })
-
-        // Format and display AI analysis result
-        const aiOutput = formatter.formatAIAnalysis(aiResult, analysis)
-        console.log(aiOutput)
-        return
-      } catch (aiError) {
-        logger.warn('AI analysis failed', {
-          error: aiError instanceof Error ? aiError.message : String(aiError),
-          packageName,
-          targetVersion,
-          provider: options.provider,
-        })
-        console.warn(chalk.yellow(`⚠️ ${t('command.analyze.aiFailed')}`))
-        if (options.verbose) {
-          console.warn(chalk.gray(String(aiError)))
+        cliOutput.print(StyledText.muted(t('command.analyze.autoDetecting', { packageName })))
+        catalog =
+          (await this.catalogUpdateService.findCatalogForPackage(packageName, options.workspace)) ??
+          undefined
+        if (!catalog) {
+          logger.error('Package not found in any catalog', undefined, {
+            packageName,
+            workspace: options.workspace,
+          })
+          cliOutput.error(
+            StyledText.iconError(t('command.analyze.notFoundInCatalog', { packageName }))
+          )
+          cliOutput.print(StyledText.muted(t('command.analyze.specifyManually')))
+          throw new Error(t('command.analyze.notFoundInCatalog', { packageName }))
         }
-        // Fall back to basic analysis
-        const formattedOutput = formatter.formatImpactAnalysis(analysis)
-        console.log(formattedOutput)
-        return
+        cliOutput.print(StyledText.muted(`   ${t('command.analyze.foundInCatalog', { catalog })}`))
       }
-    } else {
-      // Standard analysis without AI
-      const formattedOutput = formatter.formatImpactAnalysis(analysis)
-      console.log(formattedOutput)
+
+      // Get latest version if not specified
+      // QUAL-003: Use injected registry service or create default
+      let targetVersion = version
+      if (!targetVersion) {
+        const registryService = this.registryService ?? new NpmRegistryService()
+        targetVersion = (await registryService.getLatestVersion(packageName)).toString()
+      }
+
+      // Get basic impact analysis first
+      const analysis = await this.catalogUpdateService.analyzeImpact(
+        catalog,
+        packageName,
+        targetVersion,
+        options.workspace
+      )
+
+      // AI analysis is enabled by default (use --no-ai to disable)
+      const aiEnabled = options.ai !== false
+
+      if (aiEnabled) {
+        cliOutput.print(StyledText.iconAnalysis(t('command.analyze.runningAI')))
+
+        // QUAL-003: Use injected AI service or create default
+        const aiService =
+          this.aiService ??
+          new AIAnalysisService({
+            config: {
+              preferredProvider: options.provider === 'auto' ? 'auto' : options.provider,
+              cache: { enabled: !options.skipCache, ttl: 3600 },
+              fallback: { enabled: true, useRuleEngine: true },
+            },
+          })
+
+        // Get workspace info
+        const workspaceInfo = await this.workspaceService.getWorkspaceInfo(options.workspace)
+
+        // Build packages info for AI analysis
+        const packages = [
+          {
+            name: packageName,
+            currentVersion: analysis.currentVersion,
+            targetVersion: analysis.proposedVersion,
+            updateType: analysis.updateType,
+          },
+        ]
+
+        // Build workspace info for AI
+        const wsInfo = {
+          name: workspaceInfo.name,
+          path: workspaceInfo.path,
+          packageCount: workspaceInfo.packageCount,
+          catalogCount: workspaceInfo.catalogCount,
+        }
+
+        try {
+          const aiResult = await aiService.analyzeUpdates(packages, wsInfo, {
+            analysisType: options.analysisType || 'impact',
+            skipCache: options.skipCache,
+          })
+
+          // Format and display AI analysis result
+          const aiOutput = formatter.formatAIAnalysis(aiResult, analysis)
+          cliOutput.print(aiOutput)
+          return
+        } catch (aiError) {
+          logger.warn('AI analysis failed', {
+            error: aiError instanceof Error ? aiError.message : String(aiError),
+            packageName,
+            targetVersion,
+            provider: options.provider,
+          })
+          cliOutput.warn(StyledText.iconWarning(t('command.analyze.aiFailed')))
+          if (options.verbose) {
+            cliOutput.warn(StyledText.muted(String(aiError)))
+          }
+          // Fall back to basic analysis
+          const formattedOutput = formatter.formatImpactAnalysis(analysis)
+          cliOutput.print(formattedOutput)
+          return
+        }
+      } else {
+        // Standard analysis without AI
+        const formattedOutput = formatter.formatImpactAnalysis(analysis)
+        cliOutput.print(formattedOutput)
+      }
+    } catch (error) {
+      // QUAL-002: Use unified error handling
+      handleCommandError(error, { verbose: options.verbose })
+      throw error
     }
   }
 

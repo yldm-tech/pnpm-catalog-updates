@@ -50,6 +50,9 @@ function resolveCatalogDependencies() {
     console.warn('⚠️ Could not get pnpm list, falling back to manual resolution')
     // Fallback to basic catalog resolution
     const catalog = {
+      '@clack/prompts': '^0.10.0',
+      '@inquirer/core': '^10.1.10',
+      boxen: '^8.0.1',
       chalk: '5.4.1',
       'cli-table3': '0.6.5',
       commander: '14.0.0',
@@ -68,6 +71,11 @@ function resolveCatalogDependencies() {
     // Resolve dependencies
     const resolvedDependencies = {}
     for (const [dep, version] of Object.entries(packageJson.dependencies || {})) {
+      // Skip workspace dependencies (they're bundled by tsup)
+      if (version.startsWith('workspace:')) {
+        console.log(`  ${dep}: ${version} → removed (bundled)`)
+        continue
+      }
       if (version === 'catalog:') {
         if (catalog[dep]) {
           resolvedDependencies[dep] = catalog[dep]
@@ -100,6 +108,11 @@ function resolveCatalogDependencies() {
   // Resolve dependencies
   const resolvedDependencies = {}
   for (const [dep, version] of Object.entries(packageJson.dependencies || {})) {
+    // Skip workspace dependencies (they're bundled by tsup)
+    if (version.startsWith('workspace:')) {
+      console.log(`  ${dep}: ${version} → removed (bundled)`)
+      continue
+    }
     if (version === 'catalog:') {
       if (installedDeps[dep]) {
         resolvedDependencies[dep] = `^${installedDeps[dep]}`

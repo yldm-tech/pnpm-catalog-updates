@@ -94,9 +94,12 @@ jobs:
           CHANGELOG=$(awk "/^## ${VERSION}/,/^## [0-9]/" apps/cli/CHANGELOG.md | head -n -1 || echo "")
 
           if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="Release v${VERSION}
+            CHANGELOG=$(cat <<EOF
+          Release v${VERSION}
 
-See [CHANGELOG.md](https://github.com/houko/pnpm-catalog-updates/blob/main/apps/cli/CHANGELOG.md) for details."
+          See [CHANGELOG.md](https://github.com/houko/pnpm-catalog-updates/blob/main/apps/cli/CHANGELOG.md) for details.
+          EOF
+          )
           fi
 
           # Save to file for release body

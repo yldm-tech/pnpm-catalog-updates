@@ -83,7 +83,7 @@ function main() {
   console.log(`\n🎉 Release v${newVersion} prepared!`)
   console.log(`\nNext steps:`)
   console.log(`   git add -A && git commit -m "chore: release v${newVersion}"`)
-  console.log(`   pnpm release:tag`)
+  console.log(`   pnpm tag`)
   console.log(``)
 
   // Output version for scripting

@@ -1,6 +1,6 @@
 # pcu
 
-## Unreleased
+## 1.1.4 (2026-01-05)
 
 ### Patch Changes
 

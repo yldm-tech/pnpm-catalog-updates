@@ -1,6 +1,6 @@
 # pcu
 
-## Unreleased
+## 1.1.0 (2025-01-05)
 
 ### Minor Changes
 
@@ -9,6 +9,12 @@
   - Supports all 11 commands: check, update, analyze, workspace, theme, security, init, ai, cache, rollback, watch
   - Seamless experience: use flags for automation, skip flags for guided prompts
   - New `InteractiveOptionsCollector` class for consistent option collection
+
+### Patch Changes
+
+- fix: Resolve test failures in CLI command tests
+  - Add missing `accent` mock to StyledText in rollbackCommand.test.ts
+  - Update assertions to use translation key instead of literal value
 
 ## 1.0.3
 

@@ -45,7 +45,9 @@
     "prepack": "pnpm build",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "node scripts/publish-dual.cjs"
+    "release": "node scripts/publish-dual.cjs",
+    "release:prepare": "node scripts/release-prepare.cjs",
+    "release:tag": "node scripts/release-tag.cjs"
   },
   "dependencies": {
     "pcu": "workspace:*"

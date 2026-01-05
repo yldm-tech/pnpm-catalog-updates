@@ -2,14 +2,18 @@ name: Release
 
 on:
   push:
-    branches: [main]
-    paths:
-      - ".changeset/**"
-      - "apps/cli/package.json"
+    tags:
+      - 'v*'  # Trigger on version tags (v1.0.0, v1.2.3, etc.)
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (skip actual publish)'
+        required: false
+        default: 'false'
+        type: boolean
 
 concurrency:
-  group: release
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -19,7 +23,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write
-      pull-requests: write
       id-token: write
 
     steps:
@@ -27,91 +30,101 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Environment
         uses: ./.github/actions/setup
         with:
           registry-url: "https://registry.npmjs.org"
 
-      - name: Build
+      - name: Get version from tag
+        id: version
         run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION=$(node -p "require('./apps/cli/package.json').version")
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION"
+
+      - name: Verify version matches package.json
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./apps/cli/package.json').version")
+          TAG_VERSION="${{ steps.version.outputs.version }}"
+
+          if [[ "$PACKAGE_VERSION" != "$TAG_VERSION" ]]; then
+            echo "❌ Version mismatch!"
+            echo "   Tag version: $TAG_VERSION"
+            echo "   Package version: $PACKAGE_VERSION"
+            exit 1
+          fi
+          echo "✅ Version verified: $PACKAGE_VERSION"
+
+      - name: Build packages
+        run: |
+          echo "📦 Building packages..."
           pnpm --filter @pcu/utils build
           pnpm --filter @pcu/core build
           pnpm build
 
-      - name: Check for changesets or version updates
-        id: check-changes
+      - name: Run tests
+        run: pnpm test
+
+      - name: Publish to NPM
+        if: ${{ github.event.inputs.dry_run != 'true' }}
         run: |
-          # Check for changeset files (for new changesets)
-          if [ -n "$(ls .changeset/*.md 2>/dev/null | grep -v README.md | head -1)" ]; then
-            echo "has-changesets=true" >> $GITHUB_OUTPUT
-            echo "should-publish=false" >> $GITHUB_OUTPUT
-          else
-            echo "has-changesets=false" >> $GITHUB_OUTPUT
-            # Check if local version is newer than NPM published version
-            LOCAL_VERSION=$(node -p "require('./apps/cli/package.json').version")
-            NPM_VERSION=$(npm view pcu@latest version 2>/dev/null || echo "0.0.0")
-            echo "Local version: $LOCAL_VERSION"
-            echo "NPM version: $NPM_VERSION"
-
-            if [ "$LOCAL_VERSION" != "$NPM_VERSION" ]; then
-              echo "should-publish=true" >> $GITHUB_OUTPUT
-              echo "Version mismatch detected - should publish"
-            else
-              echo "should-publish=false" >> $GITHUB_OUTPUT
-              echo "Versions match - no publishing needed"
-            fi
-          fi
-
-      - name: Create Release Pull Request
-        if: steps.check-changes.outputs.has-changesets == 'true'
-        id: changesets-pr
-        uses: changesets/action@v1
-        with:
-          commit: "chore: release CLI package"
-          title: "chore: release CLI package"
-          setupGitUser: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish CLI packages
-        if: steps.check-changes.outputs.should-publish == 'true'
-        id: publish
-        run: |
-          echo "🚀 Publishing CLI packages..."
+          echo "🚀 Publishing to NPM..."
           pnpm release
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: No changes to publish
-        if: steps.check-changes.outputs.has-changesets == 'false' && steps.check-changes.outputs.should-publish == 'false'
+      - name: Dry run publish
+        if: ${{ github.event.inputs.dry_run == 'true' }}
         run: |
-          echo "ℹ️ No changesets or version updates found"
-          echo "📝 To publish a new version, create a changeset with: pnpm changeset"
+          echo "🧪 Dry run - skipping actual publish"
+          node scripts/publish-dual.cjs --dry-run
 
-      - name: Get published version and changelog
-        if: steps.publish.conclusion == 'success'
-        id: version
+      - name: Extract changelog
+        id: changelog
         run: |
-          VERSION=$(node -p "require('./apps/cli/package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION="${{ steps.version.outputs.version }}"
 
           # Extract changelog for this version
-          CHANGELOG=$(awk "/^## ${VERSION}/,/^## [0-9]/" apps/cli/CHANGELOG.md | head -n -1)
+          CHANGELOG=$(awk "/^## ${VERSION}/,/^## [0-9]/" apps/cli/CHANGELOG.md | head -n -1 || echo "")
+
           if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="See [CHANGELOG.md](https://github.com/houko/pnpm-catalog-updates/blob/main/apps/cli/CHANGELOG.md) for details."
+            CHANGELOG="Release v${VERSION}
+
+See [CHANGELOG.md](https://github.com/houko/pnpm-catalog-updates/blob/main/apps/cli/CHANGELOG.md) for details."
           fi
 
+          # Save to file for release body
           echo "$CHANGELOG" > /tmp/changelog.md
+          echo "✅ Changelog extracted"
 
       - name: Create GitHub Release
-        if: steps.publish.conclusion == 'success'
+        if: ${{ github.event.inputs.dry_run != 'true' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: pcu@${{ steps.version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
           body_path: /tmp/changelog.md
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Packages:** pcu, pnpm-catalog-updates" >> $GITHUB_STEP_SUMMARY
+          echo "- **NPM:** https://www.npmjs.com/package/pcu" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "⚠️ **This was a dry run - no packages were published**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Published successfully!**" >> $GITHUB_STEP_SUMMARY
+          fi

@@ -720,15 +720,15 @@ ${t('cli.help.tipLabel')} ${t('cli.help.tipContent', { locale: I18n.getLocale() 
       )
     )
 
-  // Self-update command
+  // Upgrade command (self-update)
   program
-    .command('self-update')
+    .command('upgrade')
     .description(t('cli.description.selfUpdate'))
     .action(
       createCommandAction(
         serviceFactory,
         {
-          name: 'self-update',
+          name: 'upgrade',
           needsServices: false,
         },
         async ({ globalOptions }) => {

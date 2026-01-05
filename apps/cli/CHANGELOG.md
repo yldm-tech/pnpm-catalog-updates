@@ -1,5 +1,12 @@
 # pcu
 
+## Unreleased
+
+### Patch Changes
+
+- refactor: Rename `self-update` command to `upgrade`
+  - Simpler and more intuitive command name
+
 ## 1.1.4 (2026-01-05)
 
 ### Patch Changes

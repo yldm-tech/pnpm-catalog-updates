@@ -71,7 +71,7 @@ export class VersionChecker {
 
   /**
    * Display update notification (no auto-update for security reasons)
-   * Users must explicitly run `pcu self-update` to update
+   * Users must explicitly run `pcu upgrade` to update
    */
   static displayUpdateNotification(versionResult: VersionCheckResult): void {
     if (!versionResult.shouldPrompt) {
@@ -86,7 +86,7 @@ export class VersionChecker {
         `Current version: ${versionResult.currentVersion} → Latest: ${versionResult.latestVersion}`
       )
     )
-    logger.info(chalk.gray('Run `pcu self-update` to update to the latest version.'))
+    logger.info(chalk.gray('Run `pcu upgrade` to update to the latest version.'))
     logger.info(chalk.gray('Or update manually: npm install -g pcu@latest'))
     logger.info('')
   }

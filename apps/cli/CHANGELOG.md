@@ -1,5 +1,12 @@
 # pcu
 
+## Unreleased
+
+### Patch Changes
+
+- fix: Copy packageSuggestions.json to dist during build
+  - Resolves "Failed to load package suggestions file" warning
+
 ## 1.1.3 (2026-01-05)
 
 ### Patch Changes

@@ -46,8 +46,8 @@
     "changeset": "changeset",
     "version": "changeset version",
     "release": "node scripts/publish-dual.cjs",
-    "release:prepare": "node scripts/release-prepare.cjs",
-    "release:tag": "node scripts/release-tag.cjs"
+    "bump": "node scripts/release-prepare.cjs",
+    "tag": "node scripts/release-tag.cjs"
   },
   "dependencies": {
     "pcu": "workspace:*"

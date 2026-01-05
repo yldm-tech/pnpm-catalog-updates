@@ -1,5 +1,13 @@
 # pcu
 
+## 1.1.3 (2026-01-05)
+
+### Patch Changes
+
+- fix: Remove workspace protocol dependencies from published package
+  - Internal packages (@pcu/core, @pcu/utils) are bundled by tsup
+  - Fixes "EUNSUPPORTEDPROTOCOL workspace:" error during npm install
+
 ## 1.1.0 (2025-01-05)
 
 ### Minor Changes

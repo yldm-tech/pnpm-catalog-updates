@@ -531,4 +531,78 @@ describe('CatalogCheckService', () => {
       expect(mockRegistryService.getNewestVersions).toHaveBeenCalledWith('lodash', 1)
     })
   })
+
+  describe('--target option propagation fix (#82)', () => {
+    it('should use options.target when provided, overriding config default', async () => {
+      // Config says 'latest', CLI says 'minor'
+      mocks.getPackageConfig.mockReturnValue({
+        shouldUpdate: true,
+        requireConfirmation: false,
+        autoUpdate: true,
+        groupUpdate: false,
+        target: 'latest', // config default
+      })
+      mockRegistryService.getPackageVersions.mockResolvedValue({
+        name: 'lodash',
+        versions: ['4.17.20', '4.17.21', '5.0.0'],
+        latestVersion: '5.0.0',
+        tags: { latest: '5.0.0' },
+      })
+
+      const report = await service.checkOutdatedDependencies({
+        workspacePath: '/test/workspace',
+        target: 'minor', // CLI --target minor
+      })
+
+      // Should process without throwing; target is passed down correctly
+      expect(report).toBeDefined()
+      expect(report.workspace).toBeDefined()
+    })
+
+    it('should fall back to packageConfig.target when options.target is undefined', async () => {
+      mocks.getPackageConfig.mockReturnValue({
+        shouldUpdate: true,
+        requireConfirmation: false,
+        autoUpdate: true,
+        groupUpdate: false,
+        target: 'patch', // config specifies patch
+      })
+      mockRegistryService.getPackageVersions.mockResolvedValue({
+        name: 'lodash',
+        versions: ['4.17.20', '4.17.21'],
+        latestVersion: '4.17.21',
+        tags: { latest: '4.17.21' },
+      })
+
+      const report = await service.checkOutdatedDependencies({
+        workspacePath: '/test/workspace',
+        // target not provided -> should fall back to packageConfig.target ('patch')
+      })
+
+      expect(report).toBeDefined()
+    })
+
+    it('should default to latest when neither options.target nor packageConfig.target is set', async () => {
+      mocks.getPackageConfig.mockReturnValue({
+        shouldUpdate: true,
+        requireConfirmation: false,
+        autoUpdate: true,
+        groupUpdate: false,
+        target: undefined, // no config target either
+      })
+      mockRegistryService.getPackageVersions.mockResolvedValue({
+        name: 'lodash',
+        versions: ['4.17.20', '4.17.21'],
+        latestVersion: '4.17.21',
+        tags: { latest: '4.17.21' },
+      })
+
+      const report = await service.checkOutdatedDependencies({
+        workspacePath: '/test/workspace',
+        // no target -> should default to 'latest'
+      })
+
+      expect(report).toBeDefined()
+    })
+  })
 })

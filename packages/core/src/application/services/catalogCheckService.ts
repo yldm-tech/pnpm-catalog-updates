@@ -268,7 +268,7 @@ export class CatalogCheckService {
     options: CheckOptions
   ): Promise<OutdatedDependencyInfo | null> {
     const packageConfig = ConfigLoader.getPackageConfig(packageName, config)
-    const effectiveTarget = packageConfig.target as UpdateTarget
+    const effectiveTarget = (options.target || packageConfig.target || 'latest') as UpdateTarget
     // PERF-003: Determine skipSecurityCheck once and pass to checkPackageUpdate
     const skipSecurityCheck = options.noSecurity || config.security?.enableCheck === false
 

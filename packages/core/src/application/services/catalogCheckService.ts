@@ -78,8 +78,16 @@ export class CatalogCheckService {
   async checkOutdatedDependencies(options: CheckOptions = {}): Promise<OutdatedReport> {
     const workspacePath = WorkspacePath.fromString(options.workspacePath || process.cwd())
 
-    // Load configuration
+    // Load configuration and merge CLI options into config defaults
+    // This ensures --target and other CLI options are passed to the filtering logic
     const config = await ConfigLoader.loadConfig(workspacePath.toString())
+    const configWithOptions: PackageFilterConfig = {
+      ...config,
+      defaults: {
+        ...config.defaults,
+        ...options,
+      },
+    }
 
     // Load workspace (getByPath throws WorkspaceNotFoundError if not found)
     const workspace = await this.workspaceRepository.getByPath(workspacePath)
@@ -101,7 +109,10 @@ export class CatalogCheckService {
     }
 
     // Get filtered packages from all catalogs
-    const filteredPackagesByCatalog = this.getFilteredPackagesFromCatalogs(catalogsToCheck, config)
+    const filteredPackagesByCatalog = this.getFilteredPackagesFromCatalogs(
+      catalogsToCheck,
+      configWithOptions
+    )
 
     // Calculate total packages across all catalogs
     let totalPackages = 0

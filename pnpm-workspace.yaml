@@ -18,7 +18,7 @@ catalog:
   fast-glob: ^3.3.3
   flexsearch: 0.8.212
   framer-motion: 12.23.26
-  glob: 11.1.0
+  glob: ^11.0.0 || ^10.5.0
   semver: 7.7.3
   gray-matter: ^4.0.3
   husky: ^9.1.7
@@ -55,7 +55,7 @@ catalog:
   "@types/mdx": ^2.0.13
   zod: 3.25.76
   tsup: 8.5.1
-  vitest: ^4.0.16
+  vitest: ^4.0.18
   "@types/react-highlight-words": 0.20.1
   acorn: ^8.15.0
   unist-util-filter: ^5.0.1

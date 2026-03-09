@@ -376,7 +376,8 @@ export function createPcuUtilsMock(controls?: MockControls): Record<string, unkn
       try {
         new URL(url)
         return true
-      } catch {
+      } catch (error) {
+        console.error(error)
         return false
       }
     }),

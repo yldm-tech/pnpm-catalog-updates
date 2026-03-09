@@ -323,6 +323,33 @@ describe('CatalogCheckService', () => {
       expect(mockRegistryService.getPackageVersions).toHaveBeenCalledWith('lodash')
     })
 
+    it('should throw error when invalid version is encountered', async () => {
+      mockRegistryService.getPackageVersions = vi.fn().mockResolvedValue({
+        name: 'lodash',
+        versions: ['1.0.0', 'invalid-version-xyz'],
+        tags: { latest: '1.0.0' },
+      })
+
+      const currentRange = {
+        getMinVersion: vi.fn().mockReturnValue({
+          toString: () => '1.0.0',
+          isPrerelease: () => false,
+          getDifferenceType: vi.fn().mockReturnValue('minor'),
+        }),
+      }
+
+      await expect(
+        (service as any).checkPackageUpdate(
+          'lodash',
+          currentRange as unknown as Parameters<typeof service.checkPackageUpdate>[1],
+          'minor',
+          false
+        )
+      ).resolves.toBeNull()
+
+      expect(mocks.handlePackageQueryFailure).toHaveBeenCalled()
+    })
+
     it('should return null when no update available', async () => {
       mockRegistryService.getPackageVersions.mockResolvedValue({
         name: 'lodash',

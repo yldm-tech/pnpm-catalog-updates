@@ -2,6 +2,7 @@
  * Workspace Service Tests
  */
 
+import { WorkspaceNotFoundError } from '@pcu/utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Catalog } from '../../../domain/entities/catalog.js'
 import type { CatalogCollection } from '../../../domain/entities/catalogCollection.js'
@@ -304,12 +305,10 @@ describe('WorkspaceService', () => {
       expect(result).toBe(false)
     })
 
-    it('should return false when workspace discovery fails', async () => {
+    it('should throw when workspace discovery fails', async () => {
       mockWorkspaceRepository.discoverWorkspace = vi.fn().mockResolvedValue(null)
 
-      const result = await service.usesCatalogs('/invalid/path')
-
-      expect(result).toBe(false)
+      await expect(service.usesCatalogs('/invalid/path')).rejects.toThrow(WorkspaceNotFoundError)
     })
   })
 

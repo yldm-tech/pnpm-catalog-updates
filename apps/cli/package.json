@@ -81,6 +81,8 @@
     "url": "https://github.com/houko/pnpm-catalog-updates.git",
     "directory": "apps/cli"
   },
-  "peerDependencies": {},
+  "peerDependencies": {
+    "pnpm": ">=9"
+  },
   "optionalDependencies": {}
 }

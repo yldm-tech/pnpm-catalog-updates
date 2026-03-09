@@ -452,8 +452,9 @@ export class CatalogCheckService {
         }
 
         return false
-      } catch {
-        return false
+      } catch (error) {
+        logger.error(String(error))
+        throw error
       }
     })
 

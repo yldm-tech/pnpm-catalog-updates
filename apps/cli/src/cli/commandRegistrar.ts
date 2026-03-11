@@ -61,6 +61,7 @@ export interface GlobalOptions {
   workspace?: string
   verbose?: boolean
   noColor?: boolean
+  ci?: boolean
 }
 
 /**
@@ -235,7 +236,10 @@ function createCommandAction<TOptions>(
 
       // Handle interactive mode if collector is provided
       if (config.interactiveCollector) {
-        const isInteractive = (options as Record<string, unknown>).interactive === true
+        const isCiMode = (globalOptions as Record<string, unknown>).ci === true
+        const isInteractive = isCiMode
+          ? false
+          : (options as Record<string, unknown>).interactive === true
         const noMeaningfulOptions = !hasProvidedOptions(
           options as Record<string, unknown>,
           command,
@@ -277,6 +281,21 @@ export function registerCommands(
   serviceFactory: LazyServiceFactory,
   packageJson: { version: string }
 ): void {
+  // Global CI mode option - enables non-interactive mode with sensible defaults
+  program
+    .option(
+      '--ci',
+      'Enable CI mode for non-interactive execution. Skips all prompts and uses sensible defaults.',
+      false
+    )
+    .hook('preAction', (thisCommand) => {
+      const opts = thisCommand.opts()
+      if (opts.ci) {
+        // Force no color in CI mode for better compatibility
+        opts.noColor = true
+      }
+    })
+
   // Check command
   program
     .command('check')

@@ -492,6 +492,72 @@ PCU_TIMEOUT=120000            # 2-minute timeout
 PCU_RETRIES=3                 # Network request retry count
 PCU_CONCURRENCY=5             # Concurrent request limit
 ```
+### CI Mode Flag
+
+PCU includes a dedicated `--ci` flag for seamless integration with CI/CD pipelines:
+
+```bash
+# Basic usage with CI mode
+pcu --ci check --format json
+
+# Update command with CI mode (non-interactive)
+pcu --ci update --target minor --dry-run
+
+# Security scan in CI mode
+pcu --ci security --severity high --format json
+```
+
+**Key behaviors when `--ci` flag is enabled:**
+
+1. **Non-interactive execution**: All prompts are skipped automatically
+2. **Sensible defaults**: Uses optimal defaults for CI environments
+3. **No color output**: Automatically disables colored output for better log compatibility
+4. **JSON-friendly**: Works well with `--format json` for programmatic parsing
+
+**Example GitHub Actions workflow using `--ci` flag:**
+
+```yaml
+name: PCU CI/CD Pipeline
+on: [push, pull_request]
+
+jobs:
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+      
+      - name: Install PCU
+        run: pnpm add -g pnpm-catalog-updates
+      
+      - name: Check dependencies (CI mode)
+        run: pcu --ci check --format json > updates.json
+      
+      - name: Security scan (CI mode)
+        run: pcu --ci security --severity high --format json > security.json
+      
+      - name: Process results
+        run: |
+          if [ -s updates.json ]; then
+            echo "Updates available"
+            # Process JSON output programmatically
+            cat updates.json | jq '.'
+          fi
+```
+
+**Comparison: With vs Without CI Mode**
+
+| Scenario | Without `--ci` | With `--ci` |
+|----------|----------------|-------------|
+| Missing options | Prompts user interactively | Uses sensible defaults |
+| Output format | Colored tables by default | Plain text, no colors |
+| Error handling | Interactive error messages | Exit codes for automation |
+| Progress display | Animated progress bars | Minimal progress indicators |
+
 
 ### Security Considerations
 

@@ -277,12 +277,8 @@ export class WorkspaceService {
    * Check if workspace uses catalogs
    */
   async usesCatalogs(workspacePath?: string): Promise<boolean> {
-    try {
-      const workspace = await this.discoverWorkspace(workspacePath)
-      return !workspace.getCatalogs().isEmpty()
-    } catch (error) {
-      throw error
-    }
+    const workspace = await this.discoverWorkspace(workspacePath)
+    return !workspace.getCatalogs().isEmpty()
   }
 
   /**

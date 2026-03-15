@@ -37,8 +37,11 @@ function updateChangelog(newVersion) {
   const changelog = fs.readFileSync(CHANGELOG_PATH, 'utf8')
   const today = new Date().toISOString().split('T')[0]
 
-  // Replace "## Unreleased" with the new version
-  const updatedChangelog = changelog.replace(/## Unreleased/, `## ${newVersion} (${today})`)
+  // Keep an Unreleased section at the top and insert the released version below it.
+  const updatedChangelog = changelog.replace(
+    /^## Unreleased$/m,
+    `## Unreleased\n\n## ${newVersion} (${today})`
+  )
 
   if (updatedChangelog === changelog) {
     console.log('⚠️  No "## Unreleased" section found in CHANGELOG.md')

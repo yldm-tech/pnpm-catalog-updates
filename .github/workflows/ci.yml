@@ -102,10 +102,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.26.1
-          package_json_file: apps/example/package.json
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.26.1 --activate
+          pnpm --version
 
       - name: Get pnpm store directory
         shell: bash

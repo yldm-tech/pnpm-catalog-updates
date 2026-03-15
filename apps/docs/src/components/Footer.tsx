@@ -150,7 +150,7 @@ function SmallPrint() {
         &copy; {t('copyright', { year: new Date().getFullYear() })}
       </p>
       <div className="flex gap-4">
-        <SocialLink href="https://github.com/houko/pnpm-catalog-updates" icon={GitHubIcon}>
+        <SocialLink href="https://github.com/yldm-tech/pnpm-catalog-updates" icon={GitHubIcon}>
           {t('followGitHub')}
         </SocialLink>
         <SocialLink

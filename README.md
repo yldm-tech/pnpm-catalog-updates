@@ -3,10 +3,10 @@
 A powerful CLI tool to check and update pnpm workspace catalog dependencies, inspired by [npm-check-updates](https://github.com/raineorshine/npm-check-updates).
 
 [![npm version](https://img.shields.io/npm/v/pcu.svg)](https://www.npmjs.com/package/pcu)
-[![npm downloads](https://img.shields.io/npm/dm/pcu.svg)](https://www.npmjs.com/package/pcu)
+[![npm weekly downloads](https://img.shields.io/npm/dw/pcu.svg)](https://www.npmjs.com/package/pcu)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)](https://nodejs.org/)
-[![CI](https://img.shields.io/github/actions/workflow/status/houko/pnpm-catalog-updates/ci.yml?label=CI&logo=github)](https://github.com/houko/pnpm-catalog-updates/actions)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.13.0-brightgreen.svg)](https://nodejs.org/)
+[![CI](https://img.shields.io/github/actions/workflow/status/yldm-tech/pnpm-catalog-updates/ci.yml?label=CI&logo=github)](https://github.com/yldm-tech/pnpm-catalog-updates/actions)
 
 ## Documentation
 
@@ -78,8 +78,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Support
 
 - [Documentation](https://pcu-cli.dev/en)
-- [Issue Tracker](https://github.com/houko/pnpm-catalog-updates/issues)
-- [Discussions](https://github.com/houko/pnpm-catalog-updates/discussions)
+- [Issue Tracker](https://github.com/yldm-tech/pnpm-catalog-updates/issues)
+- [Discussions](https://github.com/yldm-tech/pnpm-catalog-updates/discussions)
 
 ---
 

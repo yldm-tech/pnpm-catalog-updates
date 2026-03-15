@@ -12,7 +12,9 @@ function App() {
   // Example using axios from catalog
   const fetchData = React.useCallback(async () => {
     try {
-      const response = await axios.get('https://api.github.com/repos/houko/pnpm-catalog-updates')
+      const response = await axios.get(
+        'https://api.github.com/repos/yldm-tech/pnpm-catalog-updates'
+      )
       setData(response.data)
     } catch (error) {
       console.error('Failed to fetch data:', error)

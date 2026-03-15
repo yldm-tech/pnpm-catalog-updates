@@ -78,7 +78,7 @@
   "homepage": "https://pcu-cli.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/houko/pnpm-catalog-updates.git",
+    "url": "https://github.com/yldm-tech/pnpm-catalog-updates.git",
     "directory": "apps/cli"
   },
   "peerDependencies": {},

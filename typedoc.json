@@ -77,5 +77,5 @@
   "theme": "default",
   "githubPages": false,
   "gitRevision": "main",
-  "sourceLinkTemplate": "https://github.com/houko/pnpm-catalog-updates/blob/{gitRevision}/{path}#L{line}"
+  "sourceLinkTemplate": "https://github.com/yldm-tech/pnpm-catalog-updates/blob/{gitRevision}/{path}#L{line}"
 }

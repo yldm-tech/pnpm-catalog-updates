@@ -3215,6 +3215,16 @@ export const searchData = {
           [
             "Environment Variable Configuration",
             "Configure these environment variables across all CI/CD platforms to optimize PCU behavior:",
+            "CI Mode Flag",
+            "PCU includes a dedicated --ci flag for seamless integration with CI/CD pipelines:",
+            "Key behaviors when --ci flag is enabled:",
+            "Non-interactive execution: All prompts are skipped automatically",
+            "Sensible defaults: Uses optimal defaults for CI environments",
+            "No color output: Automatically disables colored output for better log compatibility",
+            "JSON-friendly: Works well with --format json for programmatic parsing",
+            "Example GitHub Actions workflow using --ci flag:",
+            "Comparison: With vs Without CI Mode",
+            "| Scenario | Without --ci | With --ci |\n|----------|----------------|-------------|\n| Missing options | Prompts user interactively | Uses sensible defaults |\n| Output format | Colored tables by default | Plain text, no colors |\n| Error handling | Interactive error messages | Exit codes for automation |\n| Progress display | Animated progress bars | Minimal progress indicators |",
             "Security Considerations",
             "Access Token Management",
             "Ensure secure management of access tokens in CI/CD environments:",
@@ -12087,77 +12097,87 @@ export const searchData = {
       "url": "/cicd",
       "sections": [
         [
-          "CI/CD統合",
+          "CI/CD Integration",
           null,
           [
-            "PCUを継続的インテグレーションおよびデプロイメントパイプラインに統合します。PCUは既存のCI/CDワークフローにシームレスに統合でき、GitHub Actions、GitLab CI、Jenkins、Azure DevOpsなどのプラットフォームをサポートします。"
+            "Integrate PCU into your continuous integration and deployment pipelines. PCU can seamlessly integrate with existing CI/CD workflows, supporting GitHub Actions, GitLab CI, Jenkins, Azure DevOps, and other platforms. "
           ]
         ],
         [
-          "GitHub Actions統合",
-          "git-hub-actions",
+          "GitHub Actions Integration",
+          "git-hub-actions-integration",
           [
-            "基本的な依存関係チェックワークフロー"
+            "Basic Dependency Check Workflow"
           ]
         ],
         [
-          "GitLab CI統合",
-          "git-lab-ci",
+          "GitLab CI Integration",
+          "git-lab-ci-integration",
           [
-            "PCU依存関係管理のためのGitLab CIパイプライン："
+            "GitLab CI pipeline for PCU dependency management:"
           ]
         ],
         [
-          "Jenkinsパイプライン統合",
-          "jenkins",
+          "Jenkins Pipeline Integration",
+          "jenkins-pipeline-integration",
           [
-            "エンタープライズ級依存関係管理のためのJenkinsパイプライン："
+            "Enterprise-grade Jenkins pipeline for dependency management:"
           ]
         ],
         [
-          "Azure DevOpsパイプライン",
-          "azure-dev-ops",
+          "Azure DevOps Pipeline",
+          "azure-dev-ops-pipeline",
           [
-            "PCU統合のためのAzure DevOpsパイプライン："
+            "Azure DevOps pipeline for PCU integration:"
           ]
         ],
         [
-          "汎用CI/CDベストプラクティス",
-          "ci-cd",
+          "General CI/CD Best Practices",
+          "general-ci-cd-best-practices",
           [
-            "環境変数の設定",
-            "すべてのCI/CDプラットフォームでPCUの動作を最適化するために、これらの環境変数を設定してください：",
-            "セキュリティ考慮事項",
-            "アクセストークン管理",
-            "CI/CD環境でアクセストークンを安全に管理してください：",
-            "ブランチ保護戦略",
-            "メインブランチへの直接プッシュを防ぐためのブランチ保護設定：",
-            "プルリクエストレビューの必須化",
-            "ステータスチェック通過の必須化",
-            "保護されたブランチへのプッシュ制限",
-            "署名済みコミットの必須化",
-            "トラブルシューティング",
-            "一般的なCI/CDの問題",
-            "権限エラー",
-            "キャッシュの問題",
-            "ネットワークタイムアウト",
-            "監視とレポート",
-            "ダッシュボードの作成",
-            "CI/CDプラットフォームのネイティブ機能を使用して依存関係管理ダッシュボードを作成：",
-            "GitHub Actions: Action insightsと依存関係グラフを使用",
-            "GitLab CI: Security Dashboardと依存関係スキャンを活用",
-            "Jenkins: HTML Publisherプラグインを設定",
-            "Azure DevOps: DashboardsとAnalyticsを使用",
-            "通知設定",
-            "チームに情報を提供するための適切な通知を設定："
+            "Environment Variable Configuration",
+            "Configure these environment variables across all CI/CD platforms to optimize PCU behavior:",
+            "CI Mode Flag",
+            "PCU includes a dedicated --ci flag for seamless integration with CI/CD pipelines:",
+            "Key behaviors when --ci flag is enabled:",
+            "Non-interactive execution: All prompts are skipped automatically",
+            "Sensible defaults: Uses optimal defaults for CI environments",
+            "No color output: Automatically disables colored output for better log compatibility",
+            "JSON-friendly: Works well with --format json for programmatic parsing",
+            "Example GitHub Actions workflow using --ci flag:",
+            "Comparison: With vs Without CI Mode",
+            "| Scenario | Without --ci | With --ci |\n|----------|----------------|-------------|\n| Missing options | Prompts user interactively | Uses sensible defaults |\n| Output format | Colored tables by default | Plain text, no colors |\n| Error handling | Interactive error messages | Exit codes for automation |\n| Progress display | Animated progress bars | Minimal progress indicators |",
+            "Security Considerations",
+            "Access Token Management",
+            "Ensure secure management of access tokens in CI/CD environments:",
+            "Branch Protection Strategy",
+            "Configure branch protection to prevent direct pushes to main branch:",
+            "Require pull request reviews",
+            "Require status checks to pass",
+            "Restrict pushes to protected branches",
+            "Require signed commits",
+            "Troubleshooting",
+            "Common CI/CD Issues",
+            "Permission Errors",
+            "Cache Issues",
+            "Network Timeouts",
+            "Monitoring and Reporting",
+            "Creating Dashboards",
+            "Use CI/CD platform native features to create dependency management dashboards:",
+            "GitHub Actions: Use Action insights and dependency graphs",
+            "GitLab CI: Leverage Security Dashboard and dependency scanning",
+            "Jenkins: Configure HTML Publisher plugin",
+            "Azure DevOps: Use Dashboards and Analytics",
+            "Notification Configuration",
+            "Set up appropriate notifications to keep teams informed:"
           ]
         ],
         [
-          "Docker統合",
-          "docker",
+          "Docker Integration",
+          "docker-integration",
           [
-            "コンテナ化されたPCUワークフロー",
-            "これらのCI/CD統合例は、包括的な自動化された依存関係管理ソリューションを提供し、プロジェクトが常に最新で安全な依存関係を維持することを保証します。"
+            "Containerized PCU Workflows",
+            "These CI/CD integration examples provide comprehensive automated dependency management solutions, ensuring your projects stay up-to-date and secure."
           ]
         ]
       ]
@@ -17849,77 +17869,87 @@ export const searchData = {
       "url": "/cicd",
       "sections": [
         [
-          "CI/CD 集成",
+          "CI/CD Integration",
           null,
           [
-            "将 PCU 集成到您的持续集成和部署流水线中。PCU 可以无缝集成到现有的 CI/CD 工作流中，支持GitHub Actions、GitLab CI、Jenkins、Azure DevOps等平台。"
+            "Integrate PCU into your continuous integration and deployment pipelines. PCU can seamlessly integrate with existing CI/CD workflows, supporting GitHub Actions, GitLab CI, Jenkins, Azure DevOps, and other platforms. "
           ]
         ],
         [
-          "GitHub Actions 集成",
-          "git-hub-actions",
+          "GitHub Actions Integration",
+          "git-hub-actions-integration",
           [
-            "基础依赖检查工作流"
+            "Basic Dependency Check Workflow"
           ]
         ],
         [
-          "GitLab CI 集成",
-          "git-lab-ci",
+          "GitLab CI Integration",
+          "git-lab-ci-integration",
           [
-            "GitLab CI流水线用于PCU依赖管理："
+            "GitLab CI pipeline for PCU dependency management:"
           ]
         ],
         [
-          "Jenkins Pipeline 集成",
-          "jenkins-pipeline",
+          "Jenkins Pipeline Integration",
+          "jenkins-pipeline-integration",
           [
-            "企业级依赖管理的Jenkins流水线："
+            "Enterprise-grade Jenkins pipeline for dependency management:"
           ]
         ],
         [
           "Azure DevOps Pipeline",
           "azure-dev-ops-pipeline",
           [
-            "Azure DevOps流水线用于PCU集成："
+            "Azure DevOps pipeline for PCU integration:"
           ]
         ],
         [
-          "通用CI/CD最佳实践",
-          "ci-cd",
+          "General CI/CD Best Practices",
+          "general-ci-cd-best-practices",
           [
-            "环境变量配置",
-            "在所有CI/CD平台中配置这些环境变量以优化PCU行为：",
-            "安全考虑",
-            "访问令牌管理",
-            "确保在CI/CD环境中安全管理访问令牌：",
-            "分支保护策略",
-            "配置分支保护以防止直接推送到主分支：",
-            "要求拉取请求审查",
-            "要求状态检查通过",
-            "限制推送到受保护分支",
-            "要求签名提交",
-            "故障排除",
-            "常见CI/CD问题",
-            "权限错误",
-            "缓存问题",
-            "网络超时",
-            "监控和报告",
-            "创建仪表板",
-            "使用CI/CD平台的原生功能创建依赖管理仪表板：",
-            "GitHub Actions: 使用Action insights和依赖图",
-            "GitLab CI: 利用Security Dashboard和依赖扫描",
-            "Jenkins: 配置HTML Publisher插件",
-            "Azure DevOps: 使用Dashboards和Analytics",
-            "通知配置",
-            "设置适当的通知以保持团队知情："
+            "Environment Variable Configuration",
+            "Configure these environment variables across all CI/CD platforms to optimize PCU behavior:",
+            "CI Mode Flag",
+            "PCU includes a dedicated --ci flag for seamless integration with CI/CD pipelines:",
+            "Key behaviors when --ci flag is enabled:",
+            "Non-interactive execution: All prompts are skipped automatically",
+            "Sensible defaults: Uses optimal defaults for CI environments",
+            "No color output: Automatically disables colored output for better log compatibility",
+            "JSON-friendly: Works well with --format json for programmatic parsing",
+            "Example GitHub Actions workflow using --ci flag:",
+            "Comparison: With vs Without CI Mode",
+            "| Scenario | Without --ci | With --ci |\n|----------|----------------|-------------|\n| Missing options | Prompts user interactively | Uses sensible defaults |\n| Output format | Colored tables by default | Plain text, no colors |\n| Error handling | Interactive error messages | Exit codes for automation |\n| Progress display | Animated progress bars | Minimal progress indicators |",
+            "Security Considerations",
+            "Access Token Management",
+            "Ensure secure management of access tokens in CI/CD environments:",
+            "Branch Protection Strategy",
+            "Configure branch protection to prevent direct pushes to main branch:",
+            "Require pull request reviews",
+            "Require status checks to pass",
+            "Restrict pushes to protected branches",
+            "Require signed commits",
+            "Troubleshooting",
+            "Common CI/CD Issues",
+            "Permission Errors",
+            "Cache Issues",
+            "Network Timeouts",
+            "Monitoring and Reporting",
+            "Creating Dashboards",
+            "Use CI/CD platform native features to create dependency management dashboards:",
+            "GitHub Actions: Use Action insights and dependency graphs",
+            "GitLab CI: Leverage Security Dashboard and dependency scanning",
+            "Jenkins: Configure HTML Publisher plugin",
+            "Azure DevOps: Use Dashboards and Analytics",
+            "Notification Configuration",
+            "Set up appropriate notifications to keep teams informed:"
           ]
         ],
         [
-          "Docker集成",
-          "docker",
+          "Docker Integration",
+          "docker-integration",
           [
-            "容器化PCU工作流",
-            "这些CI/CD集成示例提供了全面的自动化依赖管理解决方案，确保您的项目始终保持最新和安全的依赖。"
+            "Containerized PCU Workflows",
+            "These CI/CD integration examples provide comprehensive automated dependency management solutions, ensuring your projects stay up-to-date and secure."
           ]
         ]
       ]

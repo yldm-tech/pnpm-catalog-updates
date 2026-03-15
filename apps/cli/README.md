@@ -1,9 +1,9 @@
 # pcu
 
 [![npm version](https://img.shields.io/npm/v/pcu.svg)](https://www.npmjs.com/package/pcu)
-[![npm downloads](https://img.shields.io/npm/dm/pcu.svg)](https://www.npmjs.com/package/pcu)
+[![npm weekly downloads](https://img.shields.io/npm/dw/pcu.svg)](https://www.npmjs.com/package/pcu)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)](https://nodejs.org/)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.13.0-brightgreen.svg)](https://nodejs.org/)
 
 A powerful CLI tool for managing pnpm workspace catalog dependencies with ease.
 
@@ -102,8 +102,8 @@ pcu analyze react 19.0.0
 ## Links
 
 - [Complete Documentation](https://pcu-cli.dev/en)
-- [Report Issues](https://github.com/houko/pnpm-catalog-updates/issues)
-- [GitHub Repository](https://github.com/houko/pnpm-catalog-updates)
+- [Report Issues](https://github.com/yldm-tech/pnpm-catalog-updates/issues)
+- [GitHub Repository](https://github.com/yldm-tech/pnpm-catalog-updates)
 
 ## License
 

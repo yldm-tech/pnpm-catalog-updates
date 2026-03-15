@@ -18,10 +18,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/houko/pnpm-catalog-updates.git"
+    "url": "https://github.com/yldm-tech/pnpm-catalog-updates.git"
   },
   "bugs": {
-    "url": "https://github.com/houko/pnpm-catalog-updates/issues"
+    "url": "https://github.com/yldm-tech/pnpm-catalog-updates/issues"
   },
   "homepage": "https://pcu-cli.dev",
   "engines": {

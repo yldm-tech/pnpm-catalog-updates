@@ -16,7 +16,7 @@ document provides guidelines and information about contributing to this project.
 1. **Fork and Clone**
 
    ```bash
-   git clone https://github.com/houko/pnpm-catalog-updates.git
+   git clone https://github.com/yldm-tech/pnpm-catalog-updates.git
    cd pnpm-catalog-updates
    ```
 

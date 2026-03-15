@@ -280,8 +280,8 @@ export class WorkspaceService {
     try {
       const workspace = await this.discoverWorkspace(workspacePath)
       return !workspace.getCatalogs().isEmpty()
-    } catch {
-      return false
+    } catch (error) {
+      throw error
     }
   }
 

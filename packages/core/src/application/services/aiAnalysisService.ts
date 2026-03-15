@@ -201,7 +201,6 @@ export class AIAnalysisService {
         .filter((provider) => provider.available)
         .sort((a, b) => b.priority - a.priority)
     }
-
     return this.detector.getAvailableProviders()
   }
 

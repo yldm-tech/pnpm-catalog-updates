@@ -8,41 +8,42 @@ packages:
 # Default catalog for most common dependencies
 catalog:
   # Core frameworks
-  react: ^18.2.0
-  react-dom: ^18.2.0
-  vue: ^3.4.0
+  react: ^19.2.4
+  react-dom: ^19.2.4
+  vue: ^3.5.30
 
   # TypeScript ecosystem
-  typescript: ^5.3.0
-  "@types/node": ^20.11.0
-  "@types/react": ^18.2.0
-  "@types/react-dom": ^18.2.0
+  typescript: ^5.9.3
+  "@types/node": ^20.19.37
+  "@types/react": ^19.2.14
+  "@types/react-dom": ^19.2.3
 
   # Build tools
-  vite: ^5.1.0
-  webpack: ^5.90.0
-  rollup: ^4.12.0
-  "@vitejs/plugin-react": ^4.2.0
-  "@rollup/plugin-node-resolve": ^15.2.0
-  "@rollup/plugin-typescript": ^11.1.0
-  tsx: ^4.7.0
+  vite: ^8.0.0
+  webpack: ^5.105.4
+  rollup: ^4.59.0
+  "@vitejs/plugin-react": ^6.0.1
+  "@rollup/plugin-node-resolve": ^16.0.3
+  "@rollup/plugin-typescript": ^12.3.0
+  tsx: ^4.21.0
 
   # Testing
-  vitest: ^1.3.0
-  jest: ^29.7.0
-  "@testing-library/react": ^14.2.0
-  "@testing-library/jest-dom": ^6.4.0
+  vitest: ^4.1.0
+  jest: ^30.3.0
+  "@testing-library/dom": ^10.4.1
+  "@testing-library/react": ^16.3.2
+  "@testing-library/jest-dom": ^6.9.1
 
   # Development tools
-  eslint: ^8.56.0
-  prettier: ^3.2.0
+  eslint: ^10.0.3
+  prettier: ^3.8.1
 
   # Utilities
-  lodash: ^4.17.21
-  axios: ^1.6.0
-  chalk: ^5.3.0
-  "@types/cors": ^2.8.17
-  "@types/lodash": ^4.17.20
+  lodash: ^4.17.23
+  axios: ^1.13.6
+  chalk: ^5.6.2
+  "@types/cors": ^2.8.19
+  "@types/lodash": ^4.17.24
 
 # Additional catalogs for different scenarios
 catalogs:
@@ -50,45 +51,45 @@ catalogs:
   react17:
     react: ^17.0.2
     react-dom: ^17.0.2
-    "@types/react": ^17.0.62
+    "@types/react": ^17.0.91
     "@types/react-dom": ^17.0.18
     "@testing-library/react": ^12.1.5
 
   # Latest/bleeding edge versions
   latest:
-    react: ^18.2.0
-    vue: ^3.4.0
-    typescript: ^5.3.0
-    vite: ^5.1.0
-    vitest: ^1.3.0
+    react: ^19.2.4
+    vue: ^3.5.30
+    typescript: ^5.9.3
+    vite: ^8.0.0
+    vitest: ^4.1.0
 
   # Node.js specific versions
   node18:
-    "@types/node": ^18.19.0
+    "@types/node": ^18.19.130
 
   node20:
-    "@types/node": ^20.11.0
+    "@types/node": ^20.19.37
 
   # Development tools catalog
   devtools:
-    eslint: ^8.56.0
-    "@typescript-eslint/eslint-plugin": ^6.21.0
-    "@typescript-eslint/parser": ^6.21.0
-    prettier: ^3.2.0
-    husky: ^9.0.0
-    lint-staged: ^15.2.0
+    eslint: ^10.0.3
+    "@typescript-eslint/eslint-plugin": ^8.57.0
+    "@typescript-eslint/parser": ^8.57.0
+    prettier: ^3.8.1
+    husky: ^9.1.7
+    lint-staged: ^16.4.0
 
   # UI framework specific
   material-ui:
-    "@mui/material": ^5.15.0
-    "@mui/icons-material": ^5.15.0
-    "@emotion/react": ^11.11.0
-    "@emotion/styled": ^11.11.0
+    "@mui/material": ^7.3.9
+    "@mui/icons-material": ^7.3.9
+    "@emotion/react": ^11.14.0
+    "@emotion/styled": ^11.14.1
 
   # Server/API dependencies
   server:
-    express: ^4.18.0
-    fastify: ^4.26.0
-    "@types/express": ^4.17.0
-    cors: ^2.8.5
-    helmet: ^7.1.0
+    express: ^5.2.1
+    fastify: ^5.8.2
+    "@types/express": ^5.0.6
+    cors: ^2.8.6
+    helmet: ^8.1.0

@@ -4,12 +4,13 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "generate:search": "node ./scripts/generate-search-index.mjs",
+    "dev": "pnpm run generate:search && next dev",
+    "build": "pnpm run generate:search && next build",
     "start": "next start",
     "check": "biome check src",
     "check:fix": "biome check --write src",
-    "typecheck": "tsc --project . --noEmit"
+    "typecheck": "pnpm run generate:search && tsc --project . --noEmit"
   },
   "browserslist": "defaults, not ie <= 11",
   "dependencies": {

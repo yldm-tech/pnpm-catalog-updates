@@ -32,8 +32,14 @@
     "@vitejs/plugin-react": "catalog:"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=20.19.0",
     "pnpm": ">=8.15.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "flatted": "3.4.1",
+      "qs": "6.15.0"
+    }
   },
   "repository": {
     "type": "git",

@@ -103,7 +103,7 @@ export class InteractivePrompts {
 
     const answers = await inquirer.prompt([
       {
-        type: 'list',
+        type: 'select',
         name: 'catalog',
         message: StyledText.iconCatalog(t('prompt.selectCatalog')),
         choices,
@@ -128,7 +128,7 @@ export class InteractivePrompts {
 
     const answers = await inquirer.prompt([
       {
-        type: 'list',
+        type: 'select',
         name: 'strategy',
         message: StyledText.iconUpdate(t('prompt.selectUpdateStrategy')),
         choices: strategies,
@@ -168,7 +168,7 @@ export class InteractivePrompts {
   ): Promise<string> {
     const answers = await inquirer.prompt([
       {
-        type: 'list',
+        type: 'select',
         name: 'package',
         message,
         choices: packages.map((pkg) => ({ name: pkg, value: pkg })),
@@ -191,7 +191,7 @@ export class InteractivePrompts {
 
     const answers = await inquirer.prompt([
       {
-        type: 'list',
+        type: 'select',
         name: 'path',
         message: t('prompt.selectWorkspace'),
         choices,
@@ -221,7 +221,7 @@ export class InteractivePrompts {
 
     const answers = await inquirer.prompt([
       {
-        type: 'list',
+        type: 'select',
         name: 'selected',
         message: t('prompt.browsePath', { path: currentPath }),
         choices,
@@ -271,7 +271,7 @@ export class InteractivePrompts {
    */
   async selectTheme(): Promise<string | null> {
     const answers = await inquirer.prompt({
-      type: 'list',
+      type: 'select',
       name: 'theme',
       message: t('prompt.selectTheme'),
       choices: [
@@ -294,7 +294,7 @@ export class InteractivePrompts {
     cliOutput.print(chalk.bold.blue(`\n${t('prompt.configWizard')}\n`))
 
     const themeAnswer = await inquirer.prompt({
-      type: 'list',
+      type: 'select',
       name: 'theme',
       message: t('prompt.selectTheme'),
       choices: [
@@ -321,7 +321,7 @@ export class InteractivePrompts {
     })
 
     const strategyAnswer = await inquirer.prompt({
-      type: 'list',
+      type: 'select',
       name: 'updateStrategy',
       message: t('prompt.defaultStrategy'),
       choices: [
@@ -398,7 +398,7 @@ export class InteractivePrompts {
 
     const answers = await inquirer.prompt([
       {
-        type: 'list',
+        type: 'select',
         name: 'action',
         message: StyledText.iconError(t('prompt.errorMessage', { error })),
         choices: options,
@@ -544,7 +544,7 @@ export class InteractiveCommandBuilder {
   }> {
     const baseCommand = await inquirer.prompt([
       {
-        type: 'list',
+        type: 'select',
         name: 'command',
         message: t('prompt.whatToDo'),
         choices: [
@@ -561,7 +561,7 @@ export class InteractiveCommandBuilder {
     // Common options
     const common = await inquirer.prompt([
       {
-        type: 'list',
+        type: 'select',
         name: 'format',
         message: t('prompt.outputFormat'),
         choices: [

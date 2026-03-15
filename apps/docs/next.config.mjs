@@ -1,23 +1,19 @@
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import nextMDX from '@next/mdx'
 import createNextIntlPlugin from 'next-intl/plugin'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-import { recmaPlugins } from './src/mdx/recma.mjs'
-import { rehypePlugins } from './src/mdx/rehype.mjs'
-import { remarkPlugins } from './src/mdx/remark.mjs'
-import withSearch from './src/mdx/search.mjs'
 
 const withNextIntl = createNextIntlPlugin('./src/i18n.ts')
 
 const withMDX = nextMDX({
   options: {
-    remarkPlugins,
-    rehypePlugins,
-    recmaPlugins,
+    remarkPlugins: ['./src/mdx/plugins/remark-annotations.mjs', 'remark-gfm'],
+    rehypePlugins: [
+      './src/mdx/plugins/rehype-annotations.mjs',
+      './src/mdx/plugins/rehype-parse-code-blocks.mjs',
+      './src/mdx/plugins/rehype-shiki.mjs',
+      './src/mdx/plugins/rehype-slugify.mjs',
+      './src/mdx/plugins/rehype-add-section-exports.mjs',
+    ],
+    recmaPlugins: ['./src/mdx/plugins/recma-annotations.mjs'],
   },
 })
 
@@ -43,4 +39,4 @@ const nextConfig = {
   },
 }
 
-export default withNextIntl(withSearch(withMDX(nextConfig)))
+export default withNextIntl(withMDX(nextConfig))

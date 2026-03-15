@@ -35,6 +35,7 @@
     "rollup": "catalog:",
     "@rollup/plugin-typescript": "catalog:",
     "@rollup/plugin-node-resolve": "catalog:",
+    "tslib": "catalog:",
     "vitest": "catalog:",
     "eslint": "catalog:"
   },

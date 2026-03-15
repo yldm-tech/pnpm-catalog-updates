@@ -97,7 +97,7 @@ jobs:
             CHANGELOG=$(cat <<EOF
           Release v${VERSION}
 
-          See [CHANGELOG.md](https://github.com/houko/pnpm-catalog-updates/blob/main/apps/cli/CHANGELOG.md) for details.
+          See [CHANGELOG.md](https://github.com/yldm-tech/pnpm-catalog-updates/blob/main/apps/cli/CHANGELOG.md) for details.
           EOF
           )
           fi

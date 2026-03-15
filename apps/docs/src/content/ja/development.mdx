@@ -389,12 +389,7 @@ pcu -u --dry-run
 
 ### リリースプロセス
 
-1. **changesetsでバージョンを更新**：
-
-   ```bash
-   pnpm changeset
-   pnpm changeset version
-   ```
+1. **`apps/cli/CHANGELOG.md` の `## Unreleased` にリリースノートを追加**します。
 
 2. **ビルドとテスト**：
 
@@ -404,10 +399,10 @@ pcu -u --dry-run
    pnpm test:e2e
    ```
 
-3. **公開**（メンテナーのみ）：
-   ```bash
-   pnpm publish -r
-   ```
+3. **GitHub Actions の `Release` ワークフローを実行**します（メンテナーのみ）：
+   - `patch`、`minor`、`major`：CLI バージョンを更新し、release 用のコミットとタグを作成し、`pcu` と `pnpm-catalog-updates` を公開し、GitHub Release まで 1 回で実行します
+   - `current`：リポジトリにすでにコミット済みのバージョンをそのまま公開します
+   - `dry_run: true`：公開せずにフローだけ検証します
 
 ## ヘルプの取得
 

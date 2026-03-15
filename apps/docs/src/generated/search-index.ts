@@ -1258,9 +1258,12 @@ export const searchData = {
           [
             "Lokale Tests",
             "Release-Prozess",
-            "Version aktualisieren mit Changesets:",
+            "Release-Notizen vorbereiten in apps/cli/CHANGELOG.md unter ## Unreleased.",
             "Bauen und testen:",
-            "Veröffentlichen (nur Maintainer):"
+            "Den GitHub-Actions-Workflow Release ausführen (nur Maintainer):",
+            "patch, minor, major: erhöhen die CLI-Version, committen die Release-Änderungen, erstellen den Tag, veröffentlichen pcu und pnpm-catalog-updates und erzeugen den GitHub Release in einem Lauf",
+            "current: veröffentlicht die Version, die bereits im Repository committed ist",
+            "dry_run: true: prüft den Ablauf ohne Veröffentlichung"
           ]
         ],
         [
@@ -4288,9 +4291,12 @@ export const searchData = {
           [
             "Local Testing",
             "Release Process",
-            "Update version using changesets:",
+            "Prepare release notes in apps/cli/CHANGELOG.md under ## Unreleased.",
             "Build and test:",
-            "Publish (maintainers only):"
+            "Run the GitHub Actions Release workflow (maintainers only):",
+            "patch, minor, major: bump the CLI version, commit the release changes, create the tag, publish pcu and pnpm-catalog-updates, and create the GitHub Release in one run",
+            "current: publish the version that is already committed in the repository",
+            "dry_run: true: validate the flow without publishing"
           ]
         ],
         [
@@ -7174,9 +7180,12 @@ export const searchData = {
           [
             "Pruebas Locales",
             "Proceso de Lanzamiento",
-            "Actualizar versión usando changesets:",
+            "Preparar las notas de la release en apps/cli/CHANGELOG.md bajo ## Unreleased.",
             "Construir y probar:",
-            "Publicar (solo mantenedores):"
+            "Ejecutar el workflow Release de GitHub Actions (solo mantenedores):",
+            "patch, minor, major: incrementan la versión del CLI, hacen commit de los cambios de release, crean la etiqueta, publican pcu y pnpm-catalog-updates y crean la GitHub Release en una sola ejecución",
+            "current: publica la versión que ya está confirmada en el repositorio",
+            "dry_run: true: valida el flujo sin publicar"
           ]
         ],
         [
@@ -10178,9 +10187,12 @@ export const searchData = {
           [
             "Test Local",
             "Processus de Release",
-            "Mettre à jour la version en utilisant changesets :",
+            "Préparer les notes de release dans apps/cli/CHANGELOG.md sous ## Unreleased.",
             "Construire et tester :",
-            "Publier (mainteneurs uniquement) :"
+            "Exécuter le workflow GitHub Actions Release (mainteneurs uniquement) :",
+            "patch, minor, major : incrémentent la version du CLI, commitent les changements de release, créent le tag, publient pcu et pnpm-catalog-updates, puis créent la GitHub Release dans la même exécution",
+            "current : publie la version déjà commitée dans le dépôt",
+            "dry_run: true : valide le flux sans publier"
           ]
         ],
         [
@@ -13009,9 +13021,12 @@ export const searchData = {
           [
             "ローカルテスト",
             "リリースプロセス",
-            "changesetsでバージョンを更新：",
+            "apps/cli/CHANGELOG.md の ## Unreleased にリリースノートを追加します。",
             "ビルドとテスト：",
-            "公開（メンテナーのみ）："
+            "GitHub Actions の Release ワークフローを実行します（メンテナーのみ）：",
+            "patch、minor、major：CLI バージョンを更新し、release 用のコミットとタグを作成し、pcu と pnpm-catalog-updates を公開し、GitHub Release まで 1 回で実行します",
+            "current：リポジトリにすでにコミット済みのバージョンをそのまま公開します",
+            "dry_run: true：公開せずにフローだけ検証します"
           ]
         ],
         [
@@ -16035,9 +16050,12 @@ export const searchData = {
           [
             "로컬 테스트",
             "릴리스 프로세스",
-            "changeset을 사용하여 버전 업데이트:",
+            "apps/cli/CHANGELOG.md 의 ## Unreleased 아래에 릴리스 노트를 정리합니다.",
             "빌드 및 테스트:",
-            "배포 (관리자만):"
+            "GitHub Actions Release 워크플로를 실행합니다 (관리자만):",
+            "patch, minor, major: CLI 버전을 올리고, 릴리스 변경을 커밋하고, 태그를 만들고, pcu 와 pnpm-catalog-updates 를 배포하고, GitHub Release 까지 한 번에 처리합니다",
+            "current: 저장소에 이미 커밋된 버전을 그대로 배포합니다",
+            "dry_run: true: 실제 배포 없이 흐름만 검증합니다"
           ]
         ],
         [
@@ -18865,9 +18883,12 @@ export const searchData = {
           [
             "本地测试",
             "发布流程",
-            "使用 changesets 更新版本：",
+            "先在 apps/cli/CHANGELOG.md 的 ## Unreleased 下整理发布说明。",
             "构建和测试：",
-            "发布（仅维护者）："
+            "运行 GitHub Actions 的 Release 工作流（仅维护者）：",
+            "patch、minor、major：自动升级 CLI 版本、提交 release 变更、创建 tag、发布 pcu 和 pnpm-catalog-updates，并在同一次运行里创建 GitHub Release",
+            "current：发布仓库里已经提交好的当前版本",
+            "dry_run: true：只验证流程，不实际发布"
           ]
         ],
         [

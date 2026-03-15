@@ -389,12 +389,7 @@ pcu -u --dry-run
 
 ### Release-Prozess
 
-1. **Version aktualisieren** mit Changesets:
-
-   ```bash
-   pnpm changeset
-   pnpm changeset version
-   ```
+1. **Release-Notizen vorbereiten** in `apps/cli/CHANGELOG.md` unter `## Unreleased`.
 
 2. **Bauen und testen**:
 
@@ -404,10 +399,10 @@ pcu -u --dry-run
    pnpm test:e2e
    ```
 
-3. **Veröffentlichen** (nur Maintainer):
-   ```bash
-   pnpm publish -r
-   ```
+3. **Den GitHub-Actions-Workflow `Release` ausführen** (nur Maintainer):
+   - `patch`, `minor`, `major`: erhöhen die CLI-Version, committen die Release-Änderungen, erstellen den Tag, veröffentlichen `pcu` und `pnpm-catalog-updates` und erzeugen den GitHub Release in einem Lauf
+   - `current`: veröffentlicht die Version, die bereits im Repository committed ist
+   - `dry_run: true`: prüft den Ablauf ohne Veröffentlichung
 
 ## Hilfe erhalten
 

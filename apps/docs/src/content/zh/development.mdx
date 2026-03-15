@@ -388,12 +388,7 @@ pcu -u --dry-run
 
 ### 发布流程
 
-1. **使用 changesets 更新版本**：
-
-   ```bash
-   pnpm changeset
-   pnpm changeset version
-   ```
+1. **先在 `apps/cli/CHANGELOG.md` 的 `## Unreleased` 下整理发布说明**。
 
 2. **构建和测试**：
 
@@ -403,10 +398,10 @@ pcu -u --dry-run
    pnpm test:e2e
    ```
 
-3. **发布**（仅维护者）：
-   ```bash
-   pnpm publish -r
-   ```
+3. **运行 GitHub Actions 的 `Release` 工作流**（仅维护者）：
+   - `patch`、`minor`、`major`：自动升级 CLI 版本、提交 release 变更、创建 tag、发布 `pcu` 和 `pnpm-catalog-updates`，并在同一次运行里创建 GitHub Release
+   - `current`：发布仓库里已经提交好的当前版本
+   - `dry_run: true`：只验证流程，不实际发布
 
 ## 获取帮助
 

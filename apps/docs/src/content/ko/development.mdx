@@ -389,12 +389,7 @@ pcu -u --dry-run
 
 ### 릴리스 프로세스
 
-1. **changeset을 사용하여 버전 업데이트**:
-
-   ```bash
-   pnpm changeset
-   pnpm changeset version
-   ```
+1. `apps/cli/CHANGELOG.md` 의 `## Unreleased` 아래에 **릴리스 노트**를 정리합니다.
 
 2. **빌드 및 테스트**:
 
@@ -404,10 +399,10 @@ pcu -u --dry-run
    pnpm test:e2e
    ```
 
-3. **배포** (관리자만):
-   ```bash
-   pnpm publish -r
-   ```
+3. **GitHub Actions `Release` 워크플로를 실행**합니다 (관리자만):
+   - `patch`, `minor`, `major`: CLI 버전을 올리고, 릴리스 변경을 커밋하고, 태그를 만들고, `pcu` 와 `pnpm-catalog-updates` 를 배포하고, GitHub Release 까지 한 번에 처리합니다
+   - `current`: 저장소에 이미 커밋된 버전을 그대로 배포합니다
+   - `dry_run: true`: 실제 배포 없이 흐름만 검증합니다
 
 ## 도움 받기
 

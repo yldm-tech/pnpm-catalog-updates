@@ -339,7 +339,7 @@ describe('CatalogCheckService', () => {
       }
 
       await expect(
-        (service as any).checkPackageUpdate(
+        service.checkPackageUpdate(
           'lodash',
           currentRange as unknown as Parameters<typeof service.checkPackageUpdate>[1],
           'minor',

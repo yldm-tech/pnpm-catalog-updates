@@ -200,6 +200,7 @@ export const zh: TranslationDictionary = {
   'command.selfUpdate.failed': '更新 pcu 失败',
   'command.selfUpdate.latestAlready': '您已使用最新版本 ({{version}})',
   'command.selfUpdate.restartHint': '请重新启动终端以使用新版本。',
+  'command.selfUpdate.manualHint': '您可以手动更新：npm install -g pcu@latest',
 
   // AI command
   'command.ai.cacheCleared': 'AI 分析缓存已清除',
@@ -336,7 +337,8 @@ export const zh: TranslationDictionary = {
   // CLI messages
   'cli.runAgain': '请重新运行命令以使用更新后的版本。',
   'cli.checkingUpdates': '正在检查更新...',
-  'cli.latestVersion': '您正在使用最新版本！',
+  'cli.latestVersion': '已是最新',
+  'cli.available': '可用',
   'cli.unknownCommand': '未知命令：{{command}}',
   'cli.couldNotCheckUpdates': '无法检查更新：',
   'cli.error': '错误：',

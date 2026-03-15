@@ -203,6 +203,7 @@ export const en: TranslationDictionary = {
   'command.selfUpdate.failed': 'Failed to update pcu',
   'command.selfUpdate.latestAlready': 'You are already using the latest version ({{version}})',
   'command.selfUpdate.restartHint': 'Please restart your terminal to use the new version.',
+  'command.selfUpdate.manualHint': 'You can manually update with: npm install -g pcu@latest',
 
   // AI command
   'command.ai.cacheCleared': 'AI analysis cache cleared',
@@ -247,7 +248,8 @@ export const en: TranslationDictionary = {
   // CLI messages
   'cli.runAgain': 'Please run your command again to use the updated version.',
   'cli.checkingUpdates': 'Checking for updates...',
-  'cli.latestVersion': 'You are using the latest version!',
+  'cli.latestVersion': 'is the latest',
+  'cli.available': 'available',
   'cli.unknownCommand': 'Unknown command: {{command}}',
   'cli.couldNotCheckUpdates': 'Could not check for updates:',
   'cli.error': 'Error:',

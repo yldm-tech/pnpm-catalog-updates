@@ -8,8 +8,8 @@ import {
 } from '@algolia/autocomplete-core'
 import { Dialog, DialogBackdrop, DialogPanel } from '@headlessui/react'
 import clsx from 'clsx'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   Fragment,
   forwardRef,
@@ -23,7 +23,8 @@ import {
 import Highlighter from 'react-highlight-words'
 
 import { navigation } from '@/components/Navigation'
-import type { Result } from '@/mdx/search.mjs'
+import { usePathname, useRouter } from '@/i18n/navigation'
+import type { Result } from '@/mdx/search-types'
 import { useMobileNavigationStore } from './MobileNavigation'
 
 type EmptyObject = Record<string, never>
@@ -38,6 +39,7 @@ type Autocomplete = AutocompleteApi<
 function useAutocomplete({ onNavigate }: { onNavigate: () => void }) {
   const id = useId()
   const router = useRouter()
+  const locale = useLocale()
   const t = useTranslations('Search')
   const [autocompleteState, setAutocompleteState] = useState<
     AutocompleteState<Result> | EmptyObject
@@ -45,7 +47,7 @@ function useAutocomplete({ onNavigate }: { onNavigate: () => void }) {
 
   function navigate({ itemUrl }: { itemUrl?: string }) {
     if (itemUrl) {
-      router.push(itemUrl)
+      router.push(itemUrl as never)
     }
 
     onNavigate()
@@ -65,21 +67,22 @@ function useAutocomplete({ onNavigate }: { onNavigate: () => void }) {
       navigator: {
         navigate,
       },
-      getSources({ query }) {
-        return import('@/mdx/search.mjs').then(({ search }) => {
-          return [
-            {
-              sourceId: 'documentation',
-              getItems() {
-                return search(query, { limit: 5 })
-              },
-              getItemUrl({ item }) {
-                return item.url
-              },
-              onSelect: navigate,
+      async getSources({ query }) {
+        const { search } = await import('@/mdx/search')
+        const items = search(locale, query, { limit: 5 })
+
+        return [
+          {
+            sourceId: 'documentation',
+            getItems() {
+              return items
             },
-          ]
-        })
+            getItemUrl({ item }) {
+              return item.url
+            },
+            onSelect: navigate,
+          },
+        ]
       },
     })
   )

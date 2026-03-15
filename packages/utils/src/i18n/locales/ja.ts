@@ -215,6 +215,7 @@ export const ja: TranslationDictionary = {
   'command.selfUpdate.latestAlready': '既に最新バージョン ({{version}}) を使用しています',
   'command.selfUpdate.restartHint':
     '新しいバージョンを使用するには、ターミナルを再起動してください。',
+  'command.selfUpdate.manualHint': '手動で更新するには: npm install -g pcu@latest',
 
   // AI command
   'command.ai.cacheCleared': 'AI 分析キャッシュをクリアしました',
@@ -355,7 +356,8 @@ export const ja: TranslationDictionary = {
   // CLI messages
   'cli.runAgain': '更新されたバージョンを使用するには、コマンドを再実行してください。',
   'cli.checkingUpdates': '更新を確認しています...',
-  'cli.latestVersion': '最新バージョンを使用しています！',
+  'cli.latestVersion': '最新版です',
+  'cli.available': '利用可能',
   'cli.unknownCommand': '不明なコマンド: {{command}}',
   'cli.couldNotCheckUpdates': '更新を確認できませんでした:',
   'cli.error': 'エラー:',

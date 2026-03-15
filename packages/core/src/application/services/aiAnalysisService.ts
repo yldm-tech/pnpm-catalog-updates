@@ -192,6 +192,16 @@ export class AIAnalysisService {
    * Get available AI providers
    */
   async getAvailableProviders(): Promise<AIProviderInfo[]> {
+    if (this.providersInitialized) {
+      const providerInfos = await Promise.all(
+        Array.from(this.providers.values()).map((provider) => provider.getInfo())
+      )
+
+      return providerInfos
+        .filter((provider) => provider.available)
+        .sort((a, b) => b.priority - a.priority)
+    }
+
     return this.detector.getAvailableProviders()
   }
 

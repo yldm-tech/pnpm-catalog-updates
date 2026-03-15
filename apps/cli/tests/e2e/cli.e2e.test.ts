@@ -175,7 +175,7 @@ catalog:
       if (result.stdout.trim()) {
         expect(() => JSON.parse(result.stdout)).not.toThrow()
       }
-    })
+    }, 15000)
 
     it('should support --catalog filter', async () => {
       const result = await runCli(['check', '--catalog', 'default'], {

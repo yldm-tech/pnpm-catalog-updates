@@ -272,7 +272,7 @@ export class InteractiveOptionsCollector {
         message: t('interactive.analyze.packageName'),
         placeholder: 'lodash, react, ...',
         validate: (value) => {
-          if (!value.trim()) return t('interactive.analyze.packageNameRequired')
+          if (!value?.trim()) return t('interactive.analyze.packageNameRequired')
           return undefined
         },
       })

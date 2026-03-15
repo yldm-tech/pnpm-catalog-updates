@@ -18,7 +18,8 @@
       "!**/*.d.ts",
       "!**/.pnpm-store",
       "!**/pnpm-lock.yaml",
-      "!**/*.css"
+      "!**/*.css",
+      "!apps/docs/src/generated"
     ]
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },

@@ -218,6 +218,8 @@ export const fr: TranslationDictionary = {
   'command.selfUpdate.latestAlready': 'Vous utilisez déjà la dernière version ({{version}})',
   'command.selfUpdate.restartHint':
     'Veuillez redémarrer votre terminal pour utiliser la nouvelle version.',
+  'command.selfUpdate.manualHint':
+    'Vous pouvez mettre à jour manuellement avec : npm install -g pcu@latest',
 
   // AI command
   'command.ai.cacheCleared': "Cache d'analyse IA vidé",
@@ -359,7 +361,8 @@ export const fr: TranslationDictionary = {
   // CLI messages
   'cli.runAgain': 'Veuillez relancer la commande pour utiliser la version mise à jour.',
   'cli.checkingUpdates': 'Recherche de mises à jour...',
-  'cli.latestVersion': 'Vous utilisez la dernière version !',
+  'cli.latestVersion': 'est la dernière',
+  'cli.available': 'disponible',
   'cli.unknownCommand': 'Commande inconnue : {{command}}',
   'cli.couldNotCheckUpdates': 'Impossible de vérifier les mises à jour :',
   'cli.error': 'Erreur :',

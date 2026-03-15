@@ -26,6 +26,7 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
+    "@testing-library/dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "eslint": "catalog:",

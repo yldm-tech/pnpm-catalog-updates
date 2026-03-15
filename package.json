@@ -25,7 +25,7 @@
   },
   "homepage": "https://pcu-cli.dev",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.13.0"
   },
   "packageManager": "pnpm@10.26.1+sha512.664074abc367d2c9324fdc18037097ce0a8f126034160f709928e9e9f95d98714347044e5c3164d65bd5da6c59c6be362b107546292a8eecb7999196e5ce58fa",
   "type": "module",
@@ -72,6 +72,7 @@
     "tsx": "catalog:",
     "turbo": "catalog:",
     "typescript": "catalog:",
+    "vite": "8.0.0",
     "vitest": "catalog:"
   },
   "lint-staged": {
@@ -79,8 +80,19 @@
       "biome check --write --no-errors-on-unmatched"
     ]
   },
+  "pnpm": {
+    "overrides": {
+      "@isaacs/brace-expansion": "5.0.1",
+      "js-yaml": "3.14.2",
+      "mdast-util-to-hast": "13.2.1",
+      "minimatch": "10.2.4",
+      "rollup": "4.59.0",
+      "sucrase": "3.35.1",
+      "tar": "7.5.11"
+    }
+  },
   "volta": {
-    "node": ">=22",
+    "node": ">=22.13.0",
     "pnpm": ">=10"
   }
 }

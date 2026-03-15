@@ -102,28 +102,14 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Setup pnpm
-        shell: bash
-        run: |
-          corepack enable
-          corepack prepare pnpm@10.26.1 --activate
-          pnpm --version
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Cache example pnpm store
-        uses: actions/cache@v4
+        uses: pnpm/action-setup@v4
         with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-example-${{ matrix.node-version }}-pnpm-store-${{ hashFiles('apps/example/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-example-${{ matrix.node-version }}-pnpm-store-
+          version: 10.26.1
+          package_json_file: apps/example/package.json
 
       - name: Install example dependencies
         working-directory: apps/example
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Typecheck example workspace
         working-directory: apps/example

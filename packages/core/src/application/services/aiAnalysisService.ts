@@ -192,6 +192,10 @@ export class AIAnalysisService {
    * Get available AI providers
    */
   async getAvailableProviders(): Promise<AIProviderInfo[]> {
+    if (this.providersInitialized) {
+      return Promise.all(Array.from(this.providers.values(), (provider) => provider.getInfo()))
+    }
+
     return this.detector.getAvailableProviders()
   }
 

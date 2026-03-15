@@ -6,6 +6,16 @@ on:
       - 'v*'  # Trigger on version tags (v1.0.0, v1.2.3, etc.)
   workflow_dispatch:
     inputs:
+      release_type:
+        description: 'Release type for manual runs'
+        required: false
+        default: 'current'
+        type: choice
+        options:
+          - current
+          - patch
+          - minor
+          - major
       dry_run:
         description: 'Dry run (skip actual publish)'
         required: false
@@ -17,8 +27,76 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  prepare_release:
+    name: Prepare Release
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'current' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Prepare version bump
+        run: node scripts/release-prepare.cjs ${{ github.event.inputs.release_type }}
+
+      - name: Get prepared version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./apps/cli/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Prepared version: $VERSION"
+
+      - name: Commit release changes
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git add apps/cli/package.json apps/cli/CHANGELOG.md
+          git commit -m "chore: release v${{ steps.version.outputs.version }}"
+
+      - name: Push release commit
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: git push origin HEAD:${{ github.ref_name }}
+
+      - name: Create and push release tag
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          TAG_NAME="v${{ steps.version.outputs.version }}"
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "❌ Tag $TAG_NAME already exists"
+            exit 1
+          fi
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+          git push origin "$TAG_NAME"
+
+      - name: Summary
+        run: |
+          echo "## Release Preparation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release type:** ${{ github.event.inputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Prepared version:** v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "⚠️ **Dry run only**: no commit or tag was pushed." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Release commit and tag pushed.** The tag-triggered release workflow will publish the packages." >> $GITHUB_STEP_SUMMARY
+          fi
+
   release:
     name: Release
+    if: ${{ github.event_name == 'push' || github.event.inputs.release_type == 'current' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -97,7 +175,7 @@ jobs:
             CHANGELOG=$(cat <<EOF
           Release v${VERSION}
 
-          See [CHANGELOG.md](https://github.com/houko/pnpm-catalog-updates/blob/main/apps/cli/CHANGELOG.md) for details.
+          See [CHANGELOG.md](https://github.com/yldm-tech/pnpm-catalog-updates/blob/main/apps/cli/CHANGELOG.md) for details.
           EOF
           )
           fi

@@ -25,6 +25,26 @@ function runCommand(command, options = {}) {
   }
 }
 
+function isAlreadyPublished(packageName, version) {
+  try {
+    execSync(`npm view "${packageName}@${version}" version --json`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    return true
+  } catch (error) {
+    const stderr = error.stderr?.toString() ?? ''
+    const stdout = error.stdout?.toString() ?? ''
+    const output = `${stdout}\n${stderr}`
+
+    if (output.includes('E404') || output.includes('404')) {
+      return false
+    }
+
+    throw error
+  }
+}
+
 function updatePackageName(newName) {
   const packageJson = JSON.parse(fs.readFileSync(CLI_PACKAGE_PATH, 'utf8'))
   packageJson.name = newName
@@ -154,16 +174,33 @@ async function publishDual() {
 
     console.log(`\n🚀 Publishing version ${version} as dual packages...`)
 
+    const publishResults = []
+
     // First publish as 'pcu' (current name)
     console.log('\n1️⃣ Publishing as "pcu"...')
-    const publishCommand1 = `cd apps/cli && npm publish${isDryRun ? ' --dry-run' : ''}`
-    runCommand(publishCommand1, { alwaysRun: true })
+    if (isAlreadyPublished('pcu', version)) {
+      console.log(`⏭️ Skipping pcu@${version}: already published`)
+      publishResults.push({ name: 'pcu', status: 'skipped' })
+    } else {
+      const publishCommand1 = `cd apps/cli && npm publish${isDryRun ? ' --dry-run' : ''}`
+      runCommand(publishCommand1, { alwaysRun: true })
+      publishResults.push({ name: 'pcu', status: isDryRun ? 'dry-run' : 'published' })
+    }
 
     // Then publish as 'pnpm-catalog-updates'
     console.log('\n2️⃣ Publishing as "pnpm-catalog-updates"...')
     updatePackageName('pnpm-catalog-updates')
-    const publishCommand2 = `cd apps/cli && npm publish${isDryRun ? ' --dry-run' : ''}`
-    runCommand(publishCommand2, { alwaysRun: true })
+    if (isAlreadyPublished('pnpm-catalog-updates', version)) {
+      console.log(`⏭️ Skipping pnpm-catalog-updates@${version}: already published`)
+      publishResults.push({ name: 'pnpm-catalog-updates', status: 'skipped' })
+    } else {
+      const publishCommand2 = `cd apps/cli && npm publish${isDryRun ? ' --dry-run' : ''}`
+      runCommand(publishCommand2, { alwaysRun: true })
+      publishResults.push({
+        name: 'pnpm-catalog-updates',
+        status: isDryRun ? 'dry-run' : 'published',
+      })
+    }
 
     // Restore original package.json (with catalog dependencies)
     console.log('\n🔄 Restoring original package.json...')
@@ -172,9 +209,10 @@ async function publishDual() {
 
     const status = isDryRun ? 'tested' : 'completed'
     console.log(`\n✅ Dual publication ${status} successfully!`)
-    console.log(`📦 ${isDryRun ? 'Would publish' : 'Published'} ${version} as:`)
-    console.log(`   - pcu@${version}`)
-    console.log(`   - pnpm-catalog-updates@${version}`)
+    console.log(`📦 Publication results for ${version}:`)
+    for (const result of publishResults) {
+      console.log(`   - ${result.name}@${version} (${result.status})`)
+    }
   } catch (error) {
     console.error('\n❌ Publication failed:', error.message)
 

@@ -9,7 +9,11 @@
  * This script:
  * 1. Reads version from apps/cli/package.json
  * 2. Creates a git tag (v{version})
- * 3. Pushes the tag to trigger release workflow
+ * 3. Pushes the tag for the tag-based release flow
+ *
+ * Note:
+ * - Use this script only when the target version is already committed
+ * - For patch/minor/major releases, use the GitHub Actions "Release" workflow
  */
 
 const fs = require('node:fs')
@@ -71,10 +75,13 @@ function main() {
   run(`git push origin ${tagName}`)
 
   console.log(`\n✅ Release tag ${tagName} pushed successfully!`)
-  console.log(`\n📋 GitHub Actions will now:`)
+  console.log(`\n📋 GitHub Actions will now run the tag-based release flow:`)
   console.log(`   1. Build the packages`)
   console.log(`   2. Publish to NPM (pcu & pnpm-catalog-updates)`)
   console.log(`   3. Create GitHub Release`)
+  console.log(
+    `\nℹ️  For patch/minor/major bumps, use the GitHub Actions "Release" workflow instead.`
+  )
   console.log(`\n🔗 Monitor at: https://github.com/yldm-tech/pnpm-catalog-updates/actions`)
 }
 

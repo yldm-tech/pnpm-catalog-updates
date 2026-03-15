@@ -339,7 +339,9 @@ catalogs:
     lines.push('')
     lines.push(StyledText.muted(t('command.init.step5')))
     lines.push(StyledText.muted('   https://pnpm.io/workspaces'))
-    lines.push(StyledText.muted('   https://github.com/houko/pnpm-catalog-updates#configuration'))
+    lines.push(
+      StyledText.muted('   https://github.com/yldm-tech/pnpm-catalog-updates#configuration')
+    )
 
     cliOutput.print(lines.join('\n'))
   }

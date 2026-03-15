@@ -534,9 +534,9 @@ When reporting issues, include:
 ### Community Support
 
 - **GitHub Issues**:
-  [Report bugs and feature requests](https://github.com/houko/pnpm-catalog-updates/issues)
+  [Report bugs and feature requests](https://github.com/yldm-tech/pnpm-catalog-updates/issues)
 - **Discussions**:
-  [Join community discussions](https://github.com/houko/pnpm-catalog-updates/discussions)
+  [Join community discussions](https://github.com/yldm-tech/pnpm-catalog-updates/discussions)
 - **Documentation**: [Read the docs](https://pcu-cli.dev)
 
 ## 🔗 Useful Commands
@@ -579,5 +579,5 @@ npm install -g pcu@latest
 ```
 
 Remember to always check the
-[GitHub Issues](https://github.com/houko/pnpm-catalog-updates/issues) for the
+[GitHub Issues](https://github.com/yldm-tech/pnpm-catalog-updates/issues) for the
 latest known issues and solutions.

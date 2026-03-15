@@ -75,7 +75,7 @@ function main() {
   console.log(`   1. Build the packages`)
   console.log(`   2. Publish to NPM (pcu & pnpm-catalog-updates)`)
   console.log(`   3. Create GitHub Release`)
-  console.log(`\n🔗 Monitor at: https://github.com/houko/pnpm-catalog-updates/actions`)
+  console.log(`\n🔗 Monitor at: https://github.com/yldm-tech/pnpm-catalog-updates/actions`)
 }
 
 main()

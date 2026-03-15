@@ -82,3 +82,40 @@ jobs:
           name: cli-build
           path: apps/cli/dist/
           retention-days: 3
+
+  example:
+    name: Example Workspace (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20.19.0', '22.13.0']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+          cache-dependency-path: apps/example/pnpm-lock.yaml
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Install example dependencies
+        working-directory: apps/example
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck example workspace
+        working-directory: apps/example
+        run: pnpm typecheck
+
+      - name: Build example workspace
+        working-directory: apps/example
+        run: pnpm build

@@ -11,6 +11,8 @@ CI jobs, and coding agents—not another AI wrapper around `package.json` edits.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 [![CI](https://img.shields.io/github/actions/workflow/status/yldm-tech/pnpm-catalog-updates/ci.yml?label=CI&logo=github)](https://github.com/yldm-tech/pnpm-catalog-updates/actions)
+[![X](https://img.shields.io/badge/X-%40suzukaze__haduki-000000?logo=x&logoColor=white)](https://x.com/suzukaze_haduki)
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/houko)
 
 ## Why PCU still matters in the AI era
 
